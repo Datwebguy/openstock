@@ -27,13 +27,11 @@ export function LandingHeroMotion({ children }: { children: ReactNode }) {
       root.style.setProperty("--hero-camera-y", String(-progress * 8) + "%");
       root.style.setProperty("--hero-camera-scale", String(1 + progress * 0.28));
       root.style.setProperty("--hero-camera-tilt", String(progress * 4) + "deg");
-      const copyDistance = window.innerWidth <= 520 ? 70 : window.innerWidth <= 800 ? 82 : 200;
-      root.style.setProperty("--hero-copy-pull", String(progress * copyDistance) + "px");
       root.style.setProperty("--hero-cloud-x", String(progress * 12) + "%");
       root.style.setProperty("--hero-cloud-y", String(progress * 6) + "%");
       root.style.setProperty("--hero-cloud-scale", String(1 + progress * 0.15));
       root.style.setProperty("--hero-cloud-opacity", String(1 - progress * 0.15));
-      root.style.setProperty("--hero-cluster-y", String(progress * 118) + "px");
+      root.style.setProperty("--hero-cluster-y", String(progress * 78) + "px");
       root.style.setProperty("--hero-cluster-scale", String(1 + progress * 1.15));
       root.style.setProperty("--hero-shadow-scale", String(0.7 + progress * 0.4));
       root.style.setProperty("--hero-shadow-opacity", String(0.25 + progress * 0.25));

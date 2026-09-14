@@ -46,7 +46,8 @@ export default async function HomePage() {
         <div className="landing-eclipse-hero__ridge" />
         <div className="landing-eclipse-hero__cloud landing-eclipse-hero__cloud--left"><i /><i /><i /><i /></div>
         <div className="landing-eclipse-hero__cloud landing-eclipse-hero__cloud--right"><i /><i /><i /><i /></div>
-        <div className="landing-eclipse-cluster">
+      </div>
+      <div className="landing-eclipse-cluster" aria-hidden="true">
           <div className="landing-eclipse-cluster__arrival">
             <span className="landing-eclipse-cluster__shadow" />
             <div className="landing-eclipse-cube"><div className="landing-eclipse-cube__yaw"><div className="landing-eclipse-cube__face landing-eclipse-cube__face--front"><svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: `<path d="${siSolana.path}"/>` }} /></div><div className="landing-eclipse-cube__face landing-eclipse-cube__face--right" /><div className="landing-eclipse-cube__face landing-eclipse-cube__face--top" /></div></div>
@@ -57,7 +58,6 @@ export default async function HomePage() {
               {orbitAssets.slice(4).map((asset, index) => <div className="landing-eclipse-orbit__carrier" style={{ "--angle": `${index * 90 + 45}deg`, "--counter": `${-(index * 90 + 45)}deg`, "--delay": `${280 + index * 40}ms` } as CSSProperties} key={asset.symbol}><div className="landing-eclipse-orbit__arrival"><div className="landing-eclipse-orbit__disc"><StockLogo symbol={asset.symbol} logo={asset.logo} size={28} /></div></div></div>)}
             </div>
           </div>
-        </div>
       </div>
       <div className="landing-eclipse-hero__content">
         <span className="eyebrow">OpenStock</span>

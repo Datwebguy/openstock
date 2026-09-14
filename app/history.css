@@ -15,4 +15,19 @@
 .settings-panel { display: flex; gap: 24px; align-items: center; }
 .settings-panel__icon { display: grid; place-items: center; width: 68px; height: 68px; border-radius: 20px; color: #fff; background: linear-gradient(135deg, #7c5cfc, #14e6a1); font-size: 28px; }
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.you-page { padding-top: 132px; }
+.you-page__header { margin: 0 0 22px; }
+.you-page__header h1 { margin: 0; font-size: clamp(34px,4vw,50px); line-height: 1; }
+.you-page .settings-panel { display: grid; grid-template-columns: 68px minmax(0,1fr) auto; gap: 20px; min-height: 0; padding: 24px 28px; }
+.settings-panel__body { min-width: 0; }
+.settings-panel__body h2 { margin: 0 0 5px; font-size: 28px; }
+.settings-panel__body p { margin: 0; }
+.settings-panel__body small { display: block; margin-top: 7px; color: #77718c; font-size: 12px; }
+.you-page .settings-panel > .button { align-self: center; }
+.you-page .settings-grid { gap: 14px; margin-top: 14px; }
+.settings-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 126px; padding: 24px 28px; }
+.settings-card h2 { margin: 0; font-size: 28px; }
+.settings-card--verify { grid-column: 1 / -1; }
+.settings-card--verify p { margin: 7px 0 0; }
 @media (max-width: 680px) { .history-row { align-items: flex-start; flex-direction: column; } .history-row__right { justify-items: start; } .settings-panel { align-items: flex-start; flex-direction: column; } .settings-grid { grid-template-columns: 1fr; } }
+@media (max-width: 680px) { .you-page { padding-top: 96px; } .you-page .settings-panel { grid-template-columns: 52px minmax(0,1fr); padding: 20px; } .you-page .settings-panel > .button { grid-column: 1 / -1; width: 100%; } .settings-panel__icon { width: 52px; height: 52px; border-radius: 16px; font-size: 22px; } .settings-card { min-height: 0; padding: 20px; } .settings-card--verify { grid-column: auto; } }

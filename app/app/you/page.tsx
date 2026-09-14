@@ -27,10 +27,14 @@ export default function YouPage() {
   }
   return <main className="page">
 <AppNav ctaHref="/app" ctaLabel="Market" />
-    <div className="app-page container">
-      <header className="app-market-header history-header"><div><h1>You</h1></div></header>
-      <section className="panel settings-panel"><div className="settings-panel__icon">◒</div><div><h2>Wallet</h2><p>{wallet ? wallet.slice(0, 6) + "…" + wallet.slice(-4) : "Not connected"}</p><button className="button button--gradient" type="button" onClick={connect}>{wallet ? "Connected" : "Connect wallet"}</button><p>OpenStock does not hold keys.</p>{message ? <p>{message}</p> : null}</div></section>
-      <section className="settings-grid"><article className="panel"><h2>Holdings</h2><Link className="button button--light" href="/app/you/portfolio">Open</Link></article><article className="panel"><h2>Watches</h2><Link className="button button--light" href="/app/alerts">Manage</Link></article><AccountIdentity /></section>
+    <div className="app-page container you-page">
+      <header className="app-market-header history-header you-page__header"><div><h1>You</h1></div></header>
+      <section className="panel settings-panel">
+        <div className="settings-panel__icon" aria-hidden="true">◒</div>
+        <div className="settings-panel__body"><h2>Wallet</h2><p>{wallet ? wallet.slice(0, 6) + "…" + wallet.slice(-4) : "Not connected"}</p><small>OpenStock does not hold keys.</small>{message ? <small>{message}</small> : null}</div>
+        <button className="button button--gradient" type="button" onClick={connect}>{wallet ? "Connected" : "Connect wallet"}</button>
+      </section>
+      <section className="settings-grid"><article className="panel settings-card"><h2>Holdings</h2><Link className="button button--light" href="/app/you/portfolio">Open</Link></article><article className="panel settings-card"><h2>Watches</h2><Link className="button button--light" href="/app/alerts">Manage</Link></article><AccountIdentity /></section>
     </div>
     <AppFooterNav />
   </main>;
