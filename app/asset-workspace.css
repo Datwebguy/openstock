@@ -16,6 +16,9 @@
 .asset-detail-tabs a { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 800; }
 .asset-detail-tabs a:first-child { color: var(--solana-purple); }
 .asset-trade-grid,.asset-analysis-stack { display: grid; gap: 14px; }
+.asset-analysis-stack { grid-template-rows: auto minmax(0,1fr); }
+.asset-analysis-stack > #news { display: flex; min-height: 0; }
+.asset-analysis-stack > #news .compact { flex: 1; min-height: 100%; margin-top: 0; }
 .asset-chart-card,.asset-order-card,.asset-overview,.asset-event-card { border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.82); }
 .asset-chart-card { min-width: 0; padding: 20px; }
 .asset-chart-head { display: flex; justify-content: space-between; gap: 16px; }
