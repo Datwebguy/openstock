@@ -1,22 +1,58 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { StockLogo } from "@/components/stock-logo";
-import { StockNetwork } from "@/components/stock-network";
 import { CURATED_SYMBOLS, listSolanaAssets } from "@/lib/xstocks";
 
-async function getHeroAssets() { const symbols = CURATED_SYMBOLS.slice(0, 8); try { const registered = await listSolanaAssets(); const bySymbol = new Map(registered.map((asset) => [asset.symbol, asset])); return symbols.map((symbol) => { const asset = bySymbol.get(symbol); return { symbol, name: asset?.name?.replace(/ xStock$/, "") ?? symbol.replace(/x$/, ""), logo: asset?.logo }; }); } catch { return symbols.map((symbol) => ({ symbol, name: symbol.replace(/x$/, "") })); } }
-const tickerChecks = ["Reference", "Liquidity", "Market phase", "Multiplier", "Reserves", "Reference", "Liquidity", "Market phase", "Multiplier", "Reserves"];
-const showcase = [{ symbol: "AAPLx", name: "Apple", label: "01 · Reference" }, { symbol: "NVDAx", name: "NVIDIA", label: "02 · Liquidity" }, { symbol: "TSLAx", name: "Tesla", label: "03 · Multiplier" }];
+type LandingAsset = { symbol: string; name: string; logo?: string };
+
+async function getLandingAssets(): Promise<LandingAsset[]> {
+  const symbols = CURATED_SYMBOLS.slice(0, 10);
+  try {
+    const registered = await listSolanaAssets();
+    const bySymbol = new Map(registered.map((asset) => [asset.symbol, asset]));
+    return symbols.map((symbol) => {
+      const asset = bySymbol.get(symbol);
+      return { symbol, name: asset?.name?.replace(/ xStock$/, "") ?? symbol.replace(/x$/, ""), logo: asset?.logo };
+    });
+  } catch { return symbols.map((symbol) => ({ symbol, name: symbol.replace(/x$/, "") })); }
+}
+
+const heroSymbols = ["AAPLx", "TSLAx", "AMZNx"];
+const signals = [
+  ["Reference", "The issuer price gives the starting point."],
+  ["Quote", "Pool context shows what is available on Solana."],
+  ["Events", "Dividends and adjustments stay connected to the stock."],
+];
 
 export default async function HomePage() {
-  const heroAssets = await getHeroAssets();
-  return <main className="page">
-    <nav className="nav" aria-label="Primary navigation"><Link className="brand" href="/"><span className="brand-mark">◒</span> openstock</Link><div className="nav-links"><a href="#signal">The signal</a><a href="#crew">Issuers</a><a href="#flow">Method</a></div><Link className="button button--gradient" href="/app">Browse stocks</Link></nav>
-    <section className="hero container"><div className="hero-copy reveal"><div className="eyebrow">Tokenized stocks · Solana</div><h1>Make the <span className="headline-panel headline-panel--gradient">signal</span> your first move.</h1><p>OpenStock brings the reference price, liquidity, market phase, reserves, and share multiplier into one calm view.</p><div className="hero-actions"><Link className="button button--gradient" href="/app">Browse stocks</Link><a className="button button--outline" href="#signal">See the method ↓</a></div></div><div className="hero-scene reveal reveal--delay-1"><StockNetwork assets={heroAssets} /></div></section>
-    <div className="marquee" aria-label="OpenStock market signals"><div className="marquee__track">{tickerChecks.map((check, index) => <span className="marquee__item" key={`${check}-${index}`}>{check}</span>)}</div></div>
-    <section id="signal" className="section section--dark"><div className="container manifesto"><div className="manifesto__aside reveal"><div className="eyebrow" style={{ color: "var(--solana-green)" }}>The signal, not the noise</div><h2>Tokenized stocks need context.</h2><div className="signal-stack" aria-label="Issuer marks"><StockLogo symbol="AAPLx" size={62} /><StockLogo symbol="GOOGLx" size={48} /><StockLogo symbol="NVDAx" size={54} /><StockLogo symbol="TSLAx" size={44} /></div></div><div className="manifesto__list">{[["01", "Check the reference", "See the official xStocks price beside an independent oracle cross-check."], ["02", "Read the depth", "Pool liquidity, market phase, and reserves show the context behind a price."], ["03", "Respect the multiplier", "Corporate actions can change share amounts. OpenStock keeps the display clear."], ["04", "Keep the record", "A local review keeps the source values, timestamp, and multiplier together."]].map(([number, title, copy]) => <article className="manifesto__item reveal" key={number}><span>{number}</span><div><h3>{title}</h3><p>{copy}</p></div></article>)}</div></div></section>
-    <section id="flow" className="section flow-section"><div className="container flow-layout"><div className="flow-intro"><div className="eyebrow">A clearer market view</div><h2>From live signal to clear decision.</h2><p>OpenStock turns the public data around a tokenized stock into a focused, readable path.</p><Link className="button button--dark" href="/app">Browse the market →</Link></div><div className="flow-steps">{[["01", "Observe", "See the issuer, market phase, reserves, and reference price together."], ["02", "Compare", "Check the independent source signals and available liquidity."], ["03", "Protect", "Keep share amounts aligned when the multiplier changes."], ["04", "Record", "Preserve the values and timing behind your review."]].map(([number, title, copy]) => <article className="flow-step reveal" key={number}><span>{number}</span><div><h3>{title}</h3><p>{copy}</p></div><i aria-hidden="true">↗</i></article>)}</div></div></section>
-    <section id="crew" className="section"><div className="container"><div className="eyebrow">The issuer set</div><h2>Real companies. Real marks.</h2><p className="section-intro">Open an issuer to inspect the public market context behind its xStock.</p><div className="cast-grid">{showcase.map((stock) => <Link className="cast-card stock-cast-card" href={`/app/asset/${stock.symbol}`} key={stock.symbol}><div className="stock-cast-mark"><StockLogo symbol={stock.symbol} size={86} /></div><span className="eyebrow">{stock.label}</span><h3>{stock.name}</h3><p>Market phase, reference price, reserves, and multiplier context.</p></Link>)}</div></div></section>
-    <section className="section cta"><div className="container"><div className="eyebrow">OpenStock · Solana</div><h2>Read the market with the lights on.</h2><p>Explore live issuer data and understand the share context before you decide.</p><Link className="button button--light" href="/app">Browse stocks →</Link></div></section>
-    <footer className="footer container"><div><span className="brand-mark">◒</span> openstock</div><span>Tokenized-stock market context on Solana.</span></footer>
+  const assets = await getLandingAssets();
+  const bySymbol = new Map(assets.map((asset) => [asset.symbol, asset]));
+  const heroAssets = heroSymbols.map((symbol) => bySymbol.get(symbol) ?? { symbol, name: symbol.replace(/x$/, "") });
+
+  return <main className="page landing">
+    <nav className="nav landing-nav" aria-label="Primary navigation">
+      <Link className="brand" href="/"><span className="brand-mark" aria-hidden="true">◒</span> OpenStock</Link>
+      <div className="nav-links"><a href="#read">How it works</a><a href="#names">Stocks</a><a href="#method">Method</a></div>
+      <Link className="button button--gradient" href="/app">Browse stocks</Link>
+    </nav>
+
+    <section className="landing-hero container" aria-labelledby="landing-title">
+      <div className="landing-hero__copy landing-reveal"><span className="eyebrow">Tokenized stocks · Solana</span><h1 id="landing-title">Make a clearer<br />first move.</h1><p>OpenStock puts the price, route, liquidity, and issuer context around a stock in one place.</p><div className="landing-hero__actions"><Link className="button button--gradient" href="/app">Browse stocks</Link><a href="#read" className="landing-inline-link">See the method <span aria-hidden="true">↓</span></a></div><div className="landing-proof"><span><strong>10</strong> listed xStocks</span><span><strong>Live</strong> market context</span><span><strong>0</strong> wallets needed to explore</span></div></div>
+      <div className="landing-hero__scene" aria-label="Apple, Tesla, and Amazon tokenized stocks">
+        <div className="landing-hero__glow" aria-hidden="true" />
+        <div className="landing-hero__route" aria-hidden="true" />
+        {heroAssets.map((asset, index) => <div className={`landing-stock landing-stock--${index + 1}`} key={asset.symbol}><StockLogo symbol={asset.symbol} logo={asset.logo} size={index === 1 ? 78 : 58} /><span>{asset.name}</span><small>{asset.symbol}</small></div>)}
+        <div className="landing-hero__stamp">xStocks<br />on Solana</div>
+      </div>
+    </section>
+
+    <section className="landing-read" id="read"><div className="container"><div className="landing-section-intro landing-reveal"><span className="eyebrow">Read the stock</span><h2>One name. Three live checks.</h2><p>Every price deserves context before it becomes a trade.</p></div><div className="landing-signal-steps">{signals.map(([title, copy], index) => <article className="landing-signal-step landing-reveal" style={{ "--step": index } as CSSProperties} key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{copy}</p></div><i aria-hidden="true">↗</i></article>)}</div></div></section>
+
+    <section className="landing-method section section--dark" id="method"><div className="container landing-method__grid"><div className="landing-method__copy landing-reveal"><span className="eyebrow">A shorter path</span><h2>Choose a stock.<br />Read the print.<br />Decide.</h2><p>Explore without a wallet. Connect only when you choose to buy or sell.</p><Link className="button button--light" href="/app">Open the market</Link></div><ol className="landing-method__list"><li className="landing-reveal"><strong>Explore</strong><span>Find a listed xStock.</span></li><li className="landing-reveal"><strong>Compare</strong><span>Review quote, depth, and issuer context.</span></li><li className="landing-reveal"><strong>Act</strong><span>Connect a wallet only at the ticket.</span></li></ol></div></section>
+
+    <section className="landing-names container" id="names"><div className="landing-names__head landing-reveal"><div><span className="eyebrow">Listed stocks</span><h2>Start with a name you know.</h2></div><Link href="/app" className="landing-inline-link">View market <span aria-hidden="true">→</span></Link></div><div className="landing-name-grid">{assets.slice(0, 6).map((asset, index) => <Link className="landing-name landing-reveal" style={{ "--step": index } as CSSProperties} href={`/app/asset/${asset.symbol}`} key={asset.symbol}><StockLogo symbol={asset.symbol} logo={asset.logo} size={42} /><div><strong>{asset.name}</strong><span>{asset.symbol}</span></div><i aria-hidden="true">↗</i></Link>)}</div></section>
+
+    <section className="landing-close"><div className="container landing-close__inner landing-reveal"><div><span className="eyebrow">OpenStock market</span><h2>See the context.<br />Then make your move.</h2></div><Link className="button button--gradient" href="/app">Browse stocks</Link></div></section>
+    <footer className="landing-footer container"><span className="brand"><span className="brand-mark" aria-hidden="true">◒</span> OpenStock</span><span>Tokenized-stock market context on Solana.</span></footer>
   </main>;
 }

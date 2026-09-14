@@ -21,6 +21,7 @@ import "./accessibility-fixes.css";
 import "./discovery.css";
 import "./analytics.css";
 import "./asset-workspace.css";
+import "./landing-flow.css";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["400", "500", "600", "700"] });
 const body = Manrope({ subsets: ["latin"], variable: "--font-body", weight: ["400", "500", "600", "700", "800"] });

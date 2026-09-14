@@ -10,7 +10,11 @@ const symbols = new Set(["AAPLx", "AMZNx", "GOOGLx", "NVDAx", "TSLAx", "METAx", 
 const sockets = new Set();
 
 await app.prepare();
-const server = createServer((request, response) => handle(request, response));
+const server = createServer((request, response) => {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  if (url.pathname === "/") request.url = "/landing" + url.search;
+  handle(request, response);
+});
 const stream = new WebSocketServer({ noServer: true });
 server.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url ?? "/", "http://localhost");
