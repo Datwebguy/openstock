@@ -18,17 +18,17 @@ export function MarketWatchWorkspace({ symbols, initialSymbol }: { symbols: Symb
   const [kind, setKind] = useState<"price" | "liquidity">("price");
   const [direction, setDirection] = useState<"above" | "below">("above");
   const [threshold, setThreshold] = useState("");
-  const [status, setStatus] = useState("Loading saved watch rules…");
+  const [status, setStatus] = useState("Loading");
   const [saving, setSaving] = useState(false);
 
   async function load(symbol = selected) {
     try {
       const response = await fetch("/api/alerts/market?symbol=" + encodeURIComponent(symbol), { cache: "no-store" });
       const payload = await response.json() as Response;
-      if (!response.ok) throw new Error(payload.error ?? "Watch rules are unavailable.");
+      if (!response.ok) throw new Error(payload.error ?? "Watches unavailable. Retry.");
       setWatches(payload.watches ?? []);
-      setStatus(payload.message ?? "Watch rules are ready.");
-    } catch (reason) { setStatus(reason instanceof Error ? reason.message : "Watch rules are unavailable."); }
+      setStatus("");
+    } catch (reason) { setStatus(reason instanceof Error ? reason.message : "Watches unavailable. Retry."); }
   }
 
   useEffect(() => { void load(); }, [selected]);
@@ -46,10 +46,10 @@ export function MarketWatchWorkspace({ symbols, initialSymbol }: { symbols: Symb
     try {
       const response = await fetch("/api/alerts/market", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: selected, kind, direction, threshold: value, enabled }) });
       const payload = await response.json() as Response;
-      if (!response.ok) throw new Error(payload.error ?? "The watch rule could not be saved.");
+      if (!response.ok) throw new Error(payload.error ?? "Watch failed. Retry.");
       setWatches(payload.watches ?? []);
-      setStatus(payload.message ?? "Watch rule saved.");
-    } catch (reason) { setStatus(reason instanceof Error ? reason.message : "The watch rule could not be saved."); }
+      setStatus("Saved on this device.");
+    } catch (reason) { setStatus(reason instanceof Error ? reason.message : "Watch failed. Retry."); }
     finally { setSaving(false); }
   }
 
@@ -58,7 +58,7 @@ export function MarketWatchWorkspace({ symbols, initialSymbol }: { symbols: Symb
     <div className={styles.selector}><label htmlFor="watch-symbol">Stock</label><select id="watch-symbol" value={selected} onChange={(event) => setSelected(event.target.value)}>{symbols.map((item) => <option value={item.symbol} key={item.symbol}>{item.symbol} · {item.name}</option>)}</select></div>
     <div className={styles.ruleTabs} role="group" aria-label="Watch type"><button type="button" className={kind === "price" ? styles.active : ""} onClick={() => setKind("price")}>Price</button><button type="button" className={kind === "liquidity" ? styles.active : ""} onClick={() => setKind("liquidity")}>Liquidity</button></div>
     <section className={styles.rule}>
-      <div><span className="eyebrow">{kind === "price" ? "Price watch" : "Liquidity watch"}</span><h2>{kind === "price" ? "Watch a price level." : "Watch available depth."}</h2><p>{kind === "price" ? "Save a level to monitor for " + label(symbols, selected) + "." : "Save a pool-depth level to review before trading."}</p></div>
+      <div />
       <div className={styles.fields}><label>Condition<select value={direction} onChange={(event) => setDirection(event.target.value as "above" | "below")}><option value="above">Moves above</option><option value="below">Moves below</option></select></label><label>Value<span className={styles.inputUnit}><input value={threshold} onChange={(event) => setThreshold(event.target.value)} inputMode="decimal" placeholder={kind === "price" ? "e.g. 250" : "e.g. 10000"} /><span>{unit}</span></span></label></div>
       <div className={styles.actions}><button className="button button--gradient" type="button" onClick={() => void save(true)} disabled={saving}>{saving ? "Saving…" : saved ? "Update watch" : "Save watch"}</button>{saved ? <button className="button button--light" type="button" onClick={() => void save(false)} disabled={saving}>Remove</button> : null}</div>
     </section>

@@ -19,7 +19,7 @@ type TradeRecord = {
   signature?: string | null;
 };
 
-export function TradeHistory({ title, description, filter }: { title: string; description: string; filter?: "live" | "review" | "activity" }) {
+export function TradeHistory({ title, filter }: { title: string; description?: string; filter?: "live" | "review" | "activity" }) {
   const [records, setRecords] = useState<TradeRecord[]>([]);
   useEffect(() => {
     try {
@@ -40,11 +40,11 @@ export function TradeHistory({ title, description, filter }: { title: string; de
   }, [filter]);
 
   return <main className="page">
-    <AppNav ctaLabel="Choose stock" />
+    <AppNav ctaHref="/app" ctaLabel="Market" />
     <div className="app-page container">
-      <header className="app-market-header history-header"><div><div className="eyebrow">Your OpenStock record</div><h1>{title}</h1></div><p>{description}</p></header>
+      <header className="app-market-header history-header"><div><h1>{title}</h1></div></header>
       {filter === "live" || filter === "activity" ? <AutomationMonitor /> : null}
-      {records.length === 0 ? <section className="panel empty-history"><div className="eyebrow">Nothing here yet</div><h2>Your activity will appear after an order review.</h2><p>Browse a stock to inspect its market context before connecting a wallet.</p><Link className="button button--gradient" href="/app">Browse market</Link></section> : <section className="history-list" aria-label={title}>{records.map((record) => <Link href={"/app/receipt/" + record.id} className="history-row" key={record.id}><div><span className="history-row__ticker">{record.symbol}</span><h2>{record.side === "buy" ? "Buy" : "Sell"} {record.name}</h2><span className="history-row__meta">{new Date(record.createdAt).toLocaleString()} · {record.mode === "live" ? "Live trade" : "Review only"}</span></div><div className="history-row__right"><strong>{record.uiAmount} shares</strong><span>{record.status === "confirmed" ? "Confirmed" : record.mode === "live" ? "Submitted" : "Ready to confirm"}</span></div></Link>)}</section>}
+      {records.length === 0 ? <section className="panel empty-history"><h2>No orders yet.</h2><Link className="button button--gradient" href="/app">Browse market</Link></section> : <section className="history-list" aria-label={title}>{records.map((record) => <Link href={"/app/receipt/" + record.id} className="history-row" key={record.id}><div><span className="history-row__ticker">{record.symbol}</span><h2>{record.side === "buy" ? "Buy" : "Sell"} {record.name}</h2><span className="history-row__meta">{new Date(record.createdAt).toLocaleString()} · {record.mode === "live" ? "Live trade" : "Review only"}</span></div><div className="history-row__right"><strong>{record.uiAmount} shares</strong><span>{record.status === "confirmed" ? "Confirmed" : record.mode === "live" ? "Submitted" : "Ready to confirm"}</span></div></Link>)}</section>}
     </div>
     <AppFooterNav />
   </main>;

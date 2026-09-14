@@ -3,9 +3,10 @@ import Link from "next/link";
 type AppNavProps = {
   ctaHref?: string;
   ctaLabel?: string;
+  hideCta?: boolean;
 };
 
-export function AppNav({ ctaHref = "/app", ctaLabel = "Browse stocks" }: AppNavProps) {
+export function AppNav({ ctaHref = "/app", ctaLabel = "Browse stocks", hideCta = false }: AppNavProps) {
   return (
     <nav className="nav" aria-label="OpenStock navigation">
       <Link className="brand" href="/">
@@ -18,7 +19,7 @@ export function AppNav({ ctaHref = "/app", ctaLabel = "Browse stocks" }: AppNavP
         <Link href="/app/activity">Activity</Link>
         <Link href="/app/you">You</Link>
       </div>
-      <Link className="button button--gradient nav-cta" href={ctaHref}><span className="nav-cta__desktop">{ctaLabel}</span><span className="nav-cta__mobile">Browse</span></Link>
+      {!hideCta ? <Link className="button button--gradient nav-cta" href={ctaHref}><span className="nav-cta__desktop">{ctaLabel}</span><span className="nav-cta__mobile">Browse</span></Link> : null}
     </nav>
   );
 }

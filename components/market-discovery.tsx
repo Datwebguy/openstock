@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StockLogo } from "@/components/stock-logo";
-import { CURATED_SYMBOLS, displayPrice, solanaProgram, type OpenStockAsset } from "@/lib/xstocks";
+import { displayPrice, type OpenStockAsset } from "@/lib/xstocks";
 
 type Filter = "all" | "watchlist";
 type Sort = "alphabetical" | "price-high" | "price-low";
 
 function issuerName(asset: OpenStockAsset) { return asset.name.replace(/ xStock$/, ""); }
 function ticker(asset: OpenStockAsset) { return asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "").toUpperCase(); }
-function session(asset: OpenStockAsset) { if (asset.isTradingHalted || asset.trading?.isTradingHalted) return "Trading halted"; if (asset.trading?.openNow === true) return "Issuer market open"; if (asset.trading?.currentPeriod === "closed" || asset.trading?.openNow === false) return "Issuer closed · onchain context"; return "Market phase loading"; }
+function session(asset: OpenStockAsset) { if (asset.isTradingHalted || asset.trading?.isTradingHalted) return "HALT"; if (asset.trading?.openNow === true) return "OPEN"; return "PENDING"; }
 
 export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   const [query, setQuery] = useState("");
@@ -53,11 +53,11 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
       <label className="discovery-sort">Sort by<select value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="alphabetical">Name</option><option value="price-high">Price: high to low</option><option value="price-low">Price: low to high</option></select></label>
     </div>
 
-    <div className="discovery-results"><span>{filtered.length} {filtered.length === 1 ? "stock" : "stocks"}</span>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</button> : <Link href="/app/actions">Issuer events →</Link>}</div>
+    <div className="discovery-results"><span>{filtered.length}</span>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</button> : <Link href="/app/actions">Events</Link>}</div>
 
     {filtered.length ? <div className="stock-grid" aria-label="Tokenized stocks">{filtered.map((asset) => <article className="stock-card" key={asset.symbol}>
-      <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{asset.price !== null && asset.price !== undefined ? displayPrice(asset.price) : asset.trading?.currentPeriod === "closed" ? "Reference paused" : "Reference pending"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
-      <div className="stock-card__footer"><Link href={`/app/asset/${asset.symbol}`}>Open stock <span className="stock-card__arrow">↗</span></Link><button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button></div>
-    </article>)}</div> : <div className="discovery-empty"><strong>No issuers match that view.</strong><span>Try another search or clear the filters.</span></div>}
+      <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`} aria-label={`${issuerName(asset)}, ${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{asset.price !== null && asset.price !== undefined ? displayPrice(asset.price) : "PENDING"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
+      <div className="stock-card__footer"><button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button></div>
+    </article>)}</div> : <div className="discovery-empty"><strong>No stocks found.</strong><span>Clear filters.</span></div>}
   </section>;
 }

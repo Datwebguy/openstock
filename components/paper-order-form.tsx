@@ -9,7 +9,7 @@ type Wallet = { publicKey?: { toString: () => string } | null; connect: () => Pr
 type Prepared = { transaction?: string; requestId?: string; lastValidBlockHeight?: number; multiplier?: number; decimals?: number; priceSource?: "official" | "onchain_pool"; error?: string };
 type Executed = { status?: string; signature?: string; error?: string };
 
-function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "Calculating…"; }
+function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "PENDING"; }
 function decode(value: string) { return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)); }
 function encode(value: Uint8Array) { let binary = ""; for (let i = 0; i < value.length; i += 0x8000) binary += String.fromCharCode(...value.subarray(i, i + 0x8000)); return btoa(binary); }
 function getWallet() { const browserWindow = window as Window & { solana?: Wallet; solflare?: Wallet }; return browserWindow.solana ?? browserWindow.solflare ?? null; }
@@ -71,18 +71,16 @@ export function PaperOrderForm({ symbol, name, price, solPriceUsd, priceIsIndica
     } catch (error) { setMessage(error instanceof Error ? error.message : "The trade could not be completed."); } finally { setSubmitting(false); }
   }
 
-  const buttonText = halted ? "Trading is paused" : !canTrade ? price === null ? "Waiting for onchain quote" : "Waiting for market data" : submitting ? (!wallet ? "Connecting wallet…" : "Confirming trade…") : !wallet ? "Connect wallet" : (side === "buy" ? "Buy " : "Sell ") + formatAmount(numericShares) + " shares";
+  const buttonText = halted ? "HALT" : !canTrade ? "Quote pending" : submitting ? (!wallet ? "Connecting" : "Confirming") : !wallet ? "Connect wallet" : (side === "buy" ? "Buy " : "Sell ") + symbol;
   const totalLabel = side === "buy" ? "You pay" : "You receive";
-  const totalValue = estimatedUsd === null ? "Waiting for a live quote" : estimatedUsd.toFixed(2) + " USDC";
+  const totalValue = estimatedUsd === null ? "PENDING" : estimatedUsd.toFixed(2) + " USDC";
   const solValue = estimatedSol === null ? "Updating" : estimatedSol.toFixed(4) + " SOL";
   return <form className="paper-order" onSubmit={submit} aria-label={"Live order for " + symbol}>
-    <div className="paper-order__head"><div><span className="eyebrow">Order</span><h3>{side === "buy" ? "Buy" : "Sell"} {name}</h3></div><span className="paper-order__safe">{wallet ? wallet.slice(0, 4) + "…" + wallet.slice(-4) : "Wallet not connected"}</span></div>
+    <div className="paper-order__head"><div><span className="eyebrow">Order</span><h3>{side === "buy" ? "Buy" : "Sell"} {symbol}</h3></div><span className="paper-order__safe">{wallet ? wallet.slice(0, 4) + "…" + wallet.slice(-4) : "NO WALLET"}</span></div>
     <div className="paper-order__toggle" role="group" aria-label="Order side"><button type="button" className={side === "buy" ? "is-active" : ""} onClick={() => setSide("buy")}>Buy</button><button type="button" className={side === "sell" ? "is-active" : ""} onClick={() => setSide("sell")}>Sell</button></div>
     <label>Shares<input inputMode="decimal" min="0" step="any" value={shares} onChange={(event) => { setShares(event.target.value); setMessage(null); }} /></label>
-    <div className="paper-order__quote"><span>{totalLabel}</span><strong>{totalValue}</strong><small>{estimatedUsd === null ? "A live route is needed to calculate the total." : "Final amount is confirmed in your wallet."}</small></div>
+    <div className="paper-order__quote"><span>{totalLabel}</span><strong>{totalValue}</strong></div>
     <div className="paper-order__details"><span>SOL equivalent</span><strong>{solValue}</strong><span>Share adjustment</span><strong>{rounded(multiplier)}</strong></div>
-    {priceIsIndicative ? <p className="paper-order__note">This estimate uses live Solana liquidity because the issuer reference is paused.</p> : null}
-    {solPriceUsd !== null ? <p className="paper-order__note">1 SOL ≈ {solPriceUsd.toFixed(2)} USDC</p> : null}
     {message ? <p className="form-error" role="alert">{message}</p> : null}
     <button className="button button--light" type="submit" disabled={submitting || halted || !canTrade}>{buttonText}</button>
   </form>;

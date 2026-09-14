@@ -18,7 +18,7 @@ function compact(value: number | null | undefined) {
 
 function PricePlot({ candles, currency }: { candles: Candle[]; currency: string }) {
   const closes = candles.map((candle) => candle.close).filter(Number.isFinite);
-  if (closes.length < 2) return <div className="asset-chart-state"><strong>Price history is refreshing.</strong><span>A chart appears when live pool history is available.</span></div>;
+  if (closes.length < 2) return <div className="asset-chart-state"><strong>Loading</strong></div>;
   const low = Math.min(...closes);
   const high = Math.max(...closes);
   const range = high - low || 1;
@@ -43,8 +43,8 @@ export function AssetPriceChart({ symbol, name, referencePrice }: { symbol: stri
     let active = true;
     async function refresh() {
       setLoading(true); setError(null);
-      try { const response = await fetch(`/api/analytics/${encodeURIComponent(symbol)}?timeframe=${timeframe}`, { cache: "no-store" }); if (!response.ok) throw new Error("Price history is temporarily unavailable."); const next = await response.json() as AnalyticsPayload; if (active) setPayload(next); }
-      catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "Price history is temporarily unavailable."); }
+      try { const response = await fetch(`/api/analytics/${encodeURIComponent(symbol)}?timeframe=${timeframe}`, { cache: "no-store" }); if (!response.ok) throw new Error("Chart unavailable. Retry."); const next = await response.json() as AnalyticsPayload; if (active) setPayload(next); }
+      catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "Chart unavailable. Retry."); }
       finally { if (active) setLoading(false); }
     }
     void refresh();
@@ -60,8 +60,8 @@ export function AssetPriceChart({ symbol, name, referencePrice }: { symbol: stri
   const displayPrice = live?.price ?? payload?.referencePrice ?? referencePrice;
 
   return <section className="asset-chart-card" id="chart" aria-label={`${symbol} price chart`}>
-    <div className="asset-chart-head"><div><span className="eyebrow">Price chart</span><h2>{name}</h2><p>{payload?.pool?.name ?? "Live Solana pool history"}</p></div><div className="asset-chart-actions"><div className="asset-chart-price"><strong>{money(displayPrice)}</strong><span className={change === null ? "" : change >= 0 ? "is-up" : "is-down"}>{change === null ? "Updating" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}% · ${timeframe}`}</span></div><Link className="asset-chart-alert" href={"/app/alerts?symbol=" + encodeURIComponent(symbol)}>Set watch</Link></div></div>
-    <div className="asset-chart-controls" role="group" aria-label="Chart timeframe">{(["1h", "4h", "24h"] as const).map((item) => <button type="button" key={item} className={timeframe === item ? "is-active" : ""} onClick={() => setTimeframe(item)}>{item}</button>)}<span>{streamState === "Live" ? "Live stream" : loading ? "Refreshing" : streamState}</span></div>
+    <div className="asset-chart-head"><div><span className="eyebrow">Chart</span></div><div className="asset-chart-actions"><div className="asset-chart-price"><strong>{money(displayPrice)}</strong><span className={change === null ? "" : change >= 0 ? "is-up" : "is-down"}>{change === null ? "PENDING" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}% · ${timeframe}`}</span></div><Link className="asset-chart-alert" href={"/app/alerts?symbol=" + encodeURIComponent(symbol)}>Set watch</Link></div></div>
+    <div className="asset-chart-controls" role="group" aria-label="Chart timeframe">{(["1h", "4h", "24h"] as const).map((item) => <button type="button" key={item} className={timeframe === item ? "is-active" : ""} onClick={() => setTimeframe(item)}>{item}</button>)}<span>{streamState === "Live" ? "LIVE" : loading ? "Loading" : "PENDING"}</span></div>
     {error ? <div className="asset-chart-error" role="alert">{error}</div> : <PricePlot candles={payload?.candles ?? []} currency={payload?.chartCurrency ?? "USD"} />}
     <div className="asset-chart-foot"><span>Pool liquidity <strong>{compact(live?.liquidity ?? payload?.pool?.tvl)}</strong></span><span>24h volume <strong>{compact(payload?.pool?.volume24h)}</strong></span></div>
   </section>;
