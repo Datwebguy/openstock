@@ -1,0 +1,25 @@
+.discovery { display: grid; gap: 16px; }
+.market-browse-header { margin-bottom: 28px; }
+.market-browse-header h1 { font-size: clamp(48px,5.2vw,76px); line-height: .92; }
+.discovery-toolbar { display: grid; grid-template-columns: minmax(210px,1fr) auto auto; gap: 10px; align-items: center; }
+.discovery-search { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.discovery-search span { color: var(--solana-purple); font-size: 22px; line-height: 1; }
+.discovery-search input { width: 100%; border: 0; outline: 0; color: var(--ink); background: transparent; font: 600 13px var(--body); }
+.discovery-filters { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px; border-radius: 13px; background: rgba(22,19,33,.06); }
+.discovery-filters button { border: 0; border-radius: 9px; padding: 8px 10px; color: var(--muted); background: transparent; cursor: pointer; font: 800 11px var(--body); white-space: nowrap; }
+.discovery-filters button.is-active { color: var(--ink); background: white; box-shadow: 0 4px 12px rgba(40,22,80,.08); }
+.discovery-sort { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.discovery-sort select { min-height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: white; font: 700 11px var(--body); }
+.discovery-results { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 11px; font-weight: 800; }
+.discovery-results button,.discovery-results a { border: 0; color: var(--solana-purple); background: transparent; cursor: pointer; font: inherit; }
+.stock-card__main { display: block; color: inherit; text-decoration: none; }
+.stock-card__top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.stock-card__top .stock-logo { flex: 0 0 auto; }
+.stock-card__top .stock-card__ticker { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-card__footer { display: flex; justify-content: space-between; align-items: center; }
+.stock-card__footer a { color: var(--muted); font-size: 12px; text-decoration: none; }
+.stock-card__footer button { border: 0; padding: 0 2px; color: var(--muted); background: transparent; cursor: pointer; font-size: 22px; line-height: 1; }
+.stock-card__footer button.is-saved { color: var(--solana-purple); }
+.discovery-empty { display: grid; gap: 5px; padding: 35px 20px; border: 1px dashed var(--line); border-radius: 18px; color: var(--muted); text-align: center; }
+.discovery-empty strong { color: var(--ink); }
+@media (max-width: 900px) { .discovery-toolbar { grid-template-columns: 1fr; } .discovery-sort { justify-content: space-between; } }

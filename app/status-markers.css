@@ -1,0 +1,5 @@
+.evidence-label { display: flex !important; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+.status-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #b8b3c7; }
+.evidence-card--live .status-dot { background: var(--solana-green); box-shadow: 0 0 0 3px rgba(20, 241, 149, .13); }
+.evidence-card--loading .status-dot { background: #b8b3c7; }
+.evidence-card--loading strong { color: #8e899b; font-weight: 600; }

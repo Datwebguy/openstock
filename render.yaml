@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+services:
+  - type: web
+    name: openstock
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 30
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: XSTOCKS_API_BASE
+        sync: false
+      - key: JUPITER_QUOTE_URL
+        sync: false
+      - key: METEORA_POOLS_URL
+        sync: false
+      - key: PYTH_HERMES_URL
+        sync: false
+      - key: PYTH_HERMES_API_KEY
+        sync: false
+      - key: SOLANA_RPC_URL
+        sync: false
+      - key: JUPITER_API_KEY
+        sync: false
+      - key: JUPITER_SWAP_API_BASE
+        sync: false

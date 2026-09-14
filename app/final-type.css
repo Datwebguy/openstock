@@ -1,0 +1,6 @@
+/* Final type lock: OpenStock uses a geometric display face and a neutral reading face. */
+:root { --display: var(--font-display), "Space Grotesk", sans-serif; --body: var(--font-body), "Manrope", sans-serif; }
+body { font-family: var(--body); }
+.hero h1, .section h2, .section h3, .cta h2, .app-header h1, .panel h2, .hero-card strong, .cast-card h3, .manifesto__item h3, .flow-step h3 { font-family: var(--display) !important; }
+.marquee__item { min-height: 64px; padding-inline: 42px; font-size: 13px; }
+.marquee__item::before { margin-right: 42px; }

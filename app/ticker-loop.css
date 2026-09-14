@@ -1,0 +1,17 @@
+.marquee__track { flex: 0 0 max-content; }
+
+.signal-stack { position: relative; width: 260px; min-height: 210px; margin: 28px 0 0 4px; }
+.signal-stack .stock-logo { position: absolute; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 18px 34px rgba(0,0,0,.26); }
+.signal-stack .stock-logo:nth-child(1) { left: 76px; top: 10px; }
+.signal-stack .stock-logo:nth-child(2) { left: 12px; top: 76px; }
+.signal-stack .stock-logo:nth-child(3) { left: 148px; top: 70px; }
+.signal-stack .stock-logo:nth-child(4) { left: 88px; top: 135px; }
+.stock-cast-card { text-decoration: none; }
+.stock-cast-card .stock-cast-mark { min-height: 185px; display: grid; place-items: center; }
+.stock-cast-card .stock-cast-mark .stock-logo { border: 1px solid rgba(22,19,33,.08); box-shadow: 0 18px 28px rgba(28,22,55,.12); }
+.stock-cast-card:nth-child(2) .stock-cast-mark .stock-logo { transform: rotate(-5deg); }
+.stock-cast-card:nth-child(3) .stock-cast-mark .stock-logo { transform: rotate(5deg); }
+.stock-cast-card:hover .stock-cast-mark .stock-logo { transform: translateY(-5px) scale(1.04); }
+.app-signal-marks { display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 16px; min-height: 160px; padding: 22px; }
+.app-signal-marks .stock-logo { border: 1px solid rgba(255,255,255,.16); box-shadow: 0 16px 28px rgba(0,0,0,.24); }
+@media (max-width: 800px) { .signal-stack { min-height: 170px; transform: scale(.86); transform-origin: left top; } .stock-cast-card .stock-cast-mark { min-height: 150px; } .app-signal-marks { min-height: 100px; justify-content: flex-start; padding: 0; } }

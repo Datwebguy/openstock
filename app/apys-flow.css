@@ -1,0 +1,24 @@
+/* Shared guided rhythm: quiet surfaces, clear steps, live context. */
+:root { --display: var(--font-display), "Space Grotesk", sans-serif; --body: var(--font-body), "Manrope", sans-serif; }
+.hero h1, .section h2, .section h3, .cta h2, .app-header h1, .panel h2, .hero-card strong, .cast-card h3, .manifesto__item h3 { font-family: var(--display); }
+.hero h1 { max-width: 640px; font-size: clamp(58px, 7.2vw, 104px); line-height: .91; letter-spacing: -.075em; }
+.hero-copy p { max-width: 500px; font-size: 16px; }
+.marquee { min-height: 58px; align-items: center; }
+.marquee__track { width: max-content; min-width: 200%; gap: 0; padding: 0; animation: market-ticker 26s linear infinite; }
+.marquee__item { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 58px; padding: 0 30px; color: rgba(255,255,255,.8); font-size: 11px; letter-spacing: .11em; }
+.marquee__item::before { margin-right: 30px; color: var(--solana-green); }
+@keyframes market-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.flow-section { background: #eeecf5; }
+.flow-layout { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.15fr); gap: clamp(48px, 8vw, 120px); align-items: start; }
+.flow-intro { position: sticky; top: 130px; }
+.flow-intro h2 { max-width: 530px; font-size: clamp(50px, 6vw, 84px); }
+.flow-intro p { max-width: 450px; color: #6f697c; line-height: 1.65; }
+.flow-steps { display: grid; gap: 0; border-top: 1px solid rgba(22,19,33,.14); }
+.flow-step { position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr) 26px; gap: 18px; align-items: start; padding: 25px 0 28px; border-bottom: 1px solid rgba(22,19,33,.14); }
+.flow-step > span { color: var(--solana-purple); font: 800 11px/1 var(--body); letter-spacing: .12em; }
+.flow-step h3 { margin: -5px 0 8px; font-size: 30px; letter-spacing: -.055em; }
+.flow-step p { max-width: 530px; margin: 0; color: #746e80; font-size: 14px; line-height: 1.55; }
+.flow-step i { color: var(--solana-purple); font-size: 20px; font-style: normal; transition: transform .2s ease; }
+.flow-step:hover i { transform: translate(4px, -4px); }
+@media (prefers-reduced-motion: reduce) { .marquee__track { animation: none; } }
+@media (max-width: 800px) { .flow-layout { grid-template-columns: 1fr; gap: 42px; } .flow-intro { position: static; } .flow-step { grid-template-columns: 34px minmax(0, 1fr) 22px; gap: 12px; } .flow-step h3 { font-size: 26px; } }

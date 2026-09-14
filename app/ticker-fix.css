@@ -1,0 +1,2 @@
+/* The repeated labels define the loop; no artificial empty half-track. */
+.marquee__track { min-width: 0 !important; width: max-content; }

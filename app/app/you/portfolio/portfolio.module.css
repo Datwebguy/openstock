@@ -1,0 +1,52 @@
+.shell { padding-bottom: 56px; }
+.connectCard, .summary, .holdingsCard, .contextCard { border: 1px solid var(--line); border-radius: 28px; background: rgba(255,255,255,.9); box-shadow: 0 16px 42px rgba(35,26,75,.06); }
+.connectCard { display: grid; grid-template-columns: 84px 1fr; gap: 26px; align-items: start; padding: 38px; }
+.signalMark { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 22px; color: var(--ink); background: linear-gradient(135deg,var(--solana-purple),var(--solana-blue),var(--solana-green)); font-size: 32px; }
+.connectCard h2, .summary h2, .holdingsCard h3, .contextCard h3 { margin: 9px 0 10px; font-family: var(--font-display), sans-serif; font-weight: 600; letter-spacing: -.055em; }
+.connectCard h2 { font-size: clamp(34px,4vw,56px); }
+.connectCard p, .summary p, .contextCard p { max-width: 60ch; color: var(--muted); line-height: 1.6; }
+.status { margin: 16px 0 0; font-size: 12px; }
+.summary { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 32px 34px; }
+.summary h2 { font-size: clamp(42px,6vw,74px); }
+.summary p { margin: 0; font-size: 13px; }
+.summaryActions { display: flex; align-items: center; gap: 10px; }
+.readOnly { padding: 10px 13px; border: 1px solid rgba(20,241,149,.35); border-radius: 999px; color: #118967; background: #e7fff6; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.balanceRail { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 14px 0; }
+.balanceRail > div { min-width: 0; padding: 20px 22px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.68); }
+.balanceRail span, .balanceRail small { display: block; color: var(--muted); font-size: 11px; }
+.balanceRail span { margin-bottom: 7px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.balanceRail strong { display: block; overflow: hidden; color: var(--ink); font-size: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.positive { color: #118967 !important; }.negative { color: #b54655 !important; }
+.balanceRail small { margin-top: 7px; line-height: 1.4; }
+.contentGrid { display: grid; grid-template-columns: 1.24fr .76fr; gap: 14px; align-items: start; }
+.holdingsCard, .contextCard { padding: 28px; }
+.cardHeading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
+.cardHeading h3, .contextCard h3 { font-size: 32px; }
+.cardHeading > span { color: var(--muted); font-size: 12px; }
+.holdingList { display: grid; }
+.holding { display: grid; grid-template-columns: 44px minmax(130px,1fr) auto 92px; gap: 14px; align-items: center; padding: 17px 0; border-bottom: 1px solid rgba(22,19,33,.08); }
+.holding:last-child { border-bottom: 0; }
+.holdingName strong, .holdingValue strong { display: block; font-size: 14px; }
+.holdingName span, .holdingValue span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.holdingValue { text-align: right; }
+.allocation { display: grid; gap: 7px; justify-items: end; }
+.allocation > span { color: var(--muted); font-size: 11px; font-weight: 800; }
+.allocation i { display: block; width: 86px; height: 5px; overflow: hidden; border-radius: 99px; background: #e8e5f0; }
+.allocation b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--solana-purple),var(--solana-green)); }
+.contextCard { color: white; border-color: transparent; background: linear-gradient(145deg,#110a26,#101f2f); }
+.contextCard .eyebrow { color: var(--solana-green); }
+.contextCard h3 { font-size: 36px; }
+.contextCard p { color: rgba(255,255,255,.65); }
+.contextRows { margin: 26px 0 4px; border-top: 1px solid rgba(255,255,255,.14); }
+.contextRows div { display: flex; justify-content: space-between; gap: 14px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.14); }
+.contextRows span { color: rgba(255,255,255,.55); font-size: 12px; }
+.contextRows strong { font-size: 12px; text-align: right; }
+.textLink { display: inline-block; margin-top: 21px; color: var(--solana-green); font-size: 13px; font-weight: 800; }
+.empty { padding: 46px 4px 14px; }
+.empty strong { font-size: 18px; }
+.empty p { max-width: 40ch; color: var(--muted); line-height: 1.55; }
+.loadingList { display: grid; gap: 14px; padding-top: 18px; }
+.skeleton { height: 76px; border-radius: 16px; background: linear-gradient(90deg,#f0eef6 25%,#faf9fc 50%,#f0eef6 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (max-width: 860px) { .contentGrid { grid-template-columns: 1fr; } .contextCard { order: -1; } }
+@media (max-width: 640px) { .connectCard { grid-template-columns: 1fr; padding: 24px; } .summary { display: block; padding: 24px; } .summaryActions { justify-content: space-between; margin-top: 20px; } .balanceRail { grid-template-columns: 1fr 1fr; } .balanceRail > div:last-child { grid-column: 1 / -1; } .holdingsCard, .contextCard { padding: 22px; } .holding { grid-template-columns: 42px minmax(0,1fr) auto; } .allocation { grid-column: 2 / -1; justify-items: stretch; grid-template-columns: auto 1fr; align-items: center; } .allocation i { width: auto; } .holdingValue { text-align: right; } }

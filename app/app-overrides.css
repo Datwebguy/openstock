@@ -1,0 +1,24 @@
+.app-page { padding-top: 132px; }
+.app-market-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin: 44px 0 30px; }
+.app-market-header h1 { max-width: 540px; margin: 10px 0 0; font-family: var(--font-display), "DynaPuff", sans-serif; font-size: clamp(46px, 5.5vw, 76px); font-weight: 500; line-height: .95; letter-spacing: -.055em; }
+.app-market-header p { max-width: 360px; margin: 0; color: var(--muted); line-height: 1.55; }
+.app-tabs { display: flex; gap: 8px; margin-bottom: 22px; }
+.app-tab { padding: 11px 18px; border: 1px solid transparent; border-radius: 999px; color: #777487; background: transparent; font-size: 12px; font-weight: 700; }
+.app-tab--active { color: #3e4dba; background: #eef0ff; border-color: #d8ddff; }
+.stock-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.stock-card { min-height: 270px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #dde3f0; border-radius: 22px; background: rgba(255,255,255,.92); box-shadow: 0 7px 20px rgba(40,51,95,.06); transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s ease; }
+.stock-card:hover { transform: translateY(-5px); border-color: #bdc7ff; box-shadow: 0 18px 34px rgba(56,69,138,.12); }
+.stock-card__top { display: flex; justify-content: space-between; align-items: center; }
+.stock-card__bookmark { color: #6e7994; font-size: 20px; line-height: 1; }
+.stock-card__ticker { display: block; width: 100%; margin: 20px 0 24px; padding-bottom: 4px; border-bottom: 1px solid #dfe5f1; color: #7c88a2; font: 10px/1 monospace; letter-spacing: .12em; }
+.stock-card h2 { margin: 0 0 12px; font-family: var(--font-body), "DM Sans", sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -.035em; }
+.stock-card__price { display: block; font-size: 17px; font-weight: 700; }
+.stock-card__meta { display: block; margin-top: 7px; color: #78839d; font: 8px/1 monospace; letter-spacing: .12em; }
+.stock-card__footer { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 14px; border-top: 1px solid #dfe5f1; color: #71809d; font-size: 12px; }
+.stock-card__arrow { font-size: 19px; }
+.stock-logo { color: white; background: #fff; border: 1px solid #f0f2f8; box-shadow: 0 8px 20px rgba(50,60,100,.06); }
+.stock-logo--spdr { color: #7140c8; font-size: 8px; font-weight: 900; letter-spacing: -.1em; }
+.stock-logo--spdr span { transform: scale(.9,1.25); }
+.app-panel { margin-top: 36px; }
+@media (max-width: 900px) { .stock-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 560px) { .app-market-header { display: block; } .app-market-header p { margin-top: 18px; } .stock-grid { grid-template-columns: 1fr; } .stock-card { min-height: 242px; } }

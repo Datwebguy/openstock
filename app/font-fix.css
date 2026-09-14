@@ -1,0 +1,4 @@
+body {
+  --display: var(--font-display), "DynaPuff", sans-serif;
+  --body: var(--font-body), "DM Sans", sans-serif;
+}
