@@ -1,4 +1,25 @@
 .discovery { display: grid; gap: 16px; }
+.market-entry { display: grid; grid-template-columns: minmax(0,.9fr) minmax(360px,1.1fr); gap: 20px; align-items: stretch; margin: 0 0 56px; padding: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.7); box-shadow: 0 22px 50px rgba(37,24,64,.06); }
+.market-entry__copy { display: flex; flex-direction: column; justify-content: center; padding: 34px 30px; }
+.market-entry__kicker { margin: 0 0 14px; color: var(--solana-purple); font-size: 13px; font-weight: 800; }
+.market-entry__copy h1 { max-width: 510px; margin: 0; font-family: var(--display); font-size: clamp(42px,5vw,70px); font-weight: 600; line-height: .94; letter-spacing: -.075em; }
+.market-entry__copy > p:not(.market-entry__kicker) { max-width: 450px; margin: 18px 0 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.market-entry__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 28px; }
+.market-entry__actions .button { gap: 10px; }
+.market-entry__actions > span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.market-entry__field { position: relative; min-height: 330px; overflow: hidden; border-radius: 20px; background: radial-gradient(circle at 50% 48%,rgba(20,241,149,.14),transparent 22%),radial-gradient(circle at 77% 22%,rgba(153,69,255,.25),transparent 28%),#131021; isolation: isolate; }
+.market-entry__field::before { content: ""; position: absolute; inset: 0; opacity: .32; background-image: linear-gradient(rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom,black,transparent 88%); }
+.market-entry__axis { position: absolute; z-index: -1; left: -18%; width: 136%; height: 1px; background: linear-gradient(90deg,transparent,rgba(20,241,149,.42),rgba(153,69,255,.52),transparent); transform-origin: center; }
+.market-entry__axis--one { top: 48%; transform: rotate(-14deg); }
+.market-entry__axis--two { top: 57%; opacity: .65; transform: rotate(18deg); }
+.market-entry__node { position: absolute; display: grid; place-items: center; width: 82px; height: 82px; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: rgba(255,255,255,.09); box-shadow: 0 20px 35px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.13); backdrop-filter: blur(14px); animation: market-entry-float 7s ease-in-out infinite; }
+.market-entry__node .stock-logo { border-radius: 16px; background: white; box-shadow: 0 7px 20px rgba(0,0,0,.22); }
+.market-entry__node--apple { top: 18%; left: 11%; animation-delay: -.9s; }
+.market-entry__node--tesla { top: 38%; left: calc(50% - 55px); width: 110px; height: 110px; border-radius: 32px; background: rgba(20,241,149,.12); box-shadow: 0 0 0 1px rgba(20,241,149,.36),0 24px 50px rgba(0,0,0,.3); animation-delay: -2.1s; }
+.market-entry__node--tesla .stock-logo { border-radius: 21px; }
+.market-entry__node--amazon { right: 11%; bottom: 17%; animation-delay: -3.4s; }
+.market-entry__field-note { position: absolute; right: 22px; bottom: 19px; margin: 0; color: rgba(255,255,255,.68); font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.market-browse-header { scroll-margin-top: 110px; }
 .market-browse-header { margin-bottom: 28px; }
 .market-browse-header h1 { font-size: clamp(48px,5.2vw,76px); line-height: .92; }
 .discovery-toolbar { display: grid; grid-template-columns: minmax(210px,1fr) auto auto; gap: 10px; align-items: center; }
@@ -22,4 +43,5 @@
 .stock-card__footer button.is-saved { color: var(--solana-purple); }
 .discovery-empty { display: grid; gap: 5px; padding: 35px 20px; border: 1px dashed var(--line); border-radius: 18px; color: var(--muted); text-align: center; }
 .discovery-empty strong { color: var(--ink); }
-@media (max-width: 900px) { .discovery-toolbar { grid-template-columns: 1fr; } .discovery-sort { justify-content: space-between; } }
+@keyframes market-entry-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@media (max-width: 900px) { .market-entry { grid-template-columns: 1fr; gap: 8px; margin-bottom: 34px; padding: 10px; } .market-entry__copy { padding: 21px 12px 18px; } .market-entry__copy h1 { font-size: clamp(40px,11vw,56px); } .market-entry__field { min-height: 250px; border-radius: 18px; } .market-entry__node { transform: scale(.82); } .market-entry__node--apple { left: 7%; top: 13%; } .market-entry__node--tesla { left: calc(50% - 55px); top: 34%; } .market-entry__node--amazon { right: 6%; bottom: 10%; } .market-entry__field-note { right: 16px; bottom: 15px; font-size: 10px; } .discovery-toolbar { grid-template-columns: 1fr; } .discovery-sort { justify-content: space-between; } }
