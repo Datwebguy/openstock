@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { MarketDiscovery } from "@/components/market-discovery";
 import { StockLogo } from "@/components/stock-logo";
@@ -37,8 +36,9 @@ export default async function AppPage() {
           <p className="market-entry__field-note">Three issuers. One market view.</p>
         </div>
       </section>
-      <header id="stock-market" className="app-market-header market-browse-header"><div><div className="eyebrow">Tokenized stocks · Solana</div><h1>Browse stocks.</h1><Link className="market-news-link" href="/app/news">Market news ↗</Link></div><p>Choose a stock to see the price, liquidity, and issuer context before you trade.</p></header>
-      {error ? <section className="data-state data-state--error" role="alert"><strong>Market data is still loading.</strong><span>Refresh in a moment to see the latest issuers.</span></section> : <MarketDiscovery assets={assets} />}
+      <section id="stock-market" className="market-browse-anchor" aria-label="Available tokenized stocks">
+        {error ? <div className="data-state data-state--error" role="alert"><strong>Market data is still loading.</strong><span>Refresh in a moment to see the latest issuers.</span></div> : <MarketDiscovery assets={assets} />}
+      </section>
     </div><AppFooterNav />
   </main>;
 }
