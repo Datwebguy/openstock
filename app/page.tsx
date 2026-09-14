@@ -1,7 +1,5 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { siSolana } from "simple-icons/icons";
-import { LandingHeroMotion } from "@/components/landing-hero-motion";
 import { StockLogo } from "@/components/stock-logo";
 import { CURATED_SYMBOLS, listSolanaAssets } from "@/lib/xstocks";
 
@@ -19,7 +17,6 @@ async function getLandingAssets(): Promise<LandingAsset[]> {
   } catch { return symbols.map((symbol) => ({ symbol, name: symbol.replace(/x$/, "") })); }
 }
 
-const orbitSymbols = ["AAPLx", "TSLAx", "AMZNx", "NVDAx", "MSFTx", "GOOGLx", "METAx", "COINx"];
 const tickerSymbols = ["AAPLx", "TSLAx", "NVDAx", "MSFTx", "AMZNx", "GOOGLx", "METAx", "COINx", "CRCLx", "SPYx"];
 const signals = [
   ["Reference", "The issuer price gives the starting point."],
@@ -29,9 +26,6 @@ const signals = [
 
 export default async function HomePage() {
   const assets = await getLandingAssets();
-  const bySymbol = new Map(assets.map((asset) => [asset.symbol, asset]));
-  const orbitAssets = orbitSymbols.map((symbol) => bySymbol.get(symbol) ?? { symbol, name: symbol.replace(/x$/, "") });
-
   return <main className="page landing">
     <nav className="nav landing-nav landing-nav--hero" aria-label="Primary navigation">
       <Link className="brand" href="/"><span className="brand-mark" aria-hidden="true">◒</span> OpenStock</Link>
@@ -39,25 +33,13 @@ export default async function HomePage() {
       <Link className="button button--gradient" href="/app">Browse stocks</Link>
     </nav>
 
-    <LandingHeroMotion><section className="landing-eclipse-hero" aria-labelledby="landing-title">
+    <section className="landing-eclipse-hero" aria-labelledby="landing-title">
       <div className="landing-eclipse-hero__stars" aria-hidden="true" />
       <div className="landing-eclipse-hero__camera" aria-hidden="true">
         <div className="landing-eclipse-hero__ring" />
         <div className="landing-eclipse-hero__ridge" />
         <div className="landing-eclipse-hero__cloud landing-eclipse-hero__cloud--left"><i /><i /><i /><i /></div>
         <div className="landing-eclipse-hero__cloud landing-eclipse-hero__cloud--right"><i /><i /><i /><i /></div>
-      </div>
-      <div className="landing-eclipse-cluster" aria-hidden="true">
-          <div className="landing-eclipse-cluster__arrival">
-            <span className="landing-eclipse-cluster__shadow" />
-            <div className="landing-eclipse-cube"><div className="landing-eclipse-cube__yaw"><div className="landing-eclipse-cube__face landing-eclipse-cube__face--front"><svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: `<path d="${siSolana.path}"/>` }} /></div><div className="landing-eclipse-cube__face landing-eclipse-cube__face--right" /><div className="landing-eclipse-cube__face landing-eclipse-cube__face--top" /></div></div>
-            <div className="landing-eclipse-orbit landing-eclipse-orbit--inner">
-              {orbitAssets.slice(0, 4).map((asset, index) => <div className="landing-eclipse-orbit__carrier" style={{ "--angle": `${index * 90}deg`, "--counter": `${-index * 90}deg`, "--delay": `${120 + index * 40}ms` } as CSSProperties} key={asset.symbol}><div className="landing-eclipse-orbit__arrival"><div className="landing-eclipse-orbit__disc"><StockLogo symbol={asset.symbol} logo={asset.logo} size={32} /></div></div></div>)}
-            </div>
-            <div className="landing-eclipse-orbit landing-eclipse-orbit--outer">
-              {orbitAssets.slice(4).map((asset, index) => <div className="landing-eclipse-orbit__carrier" style={{ "--angle": `${index * 90 + 45}deg`, "--counter": `${-(index * 90 + 45)}deg`, "--delay": `${280 + index * 40}ms` } as CSSProperties} key={asset.symbol}><div className="landing-eclipse-orbit__arrival"><div className="landing-eclipse-orbit__disc"><StockLogo symbol={asset.symbol} logo={asset.logo} size={28} /></div></div></div>)}
-            </div>
-          </div>
       </div>
       <div className="landing-eclipse-hero__content">
         <span className="eyebrow">OpenStock</span>
@@ -66,7 +48,7 @@ export default async function HomePage() {
         <div className="landing-eclipse-hero__actions"><Link href="/app">Browse stocks</Link><Link href="/app/you">Connect wallet</Link></div>
       </div>
       <div className="landing-eclipse-ticker" aria-label="Listed xStocks"><div className="landing-eclipse-ticker__track">{[...tickerSymbols, ...tickerSymbols].map((symbol, index) => <span key={`${symbol}-${index}`}>{symbol}</span>)}</div></div>
-    </section></LandingHeroMotion>
+    </section>
 
     <section className="landing-read" id="read"><div className="container"><div className="landing-section-intro landing-reveal"><span className="eyebrow">Read the stock</span><h2>One name. Three live checks.</h2><p>Every price deserves context before it becomes a trade.</p></div><div className="landing-signal-steps">{signals.map(([title, copy], index) => <article className="landing-signal-step landing-reveal" style={{ "--step": index } as CSSProperties} key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{copy}</p></div><i aria-hidden="true">↗</i></article>)}</div></div></section>
 
