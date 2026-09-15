@@ -2,15 +2,63 @@ import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { MarketDiscovery } from "@/components/market-discovery";
 import { CURATED_SYMBOLS, getAsset, hydrateAsset, listSolanaAssets, type OpenStockAsset } from "@/lib/xstocks";
 
+import curated25Data from "@/lib/solana-curated-25.json";
+
+const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
+
 async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; error: boolean }> {
   try {
-    const registered = await listSolanaAssets();
+    let registered: OpenStockAsset[] = [];
+    try {
+      const solanaAssets = await listSolanaAssets();
+      registered = await Promise.all(solanaAssets.map(hydrateAsset));
+    } catch {
+      registered = [];
+    }
+
     const bySymbol = new Map(registered.map((asset) => [asset.symbol, asset]));
-    const selected = CURATED_SYMBOLS.map((symbol) => bySymbol.get(symbol)).filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
-    const sourceAssets = selected.length > 0 ? selected : (await Promise.allSettled(CURATED_SYMBOLS.map(getAsset))).flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
-    const assets = await Promise.all(sourceAssets.map(hydrateAsset));
-    return { assets, error: assets.length === 0 };
-  } catch {
+
+    const assets: OpenStockAsset[] = CURATED_SYMBOLS.map((symbol) => {
+      const live = bySymbol.get(symbol);
+      if (live) return live;
+
+      const fallbackMeta = curated25[symbol] ?? {
+        symbol,
+        name: symbol.replace(/x$/, " xStock"),
+        mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+        decimals: 6,
+        logo: `https://xstocks-metadata.backed.fi/logos/tokens/${symbol}.png`,
+      };
+
+      return {
+        id: symbol,
+        name: fallbackMeta.name,
+        symbol: symbol,
+        logo: fallbackMeta.logo,
+        underlying: { symbol: symbol.replace(/x$/, "").toUpperCase(), type: "Equity" },
+        deployments: [
+          {
+            network: "Solana",
+            address: fallbackMeta.mint,
+            decimals: fallbackMeta.decimals,
+            solanaTokenProgram: "Token2022Program",
+          },
+        ],
+        trading: { openNow: true, currentPeriod: "market" },
+        price: null,
+        multiplier: null,
+        solanaDeployment: {
+          network: "Solana",
+          address: fallbackMeta.mint,
+          decimals: fallbackMeta.decimals,
+          solanaTokenProgram: "Token2022Program",
+        },
+      };
+    });
+
+    return { assets, error: false };
+  } catch (err) {
+    console.error("Failed to load discover assets:", err);
     return { assets: [], error: true };
   }
 }

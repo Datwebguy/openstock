@@ -1,1 +1,27 @@
-["AAPLx", "AMZNx", "GOOGLx", "NVDAx", "TSLAx", "METAx", "MSFTx", "COINx", "CRCLx", "SPYx"]
+[
+  "NVDAx",
+  "AAPLx",
+  "TSLAx",
+  "MSFTx",
+  "AMZNx",
+  "GOOGLx",
+  "METAx",
+  "COINx",
+  "MSTRx",
+  "INTCx",
+  "SPYx",
+  "QQQx",
+  "AMDx",
+  "PLTRx",
+  "NFLXx",
+  "DISx",
+  "UBERx",
+  "HOODx",
+  "ABNBx",
+  "PYPLx",
+  "AVGOx",
+  "QCOMx",
+  "ARMx",
+  "CRCLx",
+  "GLDx"
+]

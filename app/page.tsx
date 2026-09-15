@@ -134,9 +134,9 @@ export default function HomePage() {
         <div className="os-shell os-proof-row" data-reveal>
           <div className="os-proof-item" style={{ "--i": 0 } as React.CSSProperties}>
             <strong>
-              <span>15+</span>
+              <span>50+</span>
             </strong>
-            <span className="os-micro os-micro-light">Tokenized xStocks on Solana</span>
+            <span className="os-micro os-micro-light">Tokenized Equities on Solana</span>
           </div>
           <div className="os-proof-item" style={{ "--i": 1 } as React.CSSProperties}>
             <strong>
@@ -526,7 +526,7 @@ export default function HomePage() {
             <li>
               <strong>01. Explore</strong>
               <p>
-                Browse all 15+ curated tokenized stocks, track live order depth, and read news. Zero
+                Browse 25+ verified tokenized equities, track live order depth, and read news. Zero
                 wallet connections required.
               </p>
             </li>

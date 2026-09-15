@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { AccountIdentity } from "@/components/account-identity";
 import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { PortfolioDashboard } from "@/components/portfolio-dashboard";
@@ -9,11 +10,19 @@ import { shortWallet, useWallet } from "@/components/wallet-session";
 export default function WalletPage() {
   const { address, connecting, connect, connectEmail, disconnect, emailEnabled } = useWallet();
 
+  const [copied, setCopied] = useState(false);
+
   async function onConnect() {
     try { await connect(); } catch { /* wallet UI already showed the reason */ }
   }
   async function onEmail() {
     try { await connectEmail(); } catch { /* Privy modal handles errors */ }
+  }
+  function copyAddress() {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return <main className="page">
@@ -26,12 +35,28 @@ export default function WalletPage() {
         <div className="settings-panel__icon" aria-hidden="true">◒</div>
         <div className="settings-panel__body">
           <h2>{address ? shortWallet(address) : "Not connected"}</h2>
-          <p className="settings-panel__address">{address ? "Same wallet across market, orders, and rules." : emailEnabled ? "Connect with Phantom, Solflare, or email." : "Connect with Phantom or Solflare to view your holdings."}</p>
-          <small>OpenStock does not hold keys.</small>
+          <p className="settings-panel__address">
+            {address 
+              ? "Solana Mainnet-Beta account active across market desk and orders." 
+              : emailEnabled 
+              ? "Connect with Phantom, Solflare, or email to view your holdings." 
+              : "Connect your Phantom or Solflare wallet to view your holdings."}
+          </p>
         </div>
         {address ? (
           <div className="settings-panel__actions">
             <span className="settings-panel__state">Connected</span>
+            <button className="button button--light" type="button" onClick={copyAddress} title="Copy wallet address">
+              {copied ? "Copied!" : "Copy address"}
+            </button>
+            <a 
+              className="button button--light" 
+              href={`https://solscan.io/account/${address}`} 
+              target="_blank" 
+              rel="noreferrer"
+            >
+              Solscan ↗
+            </a>
             <button className="button button--light" type="button" onClick={() => void disconnect()}>Disconnect</button>
           </div>
         ) : (

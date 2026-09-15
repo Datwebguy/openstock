@@ -7,10 +7,11 @@ import { StockLogo } from "@/components/stock-logo";
 type Asset = { symbol: string; name: string; logo?: string };
 
 type StockMeta = {
-  description: string;
   price: string;
   change: string;
   isPositive: boolean;
+  poolPrice: string;
+  spread: string;
   pool: string;
   volume: string;
   oracle: string;
@@ -18,37 +19,41 @@ type StockMeta = {
 
 const STOCK_DATA: Record<string, StockMeta> = {
   AAPLx: {
-    description: "The devices you touch, the services in your day. Direct exposure to Apple with verified onchain reserves.",
     price: "$238.45",
     change: "+1.84%",
     isPositive: true,
+    poolPrice: "$238.49",
+    spread: "0.01% spread",
     pool: "$4.2M Meteora DLMM",
     volume: "$1.8M 24h",
     oracle: "Pyth Verified",
   },
   NVDAx: {
-    description: "Accelerated computing, data center GPUs, and AI infrastructure settled in sub-second Solana blocks.",
     price: "$118.20",
     change: "+4.12%",
     isPositive: true,
+    poolPrice: "$118.22",
+    spread: "0.02% spread",
     pool: "$8.9M Meteora DLMM",
     volume: "$5.4M 24h",
     oracle: "Pyth Verified",
   },
   TSLAx: {
-    description: "Electric vehicles, energy storage, and autonomy. Track 24/7 onchain liquidity outside NASDAQ market hours.",
     price: "$242.15",
     change: "-0.92%",
     isPositive: false,
+    poolPrice: "$242.10",
+    spread: "0.02% spread",
     pool: "$3.1M Meteora DLMM",
     volume: "$1.2M 24h",
     oracle: "Pyth Verified",
   },
   MSFTx: {
-    description: "Enterprise software, cloud hyperscaling, and AI copilot ecosystem with zero wallet lockup required to inspect.",
     price: "$442.80",
     change: "+0.65%",
     isPositive: true,
+    poolPrice: "$442.85",
+    spread: "0.01% spread",
     pool: "$2.8M Meteora DLMM",
     volume: "$980K 24h",
     oracle: "Pyth Verified",
@@ -205,7 +210,22 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
           </div>
         </div>
 
-        <p className="os-stage-desc">{meta.description}</p>
+        {/* Live Market Spread Widget (High-signal real-time execution) */}
+        <div className="os-stage-spread-bar">
+          <div className="os-spread-item">
+            <span className="os-spread-label">Pyth Oracle</span>
+            <span className="os-spread-val">{meta.price}</span>
+          </div>
+          <div className="os-spread-arrow" aria-hidden="true">↔</div>
+          <div className="os-spread-item">
+            <span className="os-spread-label">Meteora Pool</span>
+            <span className="os-spread-val">{meta.poolPrice}</span>
+          </div>
+          <div className="os-spread-badge">
+            <span className="os-pulse-dot" />
+            {meta.spread}
+          </div>
+        </div>
 
         <div className="os-stage-metrics">
           <div>
@@ -224,10 +244,10 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
 
         <div className="os-stage-actions">
           <Link href={`/app/asset/${asset.symbol}`} className="os-button os-button-blue">
-            Open {asset.symbol} workspace <span aria-hidden="true">→</span>
+            Trade {asset.symbol} on Solana <span aria-hidden="true">→</span>
           </Link>
-          <Link href="/app/analytics" className="os-button os-button-ghost">
-            Inspect pool depth <span aria-hidden="true">↗</span>
+          <Link href={`/launch?symbol=${asset.symbol}`} className="os-button os-button-ghost">
+            Pair &amp; Launch <span aria-hidden="true">⚡</span>
           </Link>
         </div>
       </div>

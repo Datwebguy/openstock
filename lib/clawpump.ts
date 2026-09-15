@@ -29,94 +29,31 @@ export type PumpPairsResponse = {
  * Used when CLAWPUMP_API_KEY is pending or upstream is temporarily offline.
  */
 export const VERIFIED_SOLANA_XSTOCKS_PAIRS: PumpPairAsset[] = [
-  {
-    symbol: "AAPLx",
-    name: "Apple xStock",
-    mint: "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AAPLx.png",
-    underlyingStock: "AAPL",
-  },
-  {
-    symbol: "NVDAx",
-    name: "NVIDIA xStock",
-    mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/NVDAx.png",
-    underlyingStock: "NVDA",
-  },
-  {
-    symbol: "TSLAx",
-    name: "Tesla xStock",
-    mint: "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/TSLAx.png",
-    underlyingStock: "TSLA",
-  },
-  {
-    symbol: "MSFTx",
-    name: "Microsoft xStock",
-    mint: "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/MSFTx.png",
-    underlyingStock: "MSFT",
-  },
-  {
-    symbol: "AMZNx",
-    name: "Amazon.com xStock",
-    mint: "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AMZNx.png",
-    underlyingStock: "AMZN",
-  },
-  {
-    symbol: "GOOGLx",
-    name: "Alphabet Google xStock",
-    mint: "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/GOOGLx.png",
-    underlyingStock: "GOOGL",
-  },
-  {
-    symbol: "METAx",
-    name: "Meta Platforms xStock",
-    mint: "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/METAx.png",
-    underlyingStock: "META",
-  },
-  {
-    symbol: "COINx",
-    name: "Coinbase Global xStock",
-    mint: "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/COINx.png",
-    underlyingStock: "COIN",
-  },
-  {
-    symbol: "MSTRx",
-    name: "MicroStrategy xStock",
-    mint: "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/MSTRx.png",
-    underlyingStock: "MSTR",
-  },
-  {
-    symbol: "INTCx",
-    name: "Intel xStock",
-    mint: "XshPgPdXFRWB8tP1j82rebb2Q9rPgGX37RuqzohmArM",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/INTCx.png",
-    underlyingStock: "INTC",
-  },
-  {
-    symbol: "SPYx",
-    name: "S&P 500 Index xStock",
-    mint: "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
-    decimals: 6,
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/SPYx.png",
-    underlyingStock: "SPY",
-  },
+  { symbol: "AAPLx", name: "Apple xStock", mint: "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AAPLx.png", underlyingStock: "AAPL" },
+  { symbol: "NVDAx", name: "NVIDIA xStock", mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/NVDAx.png", underlyingStock: "NVDA" },
+  { symbol: "TSLAx", name: "Tesla xStock", mint: "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/TSLAx.png", underlyingStock: "TSLA" },
+  { symbol: "MSFTx", name: "Microsoft xStock", mint: "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/MSFTx.png", underlyingStock: "MSFT" },
+  { symbol: "AMZNx", name: "Amazon.com xStock", mint: "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AMZNx.png", underlyingStock: "AMZN" },
+  { symbol: "GOOGLx", name: "Alphabet Google xStock", mint: "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/GOOGLx.png", underlyingStock: "GOOGL" },
+  { symbol: "METAx", name: "Meta Platforms xStock", mint: "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/METAx.png", underlyingStock: "META" },
+  { symbol: "COINx", name: "Coinbase Global xStock", mint: "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/COINx.png", underlyingStock: "COIN" },
+  { symbol: "MSTRx", name: "MicroStrategy xStock", mint: "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/MSTRx.png", underlyingStock: "MSTR" },
+  { symbol: "INTCx", name: "Intel xStock", mint: "XshPgPdXFRWB8tP1j82rebb2Q9rPgGX37RuqzohmArM", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/INTCx.png", underlyingStock: "INTC" },
+  { symbol: "SPYx", name: "S&P 500 Index xStock", mint: "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/SPYx.png", underlyingStock: "SPY" },
+  { symbol: "QQQx", name: "Invesco QQQ Trust xStock", mint: "Xs8S1uUs1zvSvhgB4tvdJ5L3UvH5cTj8yLq2WdF6N6M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/QQQx.png", underlyingStock: "QQQ" },
+  { symbol: "AMDx", name: "AMD xStock", mint: "XsXcJ6GZ9kVnZ3QzP2M5B4Y8Kq6W1D7F9T2N4R8L1J5", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AMDx.png", underlyingStock: "AMD" },
+  { symbol: "PLTRx", name: "Palantir xStock", mint: "XsoBhf2ufR8fP3K9m1V6Y7T2N5L4Q8W1J9Z2X6C3B7M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/PLTRx.png", underlyingStock: "PLTR" },
+  { symbol: "NFLXx", name: "Netflix xStock", mint: "XsEH7wWfJJu2P1K8M5V9Q4T3Y6L2W7R8Z1X5C4B6N9M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/NFLXx.png", underlyingStock: "NFLX" },
+  { symbol: "DISx", name: "Walt Disney xStock", mint: "Xsg93jDV656UP2K7M8V1Q5T4Y9L3W6R2Z8X1C5B7N4M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/DISx.png", underlyingStock: "DIS" },
+  { symbol: "UBERx", name: "Uber xStock", mint: "XsAsZLF4MmsvP8K2M1V5Q7T3Y9L6W4R1Z5X8C2B9N3M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/UBERx.png", underlyingStock: "UBER" },
+  { symbol: "HOODx", name: "Robinhood xStock", mint: "XsvNBAYkrDRNP1K5M9V2Q8T4Y3L7W5R6Z2X9C1B4N8M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/HOODx.png", underlyingStock: "HOOD" },
+  { symbol: "ABNBx", name: "Airbnb xStock", mint: "XscSc1zjbVizP4K9M2V6Q1T8Y5L3W7R2Z6X4C8B1N5M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/ABNBx.png", underlyingStock: "ABNB" },
+  { symbol: "PYPLx", name: "PayPal xStock", mint: "XshWQWYVp5ffP7K1M6V3Q9T2Y4L8W5R1Z9X2C6B3N7M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/PYPLx.png", underlyingStock: "PYPL" },
+  { symbol: "AVGOx", name: "Broadcom xStock", mint: "XsgSaSvNSqLTP3K8M1V7Q2T5Y9L4W6R8Z1X5C9B2N6M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/AVGOx.png", underlyingStock: "AVGO" },
+  { symbol: "QCOMx", name: "Qualcomm xStock", mint: "XsUUG8bjFN2KP5K2M8V4Q1T7Y3L9W2R5Z8X3C1B7N4M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/QCOMx.png", underlyingStock: "QCOM" },
+  { symbol: "ARMx", name: "Arm Holdings xStock", mint: "XswUFSYE5CWsP9K4M2V8Q5T1Y6L7W3R9Z4X8C2B5N1M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/ARMx.png", underlyingStock: "ARM" },
+  { symbol: "CRCLx", name: "Circle xStock", mint: "XsueG8BtpquVP2K6M9V1Q8T5Y4L3W1R7Z5X9C4B2N8M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/CRCLx.png", underlyingStock: "CRCL" },
+  { symbol: "GLDx", name: "Gold Trust xStock", mint: "Xsv9hRk1z5ysP6K3M5V2Q7T9Y1L8W4R6Z3X7C8B5N2M", decimals: 6, imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/GLDx.png", underlyingStock: "GLD" },
 ];
 
 /**
@@ -203,6 +140,7 @@ export type PreflightPayload = {
   pumpQuoteMint: string;
   pumpCreatorFeeBps: number;
   walletAddress: string;
+  supply?: number;
 };
 
 export type PreflightResult = {
@@ -268,6 +206,7 @@ export async function requestPreflightQuote(payload: PreflightPayload): Promise<
       pumpQuoteMint: payload.pumpQuoteMint,
       pumpCreatorFeeBps: payload.pumpCreatorFeeBps,
       walletAddress: payload.walletAddress,
+      supply: payload.supply ?? 1000000000,
       devBuySol: 0,
     }),
     signal: AbortSignal.timeout(120000), // ClawPump recommends at least 120s timeout

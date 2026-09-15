@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       agentName,
       txSignature,
       preflightToken,
+      supply,
     } = body;
 
     if (!txSignature || typeof txSignature !== "string") {
@@ -28,11 +29,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing launcher agent details." }, { status: 400 });
     }
 
+    let resolvedImageUrl = imageUrl;
+    if (resolvedImageUrl && typeof resolvedImageUrl === "string" && resolvedImageUrl.startsWith("/uploads/")) {
+      const origin = req.nextUrl.origin || "http://localhost:3000";
+      resolvedImageUrl = `${origin}${resolvedImageUrl}`;
+    }
+
+    const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
+
     const launchResult = await executeClawPumpLaunch({
       name,
       symbol,
       description,
-      imageUrl,
+      imageUrl: resolvedImageUrl,
       pumpQuoteMint,
       pumpCreatorFeeBps: Number(pumpCreatorFeeBps),
       walletAddress,
@@ -40,6 +49,7 @@ export async function POST(req: NextRequest) {
       agentName,
       txSignature,
       preflightToken,
+      supply: tokenSupply,
     });
 
     return NextResponse.json(launchResult);

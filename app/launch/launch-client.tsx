@@ -2,22 +2,22 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 import type { PumpPairAsset } from "@/lib/clawpump";
 
 const PRESET_AVATARS = [
-  { label: "Rocket", url: "https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=150&auto=format&fit=crop&q=80" },
-  { label: "Bull", url: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80" },
-  { label: "Circuit", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80" },
-  { label: "Diamond", url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=150&auto=format&fit=crop&q=80" },
+  { label: "Silicon Chip", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80" },
+  { label: "Golden Bull", url: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=80" },
+  { label: "Solana Orbit", url: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=200&auto=format&fit=crop&q=80" },
+  { label: "Hyper Rocket", url: "https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=200&auto=format&fit=crop&q=80" },
 ];
 
 export function LaunchClient() {
   const searchParams = useSearchParams();
-  const initialSymbol = searchParams.get("symbol") || "AAPLx";
+  const initialSymbol = searchParams.get("symbol") || "NVDAx";
 
   const { address, ready, connect } = useWallet();
 
@@ -25,13 +25,24 @@ export function LaunchClient() {
   const [pairs, setPairs] = useState<PumpPairAsset[]>([]);
   const [loadingPairs, setLoadingPairs] = useState(true);
   const [selectedPair, setSelectedPair] = useState<PumpPairAsset | null>(null);
+  const [pairFilter, setPairFilter] = useState("");
 
-  // Form State
+  // Form State: Token Identity
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=200&auto=format&fit=crop&q=80");
-  const [creatorFeeBps, setCreatorFeeBps] = useState(100); // 1% default
+  const [imageUrl, setImageUrl] = useState(PRESET_AVATARS[0].url);
+
+  // Device Upload State
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Supply & Fee Economics
+  const [tokenSupply, setTokenSupply] = useState<number>(1_000_000_000); // 1 Billion default
+  const [customSupplyInput, setCustomSupplyInput] = useState("1,000,000,000");
+  const [creatorFeeBps, setCreatorFeeBps] = useState(150); // 1.5% default
 
   // Execution State
   const [stepState, setStepState] = useState<"idle" | "quoting" | "paying" | "confirming" | "success" | "error">("idle");
@@ -45,6 +56,57 @@ export function LaunchClient() {
   } | null>(null);
 
   const [, startTransition] = useTransition();
+  const holoCardRef = useRef<HTMLDivElement | null>(null);
+
+  // 3D Perspective Mouse Tracking for Holographic Token Simulator
+  useEffect(() => {
+    const card = holoCardRef.current;
+    if (!card) return;
+    const isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isTouch || reducedMotion) return;
+
+    let rafId = 0;
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = card.getBoundingClientRect();
+      const nx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width * 0.5);
+      const ny = (e.clientY - (rect.top + rect.height / 2)) / (rect.height * 0.5);
+      targetX = Math.max(-1, Math.min(1, nx));
+      targetY = Math.max(-1, Math.min(1, ny));
+    };
+
+    const onPointerLeave = () => {
+      targetX = 0;
+      targetY = 0;
+    };
+
+    const update = () => {
+      currentX += (targetX - currentX) * 0.08;
+      currentY += (targetY - currentY) * 0.08;
+
+      card.style.setProperty("--holo-rx", `${(-currentY * 9).toFixed(2)}deg`);
+      card.style.setProperty("--holo-ry", `${(currentX * 11).toFixed(2)}deg`);
+      card.style.setProperty("--holo-tx", `${(currentX * 8).toFixed(2)}px`);
+      card.style.setProperty("--holo-ty", `${(currentY * 8).toFixed(2)}px`);
+
+      rafId = requestAnimationFrame(update);
+    };
+
+    card.addEventListener("pointermove", onPointerMove, { passive: true });
+    card.addEventListener("pointerleave", onPointerLeave);
+    rafId = requestAnimationFrame(update);
+
+    return () => {
+      card.removeEventListener("pointermove", onPointerMove);
+      card.removeEventListener("pointerleave", onPointerLeave);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   // Load pairs from API
   useEffect(() => {
@@ -56,7 +118,6 @@ export function LaunchClient() {
         const assetList: PumpPairAsset[] = data.assets ?? [];
         setPairs(assetList);
 
-        // Match initial symbol
         const matched = assetList.find((p) => p.symbol.toLowerCase() === initialSymbol.toLowerCase()) || assetList[0];
         setSelectedPair(matched || null);
       } catch (err) {
@@ -76,7 +137,74 @@ export function LaunchClient() {
     }
   }, [initialSymbol, pairs]);
 
-  // Handle Launch Action
+  // Supply handlers
+  function handleSupplySelect(amount: number) {
+    setTokenSupply(amount);
+    setCustomSupplyInput(new Intl.NumberFormat("en-US").format(amount));
+  }
+
+  function handleCustomSupplyChange(val: string) {
+    const digitsOnly = val.replace(/[^\d]/g, "");
+    const num = Number(digitsOnly);
+    if (Number.isFinite(num)) {
+      setTokenSupply(num);
+      setCustomSupplyInput(digitsOnly ? new Intl.NumberFormat("en-US").format(num) : "");
+    }
+  }
+
+  // File Upload Handlers (Device Upload)
+  async function handleFileSelect(file: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("Please select a valid image file (PNG, JPG, WebP, SVG).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("Image file must be under 5MB.");
+      return;
+    }
+
+    setErrorMessage("");
+    setUploadedFileName(file.name);
+
+    // 1. Instant zero-latency local preview in 3D simulator
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        setImageUrl(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // 2. Upload to server endpoint in background
+    try {
+      setIsUploadingImage(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/launch/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setImageUrl(data.url);
+      }
+    } catch (err) {
+      console.warn("Background upload failed, continuing with local preview data:", err);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
+  // Filtered list of pairs based on search
+  const visiblePairs = pairs.filter((p) => {
+    if (!pairFilter.trim()) return true;
+    const q = pairFilter.toLowerCase();
+    return p.symbol.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+  });
+
+  // Handle One-Click Launch Action
   async function handleLaunch() {
     if (!address) {
       try {
@@ -89,7 +217,7 @@ export function LaunchClient() {
     }
 
     if (!selectedPair) {
-      setErrorMessage("Please select a supported xStock pair.");
+      setErrorMessage("Please select a supported xStock market pair.");
       return;
     }
 
@@ -103,14 +231,19 @@ export function LaunchClient() {
       return;
     }
 
-    if (description.trim().length < 20) {
-      setErrorMessage("Description must be at least 20 characters.");
+    if (description.trim().length < 10) {
+      setErrorMessage("Description / thesis should be at least 10 characters.");
+      return;
+    }
+
+    if (!tokenSupply || tokenSupply < 1000) {
+      setErrorMessage("Token supply must be at least 1,000 tokens.");
       return;
     }
 
     setErrorMessage("");
     setStepState("quoting");
-    setStatusMessage("Requesting ClawPump self-funded quote terms...");
+    setStatusMessage("Requesting ClawPump quote terms on Solana...");
 
     try {
       // Step 1: Preflight quote
@@ -125,6 +258,7 @@ export function LaunchClient() {
           pumpQuoteMint: selectedPair.mint,
           pumpCreatorFeeBps: creatorFeeBps,
           walletAddress: address,
+          supply: tokenSupply,
         }),
       });
 
@@ -140,7 +274,7 @@ export function LaunchClient() {
 
       // Step 2: Pay from wallet
       setStepState("paying");
-      setStatusMessage(`Please approve transfer of ${(amountLamports / 1e9).toFixed(5)} SOL to fund the launch...`);
+      setStatusMessage(`Please approve transfer of ${(amountLamports / 1e9).toFixed(5)} SOL in your wallet...`);
 
       let txSignature = "";
 
@@ -182,16 +316,16 @@ export function LaunchClient() {
           txSignature = await connection.sendRawTransaction(signed.serialize());
         }
 
-        setStatusMessage("Confirming payment on Solana...");
+        setStatusMessage("Confirming payment on Solana mainnet...");
         await connection.confirmTransaction({ signature: txSignature, blockhash, lastValidBlockHeight }, "confirmed");
       } else {
-        // Fallback simulation signature for browser testing when physical wallet extension is not active
+        // Fallback simulation signature for browser environments without wallet extension
         txSignature = `sim_sig_${Math.random().toString(36).slice(2, 12)}_${Date.now()}`;
       }
 
       // Step 3: Complete launch with txSignature proof
       setStepState("confirming");
-      setStatusMessage("Minting and pairing token on ClawPump against " + selectedPair.symbol + "...");
+      setStatusMessage(`Minting and pairing token on ClawPump against ${selectedPair.symbol}...`);
 
       const confirmRes = await fetch("/api/launch/confirm", {
         method: "POST",
@@ -208,6 +342,7 @@ export function LaunchClient() {
           agentName,
           txSignature,
           preflightToken,
+          supply: tokenSupply,
         }),
       });
 
@@ -226,335 +361,493 @@ export function LaunchClient() {
     } catch (err: unknown) {
       console.error("Launch error:", err);
       setStepState("error");
-      setErrorMessage(err instanceof Error ? err.message : "Launch process encountered an error.");
+      setErrorMessage(err instanceof Error ? err.message : "Launch process encountered an unexpected issue.");
     }
   }
 
   return (
     <div className="launch-container">
-      {/* Back Link */}
-      <Link href="/app" className="launch-back-link">
-        <span aria-hidden="true">←</span> Back to Market Desk
-      </Link>
+      {/* Top Header Navigation */}
+      <div className="launch-top-bar">
+        <Link href="/app" className="launch-back-link">
+          <span aria-hidden="true">←</span> Back to Market Desk
+        </Link>
+        <div className="launch-header-chips">
+          <span className="launch-network-pill">
+            <span className="launch-pulse-dot" /> Solana Mainnet-Beta
+          </span>
+          <span className="launch-protocol-pill">Powered by ClawPump</span>
+        </div>
+      </div>
 
-      {/* Banner / Pair Preview */}
-      <section className="launch-banner" aria-label="Launch Header">
-        <div className="launch-banner-content">
-          <div>
-            <span className="launch-brand-tag">OpenStock × ClawPump</span>
-            <h1>
-              Make the meme. <span>Pair the market.</span>
-            </h1>
+      {/* Main Studio Grid: Left Form Pane + Right Live Holographic Simulator */}
+      <div className="launch-studio-layout">
+        {/* Left Column: Studio Controls */}
+        <div className="launch-controls-column">
+          <div className="launch-intro">
+            <span className="launch-studio-kicker">Solana Token Studio</span>
+            <h1>Launch a Token Paired to Real Stocks</h1>
             <p>
-              Create an independent community token and launch it directly against a tokenized stock on Solana.
+              Set your token identity, supply, and fee structure. Then deploy in one click against verified Backed equities on Solana.
             </p>
           </div>
 
-          <div className="launch-pair-preview">
-            <div className="launch-token-pill" title="Your Token">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={tokenSymbol || "Token"}
-                  className="launch-token-avatar"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
-                />
-              ) : null}
-              <div className="launch-token-placeholder">
-                {tokenSymbol || "YOUR TOKEN"}
-              </div>
-            </div>
+          {/* Hidden File Input for Device Upload */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
 
-            <span className="launch-pair-times">×</span>
-
-            <div className="launch-stock-pill" title={`Paired with ${selectedPair?.symbol || "xStock"}`}>
-              {selectedPair ? (
-                <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={50} />
-              ) : (
-                <div style={{ color: "#9945ff", fontWeight: 700 }}>xStock</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Two Blocks Only */}
-      <div className="launch-blocks">
-        {/* Block 1: Name the idea */}
-        <section className="launch-card" aria-labelledby="block-1-title">
-          <div className="launch-block-header">
-            <span className="launch-step-index">01</span>
-            <h2 id="block-1-title">Name the idea.</h2>
-            <p>Keep it immediate. People should understand the joke or community in one glance.</p>
-          </div>
-
-          <div className="launch-form-grid">
-            <div className="launch-field">
-              <label htmlFor="token-name">
-                Token name <span>(1–32 chars)</span>
-              </label>
-              <input
-                id="token-name"
-                placeholder="e.g. Everything Is Fine"
-                value={tokenName}
-                maxLength={32}
-                onChange={(e) => setTokenName(e.target.value)}
-              />
-            </div>
-
-            <div className="launch-field">
-              <label htmlFor="token-symbol">
-                Symbol <span>(1–10 chars)</span>
-              </label>
-              <input
-                id="token-symbol"
-                placeholder="e.g. FINE"
-                value={tokenSymbol}
-                maxLength={10}
-                onChange={(e) => setTokenSymbol(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="launch-field" style={{ marginBottom: 20 }}>
-            <label htmlFor="token-desc">
-              What is it? <span>(20–500 chars)</span>
-            </label>
-            <textarea
-              id="token-desc"
-              placeholder="The community token for people watching the markets burn beautifully..."
-              value={description}
-              maxLength={500}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          {/* Image URL & Presets */}
-          <div className="launch-field">
-            <label htmlFor="token-image">
-              Artwork URL <span>(HTTPS image)</span>
-            </label>
-            <div className="launch-image-row">
-              <div className="launch-avatar-thumb">
-                {imageUrl ? <img src={imageUrl} alt="Preview" /> : <span>✦</span>}
-              </div>
+          {/* Step 01: Token Identity & Device Artwork */}
+          <section className="launch-panel" aria-labelledby="step-1-heading">
+            <div className="launch-panel-head">
+              <div className="launch-step-pill">01</div>
               <div>
+                <h2 id="step-1-heading">Token Identity &amp; Artwork</h2>
+                <p>Upload artwork from your device or paste a URL, then name your asset.</p>
+              </div>
+            </div>
+
+            <div className="launch-grid-2">
+              <div className="launch-field">
+                <label htmlFor="token-name">
+                  Token Name <span>(max 32)</span>
+                </label>
                 <input
-                  id="token-image"
-                  placeholder="https://..."
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                  id="token-name"
+                  placeholder="e.g. HyperCompute"
+                  value={tokenName}
+                  maxLength={32}
+                  onChange={(e) => setTokenName(e.target.value)}
                 />
-                <div className="launch-avatar-presets">
-                  <span style={{ fontSize: 11, color: "var(--os-muted)" }}>Quick presets:</span>
-                  {PRESET_AVATARS.map((preset) => (
+              </div>
+
+              <div className="launch-field">
+                <label htmlFor="token-symbol">
+                  Ticker Symbol <span>(max 10)</span>
+                </label>
+                <input
+                  id="token-symbol"
+                  placeholder="e.g. COMPUTE"
+                  value={tokenSymbol}
+                  maxLength={10}
+                  onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
+                />
+              </div>
+            </div>
+
+            <div className="launch-field" style={{ marginTop: 18 }}>
+              <label htmlFor="token-desc">
+                Thesis / Description <span>({description.length}/350 chars)</span>
+              </label>
+              <textarea
+                id="token-desc"
+                placeholder="The community asset tracking AI silicon demand and high-throughput data centers on Solana..."
+                value={description}
+                maxLength={350}
+                rows={3}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Artwork Upload & Picker */}
+            <div className="launch-field" style={{ marginTop: 18 }}>
+              <label>
+                Token Artwork <span>(Device upload, presets, or URL)</span>
+              </label>
+              <div className="launch-artwork-box">
+                {/* Drag & Drop Thumbnail */}
+                <div
+                  className={`launch-drop-zone ${isDragging ? "is-dragging" : ""}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Click or drag image to upload from device"
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt="Artwork Preview"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <span className="launch-drop-icon">📁</span>
+                  )}
+                  <span className="launch-drop-hint">
+                    {isUploadingImage ? "Uploading..." : "Click or drop device image"}
+                  </span>
+                </div>
+
+                <div className="launch-artwork-actions">
+                  <div className="launch-upload-row">
                     <button
                       type="button"
-                      key={preset.label}
-                      className="launch-preset-btn"
-                      onClick={() => setImageUrl(preset.url)}
+                      className="launch-upload-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingImage}
                     >
-                      {preset.label}
+                      📁 Upload from device
                     </button>
-                  ))}
+                    {uploadedFileName && (
+                      <span className="launch-filename-badge" title={uploadedFileName}>
+                        ✓ {uploadedFileName}
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    id="token-image"
+                    placeholder="Or paste https:// image URL..."
+                    value={imageUrl.startsWith("data:") ? "(Image loaded from device)" : imageUrl}
+                    onChange={(e) => {
+                      setUploadedFileName("");
+                      setImageUrl(e.target.value);
+                    }}
+                    className="launch-image-url-input"
+                  />
+
+                  <div className="launch-preset-chips">
+                    <span className="launch-preset-label">Presets:</span>
+                    {PRESET_AVATARS.map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.label}
+                        className={`launch-preset-btn ${imageUrl === preset.url ? "is-selected" : ""}`}
+                        onClick={() => {
+                          setUploadedFileName("");
+                          setImageUrl(preset.url);
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Block 2: Choose its market */}
-        <section className="launch-card" aria-labelledby="block-2-title">
-          <div className="launch-block-header">
-            <span className="launch-step-index">02</span>
-            <h2 id="block-2-title">Choose its market.</h2>
-            <p>The token trades against the stock you select, rather than only SOL or USDC.</p>
-          </div>
-
-          {loadingPairs ? (
-            <div style={{ padding: "24px 0", color: "var(--os-muted)", fontSize: 14 }}>
-              Loading supported ClawPump stock pairs...
+          {/* Step 02: Stock Market Pairing */}
+          <section className="launch-panel" aria-labelledby="step-2-heading">
+            <div className="launch-panel-head">
+              <div className="launch-step-pill">02</div>
+              <div>
+                <h2 id="step-2-heading">Stock Market Pairing</h2>
+                <p>Select which verified Solana tokenized equity your token trades against.</p>
+              </div>
             </div>
-          ) : (
-            <div className="launch-pairs-grid" role="radiogroup" aria-label="Stock pairs">
-              {pairs.map((pair) => {
-                const isSelected = selectedPair?.mint === pair.mint;
-                return (
+
+            {/* Pair Search Filter */}
+            <div className="launch-pair-filter-row">
+              <input
+                type="text"
+                placeholder="Search stocks (NVDA, Apple, Tesla, Coinbase, S&P 500...)"
+                value={pairFilter}
+                onChange={(e) => setPairFilter(e.target.value)}
+                className="launch-pair-search-input"
+              />
+              <span className="launch-pair-count">
+                {visiblePairs.length} of {pairs.length} pairs
+              </span>
+            </div>
+
+            {/* Stock Pairs Grid */}
+            <div className="launch-pairs-container">
+              {loadingPairs ? (
+                <div className="launch-loading-pairs">
+                  <span className="launch-pulse-dot" /> Loading verified ClawPump stock pairs...
+                </div>
+              ) : (
+                <div className="launch-pairs-grid" role="radiogroup" aria-label="Stock pairs">
+                  {visiblePairs.map((pair) => {
+                    const isSelected = selectedPair?.mint === pair.mint;
+                    return (
+                      <button
+                        type="button"
+                        key={pair.mint}
+                        className={`launch-pair-card ${isSelected ? "is-selected" : ""}`}
+                        onClick={() => {
+                          startTransition(() => {
+                            setSelectedPair(pair);
+                          });
+                        }}
+                        role="radio"
+                        aria-checked={isSelected}
+                      >
+                        <StockLogo symbol={pair.symbol} logo={pair.imageUrl ?? undefined} size={36} />
+                        <div className="launch-pair-details">
+                          <strong>{pair.symbol}</strong>
+                          <span>{pair.name.replace(/ xStock$/, "")}</span>
+                        </div>
+                        {isSelected ? <span className="launch-pair-check">✓</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Step 03: Set Supply & Creator Fee Economics */}
+          <section className="launch-panel" aria-labelledby="step-3-heading">
+            <div className="launch-panel-head">
+              <div className="launch-step-pill">03</div>
+              <div>
+                <h2 id="step-3-heading">Supply &amp; Fee Economics</h2>
+                <p>Set initial token supply and creator royalty yield in {selectedPair?.symbol || "xStock"}.</p>
+              </div>
+            </div>
+
+            {/* Token Supply Selector */}
+            <div className="launch-field" style={{ marginBottom: 22 }}>
+              <label htmlFor="token-supply">
+                Total Token Supply <span>(minted on bonding curve)</span>
+              </label>
+              <div className="launch-supply-controls">
+                <div className="launch-preset-chips" style={{ marginBottom: 10 }}>
+                  {[
+                    { label: "100M", val: 100_000_000 },
+                    { label: "500M", val: 500_000_000 },
+                    { label: "1B (Standard)", val: 1_000_000_000 },
+                    { label: "10B", val: 10_000_000_000 },
+                  ].map((tier) => (
+                    <button
+                      type="button"
+                      key={tier.val}
+                      className={`launch-preset-btn ${tokenSupply === tier.val ? "is-selected" : ""}`}
+                      onClick={() => handleSupplySelect(tier.val)}
+                    >
+                      {tier.label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  id="token-supply"
+                  type="text"
+                  placeholder="e.g. 1,000,000,000"
+                  value={customSupplyInput}
+                  onChange={(e) => handleCustomSupplyChange(e.target.value)}
+                  className="launch-supply-input"
+                />
+              </div>
+            </div>
+
+            {/* Creator Fee Selector */}
+            <div className="launch-field">
+              <label htmlFor="creator-fee">
+                Creator Trading Royalty <span>(accrues in {selectedPair?.symbol || "xStock"})</span>
+              </label>
+              <div className="launch-fee-pills" role="group" aria-label="Creator fee">
+                {[
+                  { label: "0.5%", bps: 50 },
+                  { label: "1.0%", bps: 100 },
+                  { label: "1.5%", bps: 150 },
+                  { label: "2.0%", bps: 200 },
+                  { label: "3.0%", bps: 300 },
+                ].map((tier) => (
                   <button
                     type="button"
-                    key={pair.mint}
-                    className={`launch-pair-item ${isSelected ? "is-selected" : ""}`}
-                    onClick={() => {
-                      startTransition(() => {
-                        setSelectedPair(pair);
-                      });
-                    }}
-                    role="radio"
-                    aria-checked={isSelected}
+                    key={tier.bps}
+                    className={`launch-fee-pill ${creatorFeeBps === tier.bps ? "is-active" : ""}`}
+                    onClick={() => setCreatorFeeBps(tier.bps)}
                   >
-                    <StockLogo symbol={pair.symbol} logo={pair.imageUrl ?? undefined} size={36} />
-                    <div className="launch-pair-info">
-                      <strong>{pair.symbol}</strong>
-                      <span>{pair.name.replace(/ xStock$/, "")}</span>
-                    </div>
-                    {isSelected && <span className="launch-pair-check">✓</span>}
+                    {tier.label}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <div className="launch-fee-note">
+                💡 You automatically earn {creatorFeeBps / 100}% on all buy and sell volume settled in {selectedPair?.symbol || "xStock"} directly to your wallet.
+              </div>
             </div>
-          )}
 
-          {/* Fee Selector: 1% to 3% */}
-          <div className="launch-fee-box">
-            <div className="launch-fee-info">
-              <strong>Collect creator fees in {selectedPair?.symbol || "xStock"}</strong>
-              <span>Accrues automatically on all secondary trading activity.</span>
-            </div>
-            <div className="launch-fee-tabs" role="group" aria-label="Creator fee">
-              {[
-                { label: "1%", bps: 100 },
-                { label: "2%", bps: 200 },
-                { label: "2.5%", bps: 250 },
-                { label: "3%", bps: 300 },
-              ].map((tier) => (
-                <button
-                  type="button"
-                  key={tier.bps}
-                  className={`launch-fee-tab ${creatorFeeBps === tier.bps ? "is-active" : ""}`}
-                  onClick={() => setCreatorFeeBps(tier.bps)}
-                >
-                  {tier.label}
-                </button>
-              ))}
-            </div>
-          </div>
+            {/* Action Zone: One-Click Launch Button */}
+            <div className="launch-execution-zone" style={{ marginTop: 24 }}>
+              <div className="launch-wallet-bar">
+                <div className="launch-wallet-id">
+                  <span className="launch-pulse-dot" />
+                  <span>
+                    {ready && address
+                      ? `Active Wallet: ${shortWallet(address)}`
+                      : "Connect Phantom or Solflare wallet"}
+                  </span>
+                </div>
+                <span className="launch-quote-tag">ClawPump Rent: ~0.0075 SOL</span>
+              </div>
 
-          {/* Action / Payment */}
-          <div className="launch-action-section">
-            <div className="launch-wallet-status">
-              <div>
-                <span className="launch-wallet-dot" />
-                <span>
-                  {ready && address
-                    ? `Connected: ${shortWallet(address)}`
-                    : "Connect your Phantom or Solflare wallet"}
+              {errorMessage && (
+                <div className="launch-error-banner" role="alert">
+                  ⚠️ {errorMessage}
+                </div>
+              )}
+
+              {stepState !== "idle" && stepState !== "error" && stepState !== "success" && (
+                <div className="launch-status-pill">
+                  <span className="launch-spin">✦</span> {statusMessage}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="launch-execute-btn"
+                disabled={stepState === "quoting" || stepState === "paying" || stepState === "confirming"}
+                onClick={handleLaunch}
+              >
+                {!address ? (
+                  "Connect Wallet to Launch"
+                ) : stepState === "quoting" ? (
+                  <>
+                    <span className="launch-spin">✦</span> Calculating Quote...
+                  </>
+                ) : stepState === "paying" ? (
+                  <>
+                    <span className="launch-spin">✦</span> Approve ~0.0075 SOL in Wallet...
+                  </>
+                ) : stepState === "confirming" ? (
+                  <>
+                    <span className="launch-spin">✦</span> Minting on ClawPump...
+                  </>
+                ) : (
+                  <>🚀 One-Click Launch: {tokenSymbol || "Token"} × {selectedPair?.symbol || "xStock"}</>
+                )}
+              </button>
+            </div>
+
+            {/* Success Receipt Modal */}
+            {launchReceipt && (
+              <div className="launch-success-card" role="status">
+                <div className="launch-success-title">
+                  <span>🎉</span>
+                  <h3>Successfully Paired &amp; Minted!</h3>
+                </div>
+                <p>Your community token is now live and trading against {selectedPair?.symbol} on Solana.</p>
+                <div className="launch-receipt-grid">
+                  <div className="launch-receipt-item">
+                    <span>Pairing</span>
+                    <strong>{tokenSymbol} × {selectedPair?.symbol}</strong>
+                  </div>
+                  <div className="launch-receipt-item">
+                    <span>Total Supply</span>
+                    <strong>{new Intl.NumberFormat("en-US").format(tokenSupply)}</strong>
+                  </div>
+                  <div className="launch-receipt-item">
+                    <span>Mint Address</span>
+                    <code>{launchReceipt.mintAddress.slice(0, 6)}...{launchReceipt.mintAddress.slice(-6)}</code>
+                  </div>
+                  <div className="launch-receipt-item">
+                    <span>Payment Tx</span>
+                    <code>{launchReceipt.txHash.slice(0, 6)}...{launchReceipt.txHash.slice(-6)}</code>
+                  </div>
+                </div>
+                <div className="launch-success-actions">
+                  <a href={launchReceipt.pumpUrl} target="_blank" rel="noreferrer" className="launch-btn-pump">
+                    View on Pump.fun ↗
+                  </a>
+                  <a href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer" className="launch-btn-solscan">
+                    View on Solscan ↗
+                  </a>
+                  <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
+                    Open {selectedPair?.symbol} Market Desk
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Right Column: Interactive Holographic Token Simulator */}
+        <div className="launch-stage-column">
+          <div className="launch-stage-sticky">
+            <div className="launch-holo-card" ref={holoCardRef}>
+              <div className="launch-holo-aura" aria-hidden="true" />
+
+              <div className="launch-holo-header">
+                <span className="launch-holo-live-tag">
+                  <span className="launch-pulse-dot" /> LIVE SIMULATOR
                 </span>
+                <span className="launch-holo-chain">Solana SPL Token</span>
               </div>
-              <span>ClawPump self-funded quote: ~0.0075 SOL</span>
+
+              {/* 3D Holographic Dual Coin Visual */}
+              <div className="launch-holo-coin-stage">
+                <div className="launch-holo-coin-ring">
+                  <div className="launch-holo-coin-face">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={tokenSymbol || "Token"} className="launch-holo-coin-img" />
+                    ) : (
+                      <div className="launch-holo-coin-fallback">{tokenSymbol?.slice(0, 3) || "OS"}</div>
+                    )}
+                  </div>
+                  {/* Paired Stock Badge */}
+                  <div className="launch-holo-stock-badge" title={`Paired with ${selectedPair?.symbol}`}>
+                    {selectedPair ? (
+                      <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={38} />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Token Info & Identity */}
+              <div className="launch-holo-identity">
+                <h3 className="launch-holo-name">{tokenName || "Your Token Name"}</h3>
+                <div className="launch-holo-pair-badge">
+                  <span>${tokenSymbol || "TOKEN"}</span>
+                  <span className="launch-holo-times">×</span>
+                  <span className="launch-holo-stock-symbol">{selectedPair?.symbol || "xStock"}</span>
+                </div>
+                <p className="launch-holo-desc">
+                  {description || "The community asset paired directly against verified on-chain equities."}
+                </p>
+              </div>
+
+              {/* Architectural Specs */}
+              <div className="launch-holo-specs">
+                <div className="launch-holo-spec-row">
+                  <span>Total Supply</span>
+                  <strong className="launch-holo-highlight">
+                    {new Intl.NumberFormat("en-US").format(tokenSupply)}
+                  </strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Paired Stock</span>
+                  <strong>{selectedPair ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})` : "xStock"}</strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Creator Fee</span>
+                  <strong className="launch-holo-highlight">{creatorFeeBps / 100}% in {selectedPair?.symbol}</strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Bonding Curve</span>
+                  <strong>ClawPump Engine</strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Settlement Latency</span>
+                  <strong>~400ms Sub-second</strong>
+                </div>
+              </div>
+
+              <div className="launch-holo-footer">
+                <span>Direct liquidity settled in {selectedPair?.symbol || "xStocks"} on Solana</span>
+              </div>
             </div>
-
-            {errorMessage && (
-              <div
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 12,
-                  background: "rgba(240, 113, 128, 0.1)",
-                  border: "1px solid rgba(240, 113, 128, 0.3)",
-                  color: "#f07180",
-                  fontSize: 13,
-                }}
-              >
-                {errorMessage}
-              </div>
-            )}
-
-            {stepState !== "idle" && stepState !== "error" && stepState !== "success" && (
-              <div
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 12,
-                  background: "rgba(153, 69, 255, 0.08)",
-                  border: "1px solid rgba(153, 69, 255, 0.25)",
-                  color: "var(--solana-purple)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <span className="launch-spinner" style={{ animation: "spin 1s linear infinite" }}>✦</span>
-                {statusMessage}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="launch-btn-main"
-              disabled={stepState === "quoting" || stepState === "paying" || stepState === "confirming"}
-              onClick={handleLaunch}
-            >
-              {!address
-                ? "Connect wallet to launch"
-                : stepState === "quoting"
-                ? "Quoting launch terms..."
-                : stepState === "paying"
-                ? "Awaiting wallet payment..."
-                : stepState === "confirming"
-                ? "Minting on ClawPump..."
-                : `Launch ${tokenSymbol || "Token"} × ${selectedPair?.symbol || "xStock"}`}
-            </button>
           </div>
-
-          {/* Success Banner */}
-          {launchReceipt && (
-            <div className="launch-success-banner" role="status">
-              <div className="launch-success-head">
-                <span style={{ fontSize: 24 }}>🎉</span>
-                <h3>Token Live Quoted in {selectedPair?.symbol}!</h3>
-              </div>
-
-              <div className="launch-receipt-row">
-                <span>Pairing</span>
-                <strong>
-                  {tokenSymbol} × {selectedPair?.symbol}
-                </strong>
-              </div>
-
-              <div className="launch-receipt-row">
-                <span>Mint Address</span>
-                <code>{launchReceipt.mintAddress}</code>
-              </div>
-
-              <div className="launch-receipt-row">
-                <span>Payment Tx</span>
-                <code>{launchReceipt.txHash.slice(0, 8)}...{launchReceipt.txHash.slice(-8)}</code>
-              </div>
-
-              <div className="launch-receipt-row">
-                <span>Protocol</span>
-                <strong>ClawPump on Solana</strong>
-              </div>
-
-              <div className="launch-success-links">
-                <a
-                  href={launchReceipt.pumpUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="launch-success-btn launch-btn-green"
-                >
-                  View on Pump.fun ↗
-                </a>
-                <a
-                  href={launchReceipt.explorerUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="launch-success-btn launch-btn-ghost"
-                >
-                  View on Solscan ↗
-                </a>
-                <Link
-                  href={`/app/asset/${selectedPair?.symbol}`}
-                  className="launch-success-btn launch-btn-ghost"
-                >
-                  Open {selectedPair?.symbol} market desk
-                </Link>
-              </div>
-            </div>
-          )}
-        </section>
+        </div>
       </div>
     </div>
   );

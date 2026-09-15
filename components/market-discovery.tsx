@@ -1,12 +1,41 @@
 "use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StockLogo } from "@/components/stock-logo";
 import { displayPrice, type OpenStockAsset } from "@/lib/xstocks";
 
-type Filter = "all" | "watchlist";
+type Filter = "all" | "tech" | "fintech" | "macro" | "consumer" | "watchlist";
 type Sort = "alphabetical" | "price-high" | "price-low";
+
+const SECTOR_MAP: Record<string, "tech" | "fintech" | "macro" | "consumer"> = {
+  NVDAx: "tech",
+  AAPLx: "tech",
+  MSFTx: "tech",
+  GOOGLx: "tech",
+  METAx: "tech",
+  AMDx: "tech",
+  INTCx: "tech",
+  PLTRx: "tech",
+  AVGOx: "tech",
+  QCOMx: "tech",
+  ARMx: "tech",
+  COINx: "fintech",
+  MSTRx: "fintech",
+  HOODx: "fintech",
+  PYPLx: "fintech",
+  CRCLx: "fintech",
+  SPYx: "macro",
+  QQQx: "macro",
+  GLDx: "macro",
+  TSLAx: "consumer",
+  AMZNx: "consumer",
+  NFLXx: "consumer",
+  DISx: "consumer",
+  UBERx: "consumer",
+  ABNBx: "consumer",
+};
 
 function issuerName(asset: OpenStockAsset) { return asset.name.replace(/ xStock$/, ""); }
 function ticker(asset: OpenStockAsset) { return asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "").toUpperCase(); }
@@ -32,7 +61,12 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
     const normalized = query.trim().toLowerCase();
     return assets.filter((asset) => {
       const matchesQuery = !normalized || [asset.symbol, ticker(asset), issuerName(asset)].some((value) => value.toLowerCase().includes(normalized));
-      const matchesFilter = filter === "all" || watchlist.includes(asset.symbol);
+      const matchesFilter =
+        filter === "all"
+          ? true
+          : filter === "watchlist"
+          ? watchlist.includes(asset.symbol)
+          : SECTOR_MAP[asset.symbol] === filter;
       return matchesQuery && matchesFilter;
     }).sort((left, right) => {
       if (sort === "price-high" || sort === "price-low") {
@@ -43,12 +77,31 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
     });
   }, [assets, filter, query, sort, watchlist]);
 
+  const tabs: Array<{ key: Filter; label: string }> = [
+    { key: "all", label: `All (${assets.length})` },
+    { key: "tech", label: "Tech & AI" },
+    { key: "fintech", label: "Crypto & Fintech" },
+    { key: "macro", label: "ETFs & Macro" },
+    { key: "consumer", label: "Consumer & Auto" },
+    { key: "watchlist", label: `Watchlist (${watchlist.length})` },
+  ];
+
   return <section className="discovery" aria-label="Market discovery">
     {storageMessage ? <p className="workspace-note" role="status">{storageMessage}</p> : null}
     <div className="discovery-toolbar">
       <div className="discovery-search"><span aria-hidden="true">⌕</span><label className="sr-only" htmlFor="stock-search">Search stocks</label><input id="stock-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Apple, Tesla, AAPL…" /></div>
       <div className="discovery-filters" role="group" aria-label="Filter stocks">
-        {(["all", "watchlist"] as Filter[]).map((item) => <button type="button" aria-pressed={filter === item} className={filter === item ? "is-active" : ""} onClick={() => setFilter(item)} key={item}>{item === "all" ? "All stocks" : "Watchlist (" + watchlist.length + ")"}</button>)}
+        {tabs.map((item) => (
+          <button
+            type="button"
+            aria-pressed={filter === item.key}
+            className={filter === item.key ? "is-active" : ""}
+            onClick={() => setFilter(item.key)}
+            key={item.key}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
       <label className="discovery-sort">Sort by<select value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="alphabetical">Name</option><option value="price-high">Price: high to low</option><option value="price-low">Price: low to high</option></select></label>
     </div>
