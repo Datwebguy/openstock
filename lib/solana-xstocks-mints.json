@@ -1,0 +1,702 @@
+{
+  "XRXx": {
+    "name": "Xerox xStock",
+    "symbol": "XRXx",
+    "mint": "XsensupeZBdHxZtdnLptf1UfWpVyancWcit7qWFYZrJ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/XRXx.png",
+    "decimals": 6
+  },
+  "FLNCx": {
+    "name": "Fluence Energy xStock",
+    "symbol": "FLNCx",
+    "mint": "Xsc5BxL1ucvrQNXZqW3CT8M9gWTko1LPSLLkSVzGe9h",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/FLNCx.png",
+    "decimals": 6
+  },
+  "WGSx": {
+    "name": "GeneDx xStock",
+    "symbol": "WGSx",
+    "mint": "XsmPveq9vFqqCBfhBfDyfACu1W7bLVABkqaL3u8uFyy",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WGSx.png",
+    "decimals": 6
+  },
+  "WRLDx": {
+    "name": "World Acceptance xStock",
+    "symbol": "WRLDx",
+    "mint": "XsmjCXMpgsWWchGjczHfWz2aGKdYF7WiwPPurUd6c7W",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WRLDx.png",
+    "decimals": 6
+  },
+  "INDIx": {
+    "name": "Indie Semiconductor xStock",
+    "symbol": "INDIx",
+    "mint": "XsHYm9cRdEJoogpxDSZVDa4g19fKqUFXWxKisLpEuVm",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/INDIx.png",
+    "decimals": 6
+  },
+  "PCTx": {
+    "name": "PureCycle Technologies xStock",
+    "symbol": "PCTx",
+    "mint": "XsyQipBmDKeSy78zCSMp4BY91Cd46Dx3q4eBoSqbBDX",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/PCTx.png",
+    "decimals": 6
+  },
+  "METCx": {
+    "name": "Ramaco Resources xStock",
+    "symbol": "METCx",
+    "mint": "Xs2UKGPTD9S19rXkSqwJ6ufxAtuCU9Ww3wQumk9MvCn",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/METCx.png",
+    "decimals": 6
+  },
+  "QUBTx": {
+    "name": "Quantum Computing xStock",
+    "symbol": "QUBTx",
+    "mint": "XsRJiWgqGJrDaidERfWfdZkaxdA4VPjVEqN6XFctpp3",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/QUBTx.png",
+    "decimals": 6
+  },
+  "WYFIx": {
+    "name": "Whitefiber xStock",
+    "symbol": "WYFIx",
+    "mint": "XsLkMYrJVUPJv23tH3PB167BV6kpdubPe5F3KfVvSFN",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WYFIx.png",
+    "decimals": 6
+  },
+  "BETRx": {
+    "name": "Better Home & Finance xStock",
+    "symbol": "BETRx",
+    "mint": "Xsv3MnH24RsSJwcBvkPUMsDAZqszgmxnbWcUDbfzaYW",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BETRx.png",
+    "decimals": 6
+  },
+  "AIx": {
+    "name": "C3.ai xStock",
+    "symbol": "AIx",
+    "mint": "Xs7QhN79WzM4hjfHbu2W46ZRkdyumim3ooJHhPxenoU",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AIx.png",
+    "decimals": 6
+  },
+  "DRSx": {
+    "name": "Leonardo DRS xStock",
+    "symbol": "DRSx",
+    "mint": "Xsf3NfLggzL9WXy4yaxJB3866ehq7y7sQxohwAkNiEu",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DRSx.png",
+    "decimals": 6
+  },
+  "SCIx": {
+    "name": "Service Corp International xStock",
+    "symbol": "SCIx",
+    "mint": "XsC3icNzi6x7cRA6hodAZQT5GAsxwGrTxWL5awu4gsn",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SCIx.png",
+    "decimals": 6
+  },
+  "SAILx": {
+    "name": "SailPoint xStock",
+    "symbol": "SAILx",
+    "mint": "XscePZ4mjiXqyEVv9ZZPGbT6L86LqnYPEBE4ViKSt3T",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SAILx.png",
+    "decimals": 6
+  },
+  "BSYx": {
+    "name": "Bentley Systems xStock",
+    "symbol": "BSYx",
+    "mint": "XsMJnAApxALiWrwPBkAqm2FebHRmMLQVyjv9xVckzyk",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BSYx.png",
+    "decimals": 6
+  },
+  "GSATx": {
+    "name": "Globalstar xStock",
+    "symbol": "GSATx",
+    "mint": "XsNB1EjXVMUXGEC5X55DBG1ekMajZZvt9yAKzNmFhk4",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GSATx.png",
+    "decimals": 6
+  },
+  "MPx": {
+    "name": "MP Materials xStock",
+    "symbol": "MPx",
+    "mint": "XsFARXCfXKCdu6BxV2WACBt3Dk88nxLujoqPzyyBib9",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MPx.png",
+    "decimals": 6
+  },
+  "DVAx": {
+    "name": "DaVita xStock",
+    "symbol": "DVAx",
+    "mint": "XsS3GWSysqkDJZYFSuMDFZ2ELSjQAWwMH28vxLThnb4",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DVAx.png",
+    "decimals": 6
+  },
+  "DCIx": {
+    "name": "Donaldson xStock",
+    "symbol": "DCIx",
+    "mint": "Xs1n717k7fpA1edvo1xndLzPGYnkF81MPFsW3CC8jiZ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DCIx.png",
+    "decimals": 6
+  },
+  "GDDYx": {
+    "name": "GoDaddy xStock",
+    "symbol": "GDDYx",
+    "mint": "XsZLNUcjAVzNSbU5Z198ngop2mmoinZnw5ijBeMgWhW",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GDDYx.png",
+    "decimals": 6
+  },
+  "RYANx": {
+    "name": "Ryan Specialty xStock",
+    "symbol": "RYANx",
+    "mint": "Xsgyj7QR8RoPrkCCS2ebXwiASE69q2EvK5B7ppeKgBt",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/RYANx.png",
+    "decimals": 6
+  },
+  "BXPx": {
+    "name": "BXP xStock",
+    "symbol": "BXPx",
+    "mint": "Xsc3DUGC7diNKyYkKTagzj4R42EuM8KHBgFnLmXA12y",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BXPx.png",
+    "decimals": 6
+  },
+  "FRHCx": {
+    "name": "Freedom xStock",
+    "symbol": "FRHCx",
+    "mint": "XsCKGVtLBwZ4Z264jSPgPxzm3w6Sm3UkKv5WgHd3ike",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/FRHCx.png",
+    "decimals": 6
+  },
+  "DYx": {
+    "name": "Dycom Industries xStock",
+    "symbol": "DYx",
+    "mint": "XsHsqDrvsU85aJXNNmPBkxU4STbELJUeTV7zT4cJQD5",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DYx.png",
+    "decimals": 6
+  },
+  "WMSx": {
+    "name": "Advanced Drainage Systems xStock",
+    "symbol": "WMSx",
+    "mint": "Xs6debZjNw2y4JX8ryFWUhZgXCSjfbWdWe9r72jNjU1",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WMSx.png",
+    "decimals": 6
+  },
+  "AMx": {
+    "name": "Antero Midstream xStock",
+    "symbol": "AMx",
+    "mint": "XsLLmMhRTib24GrQd3wfrgh3rBWF6NHeVx6hox2eZXH",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AMx.png",
+    "decimals": 6
+  },
+  "FDSx": {
+    "name": "FactSet Research Systems xStock",
+    "symbol": "FDSx",
+    "mint": "XsMQfkLnhK1ERGibdgGDHFaSHB8ETDtMiC5TtVZKMAv",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/FDSx.png",
+    "decimals": 6
+  },
+  "ALSNx": {
+    "name": "Allison Transmission xStock",
+    "symbol": "ALSNx",
+    "mint": "XsZLnz25FKoaHSjhGDYtv2E7sgKwP3g5XeC7eSWLVnm",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ALSNx.png",
+    "decimals": 6
+  },
+  "SMTCx": {
+    "name": "Semtech xStock",
+    "symbol": "SMTCx",
+    "mint": "Xs9bdUnLdSWjQWeEsy8cde6t2L7d3adDRKcH8H51Uwr",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SMTCx.png",
+    "decimals": 6
+  },
+  "SFx": {
+    "name": "Stifel Financial xStock",
+    "symbol": "SFx",
+    "mint": "XsHfvLEUbto797whYCNiqoEGWSpWaRYoZWXJEBGgmsm",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SFx.png",
+    "decimals": 6
+  },
+  "AXSMx": {
+    "name": "Axsome Therapeutics xStock",
+    "symbol": "AXSMx",
+    "mint": "XsYa1w57EZDEiryphKCD8AJf33f4ewr2BHUW4RcjSuE",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AXSMx.png",
+    "decimals": 6
+  },
+  "EGPx": {
+    "name": "EastGroup Properties xStock",
+    "symbol": "EGPx",
+    "mint": "XsuAyd21vBFvAJfpzYQgmTi3A9Qwb6feHmNVsU6Z5vM",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/EGPx.png",
+    "decimals": 6
+  },
+  "BPOPx": {
+    "name": "Popular xStock",
+    "symbol": "BPOPx",
+    "mint": "Xs75Z8HFGHFnTubABp1CZSLvzCPepWsYhtHYLAFYEa7",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BPOPx.png",
+    "decimals": 6
+  },
+  "TTMIx": {
+    "name": "TTM Technologies xStock",
+    "symbol": "TTMIx",
+    "mint": "Xs1PSc6DL1cdDPTbyJevgYYU7uA1wiJQESzrpWM7JRv",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/TTMIx.png",
+    "decimals": 6
+  },
+  "AEISx": {
+    "name": "Advanced Energy Industries xStock",
+    "symbol": "AEISx",
+    "mint": "XsiXtK4niZXG2MFkDmgRcZskNYoetURTV9XhgRf1ESL",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AEISx.png",
+    "decimals": 6
+  },
+  "DPZx": {
+    "name": "Domino's Pizza xStock",
+    "symbol": "DPZx",
+    "mint": "Xs6z8AmfhiHTGmfdcX6hG7hho5P7xnbE21ChtJ94oVj",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DPZx.png",
+    "decimals": 6
+  },
+  "HRLx": {
+    "name": "Hormel Foods xStock",
+    "symbol": "HRLx",
+    "mint": "XsQMbNzqcJURkmjzmh7DMfhjPf7Effu5QS3fpBLtazr",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HRLx.png",
+    "decimals": 6
+  },
+  "KTOSx": {
+    "name": "Kratos Defense & Security Solutions xStock",
+    "symbol": "KTOSx",
+    "mint": "XsssrKt95uWKWRbDdbCeMubD7iiD74NqiXeNL1p3Gaj",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/KTOSx.png",
+    "decimals": 6
+  },
+  "PAGx": {
+    "name": "Penske Automotive xStock",
+    "symbol": "PAGx",
+    "mint": "Xs7waUdcn1ZQDsuFmHRerWEEazRHoWWzWSa6aB7QjHG",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/PAGx.png",
+    "decimals": 6
+  },
+  "SEICx": {
+    "name": "SEI Investments xStock",
+    "symbol": "SEICx",
+    "mint": "XstGFYNtBmWaCk3MfbEeqMYYbUf2o3PTLJm7R7iYfGS",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SEICx.png",
+    "decimals": 6
+  },
+  "HIIx": {
+    "name": "Huntington Ingalls Industries xStock",
+    "symbol": "HIIx",
+    "mint": "XsqxvS2n4fRh41imCC68Z6NmDHk2SPXkGXrekg9o9kd",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HIIx.png",
+    "decimals": 6
+  },
+  "EHCx": {
+    "name": "Encompass Health xStock",
+    "symbol": "EHCx",
+    "mint": "XsM3qqkARr8UMejnZUU3gBs7hz2fUdxDP35Dhxx9z94",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/EHCx.png",
+    "decimals": 6
+  },
+  "GFLx": {
+    "name": "GFL Environmental xStock",
+    "symbol": "GFLx",
+    "mint": "Xs7pKrTAgPBaXjiZbGm8QQK36GRRX1Vsh7pTndjhxng",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GFLx.png",
+    "decimals": 6
+  },
+  "ARx": {
+    "name": "Antero Resources xStock",
+    "symbol": "ARx",
+    "mint": "Xscms1jQDud7fsxLTKibMVxSTSQz3JFeJ1HDshRkPwc",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ARx.png",
+    "decimals": 6
+  },
+  "MGMx": {
+    "name": "MGM Resorts International xStock",
+    "symbol": "MGMx",
+    "mint": "Xs2hW1n8cBJAKUtDxZjJtFZBaxqTwczJY6n6XY8eV4o",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MGMx.png",
+    "decimals": 6
+  },
+  "DOCUx": {
+    "name": "Docusign xStock",
+    "symbol": "DOCUx",
+    "mint": "XszH3SckdYS1Kbyj9wcmjttt9Lp8jMgU39rGL8b9Wcp",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DOCUx.png",
+    "decimals": 6
+  },
+  "HALOx": {
+    "name": "Halozyme Therapeutics xStock",
+    "symbol": "HALOx",
+    "mint": "XsLaYaQLQfc9Z2Qis9gh6zebLbEoG1MLCrxD2wAmBBY",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HALOx.png",
+    "decimals": 6
+  },
+  "WTRGx": {
+    "name": "Essential Utilities xStock",
+    "symbol": "WTRGx",
+    "mint": "XsR9n59W439iWymAe3x5qnjdnaRXQmbvPE2uC9efzjE",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WTRGx.png",
+    "decimals": 6
+  },
+  "AFGx": {
+    "name": "American Financial xStock",
+    "symbol": "AFGx",
+    "mint": "XsEv23PPmUAxWJ8VMyN84tyJzEnUg4Yg3636Mvyw4Pk",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AFGx.png",
+    "decimals": 6
+  },
+  "HUBSx": {
+    "name": "HubSpot xStock",
+    "symbol": "HUBSx",
+    "mint": "Xs8sK7KXi6tWULhBq4a8197Ydz4zDdLxtKjK6gBF59x",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HUBSx.png",
+    "decimals": 6
+  },
+  "AMKRx": {
+    "name": "Amkor Technology xStock",
+    "symbol": "AMKRx",
+    "mint": "Xsqbg1tmAvNT5332hhX4hMSznqf2NJ1tz2cNWmAkRD3",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AMKRx.png",
+    "decimals": 6
+  },
+  "GMEDx": {
+    "name": "Globus Medical xStock",
+    "symbol": "GMEDx",
+    "mint": "XsMkiaVUP5GkFCSJJGcun75edh1FSsLkCtDC3piGK2j",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GMEDx.png",
+    "decimals": 6
+  },
+  "JKHYx": {
+    "name": "Jack Henry & Associates xStock",
+    "symbol": "JKHYx",
+    "mint": "XsQpEG5WPyZ5Pkno8mHrDXNfYNdeCUkgUEQcaHAQQ9g",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/JKHYx.png",
+    "decimals": 6
+  },
+  "IESCx": {
+    "name": "IES xStock",
+    "symbol": "IESCx",
+    "mint": "XsepazYXhizTmBmiZWfGwFnyUUSepwzQkLRgQyBp2Zg",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/IESCx.png",
+    "decimals": 6
+  },
+  "OCx": {
+    "name": "Owens-Corning xStock",
+    "symbol": "OCx",
+    "mint": "XseGSSi5kLz8eR539iXZ6tLz6r75UaHTQ6CHYkPjs9F",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/OCx.png",
+    "decimals": 6
+  },
+  "CRx": {
+    "name": "Crane xStock",
+    "symbol": "CRx",
+    "mint": "XskkJXTNFU8cFstbYCAtxTa18tLkuRFe1AWHQhiBLy7",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CRx.png",
+    "decimals": 6
+  },
+  "BMRNx": {
+    "name": "BioMarin Pharmaceutical xStock",
+    "symbol": "BMRNx",
+    "mint": "XsF6swLUV7mDXkG39Ywmgouktp1PXaJ3oyGnCDvYs9G",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BMRNx.png",
+    "decimals": 6
+  },
+  "JEFx": {
+    "name": "Jefferies Financial xStock",
+    "symbol": "JEFx",
+    "mint": "XsWiS1zCUByB7TkvLQcxbHW4wLQ45vm1Uqg9tkk81ur",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/JEFx.png",
+    "decimals": 6
+  },
+  "AMHx": {
+    "name": "American Homes 4 Rent xStock",
+    "symbol": "AMHx",
+    "mint": "XsFUCDYcyPbbYKFXaNUU661ZGip7mwjUEEk3W1YPCrK",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AMHx.png",
+    "decimals": 6
+  },
+  "FIVEx": {
+    "name": "Five Below xStock",
+    "symbol": "FIVEx",
+    "mint": "Xs7zvvE6QUtYmpMBrz4oWJexS7WSJPwJs7vQsvMCpaG",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/FIVEx.png",
+    "decimals": 6
+  },
+  "ITx": {
+    "name": "Gartner xStock",
+    "symbol": "ITx",
+    "mint": "XsfNvqLMCuDnxbtV3BhTm7ckCra1NpCVmokKHpvF9j3",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ITx.png",
+    "decimals": 6
+  },
+  "MDGLx": {
+    "name": "Madrigal Pharmaceuticals xStock",
+    "symbol": "MDGLx",
+    "mint": "Xs6hbDwJ8wr1zoxLusdhY2Vxjfz5C2doLVgZdZGRqvz",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MDGLx.png",
+    "decimals": 6
+  },
+  "VNOMx": {
+    "name": "Viper Energy xStock",
+    "symbol": "VNOMx",
+    "mint": "XsW8ts3iGPo8pxif5eFMv1Rnx6xE5Yw57Zhz2xYdhYL",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/VNOMx.png",
+    "decimals": 6
+  },
+  "UHALx": {
+    "name": "U-Haul xStock",
+    "symbol": "UHALx",
+    "mint": "XssRPrQZPGjgViEH2wVDAvDnFkiL9aFEE3dZ6Egbry6",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/UHALx.png",
+    "decimals": 6
+  },
+  "AHRx": {
+    "name": "American Healthcare REIT xStock",
+    "symbol": "AHRx",
+    "mint": "XsLEJJP8FpnaSP17ETzVfkTQFHBP4i4hRvmz3RKX7B8",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AHRx.png",
+    "decimals": 6
+  },
+  "IVZx": {
+    "name": "Invesco xStock",
+    "symbol": "IVZx",
+    "mint": "XsM5qDSyGiTVyHoi2VixmaEacByd3UCUoWtNhEqsyoH",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/IVZx.png",
+    "decimals": 6
+  },
+  "CORTx": {
+    "name": "Corcept Therapeutics xStock",
+    "symbol": "CORTx",
+    "mint": "Xs7YhGRdqb6nzTTPqViWue7TT3EXbmWwmD4XdrnW3Ux",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CORTx.png",
+    "decimals": 6
+  },
+  "STRLx": {
+    "name": "Sterling Infrastructure xStock",
+    "symbol": "STRLx",
+    "mint": "XsHLmetWDLLqs613YVRnkUsEZP4V1FSA3gTt33Dc66Y",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/STRLx.png",
+    "decimals": 6
+  },
+  "NWSAx": {
+    "name": "News xStock",
+    "symbol": "NWSAx",
+    "mint": "XsGXehA4smaWwx8yKTgdY1PQvaUxNQyT9gEt1Ly2B5f",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/NWSAx.png",
+    "decimals": 6
+  },
+  "AURx": {
+    "name": "Aurora Innovation xStock",
+    "symbol": "AURx",
+    "mint": "Xs7x2HYEazWDXpYQYPBiRYh6o2AbkYrdrFwaBfBxyaU",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AURx.png",
+    "decimals": 6
+  },
+  "Hx": {
+    "name": "Hyatt Hotels xStock",
+    "symbol": "Hx",
+    "mint": "Xs5d6SH8HCeyBRkXNfoLWVnqgBT6tz8HnBoyJES3Fi4",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/Hx.png",
+    "decimals": 6
+  },
+  "ARWRx": {
+    "name": "Arrowhead Pharmaceuticals xStock",
+    "symbol": "ARWRx",
+    "mint": "Xszh2XpEww4ndD8CyFzD5DcmqXpw7HMkEdSU1Ngunbe",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ARWRx.png",
+    "decimals": 6
+  },
+  "GWREx": {
+    "name": "Guidewire Software xStock",
+    "symbol": "GWREx",
+    "mint": "Xs6w8aJhwu1d5jKbmScXoitaDEE7HWhyujhkELeh4B5",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GWREx.png",
+    "decimals": 6
+  },
+  "NWSx": {
+    "name": "News xStock",
+    "symbol": "NWSx",
+    "mint": "XsbsXGj6Y3jVNh4MYH7khsonL14iYBUHukSReovZoQP",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/NWSx.png",
+    "decimals": 6
+  },
+  "MANHx": {
+    "name": "Manhattan Associates xStock",
+    "symbol": "MANHx",
+    "mint": "XsvSL6VixgcGgaPDBuHEyTfmR798Q4tdg2sCtwvev4M",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MANHx.png",
+    "decimals": 6
+  },
+  "CACIx": {
+    "name": "CACI International xStock",
+    "symbol": "CACIx",
+    "mint": "Xs7wD8JEF2KoED55Re7W6GDoHwA5QPGJvLwQYHYw5wr",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CACIx.png",
+    "decimals": 6
+  },
+  "BAXx": {
+    "name": "Baxter International xStock",
+    "symbol": "BAXx",
+    "mint": "XsFo6dYyRQwVtxbfdGs3zwyyQ1QBkh8D4ANjWXN3zTo",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BAXx.png",
+    "decimals": 6
+  },
+  "RVTYx": {
+    "name": "Revvity xStock",
+    "symbol": "RVTYx",
+    "mint": "XsVbwfq869bWTKpW95shx8woTpzVSmsbCEE7xsMqWQ6",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/RVTYx.png",
+    "decimals": 6
+  },
+  "TXRHx": {
+    "name": "Texas Roadhouse xStock",
+    "symbol": "TXRHx",
+    "mint": "XsWFY8Ems96uFPnZJ1NwXsqeH6bczLQDDvvvab14crQ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/TXRHx.png",
+    "decimals": 6
+  },
+  "CNAx": {
+    "name": "CNA Financial xStock",
+    "symbol": "CNAx",
+    "mint": "XsKfL6LbQaqnUfz3QZrBVwS3RqP34NKR3cmvbRu3doJ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CNAx.png",
+    "decimals": 6
+  },
+  "Wx": {
+    "name": "Wayfair xStock",
+    "symbol": "Wx",
+    "mint": "XsAdZrnayY88RC9cMEEaYnnKyBCALCwz6a4mmPTGUMT",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/Wx.png",
+    "decimals": 6
+  },
+  "FNx": {
+    "name": "Fabrinet xStock",
+    "symbol": "FNx",
+    "mint": "XsJ6W21MaWMQCqhRLbLTD82427vcMVzxULkomGRg4gJ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/FNx.png",
+    "decimals": 6
+  },
+  "BBIOx": {
+    "name": "BridgeBio Pharma xStock",
+    "symbol": "BBIOx",
+    "mint": "XsbJzb2V963yBoCKjRJqSLbNUeBsqy6uV4dVnCnNp4q",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BBIOx.png",
+    "decimals": 6
+  },
+  "DINOx": {
+    "name": "HF Sinclair xStock",
+    "symbol": "DINOx",
+    "mint": "XsVuEGU83SBvgQiuynK2qtinyPVyKukoTCACdJg2767",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DINOx.png",
+    "decimals": 6
+  },
+  "DOCNx": {
+    "name": "DigitalOcean xStock",
+    "symbol": "DOCNx",
+    "mint": "XsKJGRCayh5LQ6bsET8ZVip8BaRZbWmj9fjSnCcy9P6",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DOCNx.png",
+    "decimals": 6
+  },
+  "AGNCx": {
+    "name": "AGNC Investment xStock",
+    "symbol": "AGNCx",
+    "mint": "XsycyYwi9Kekp26jyGg3x5Fo1JDRr3XnTJmVaf5CRUb",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AGNCx.png",
+    "decimals": 6
+  },
+  "MEDPx": {
+    "name": "Medpace xStock",
+    "symbol": "MEDPx",
+    "mint": "XsPdH3m4B33ZaRS5saL1XGQnUVYsx1yyEyAxmNfcpCb",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MEDPx.png",
+    "decimals": 6
+  },
+  "WTSx": {
+    "name": "Watts Water Technologies xStock",
+    "symbol": "WTSx",
+    "mint": "XsMcyEj7KpLQyVXQ4GpSVERstPHrHzVqDG36myTJzjQ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/WTSx.png",
+    "decimals": 6
+  },
+  "CCKx": {
+    "name": "Crown xStock",
+    "symbol": "CCKx",
+    "mint": "XsHjSQhp7Eac5azSKy7cZbZGCrpEUAA3RseKh2X7c8C",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CCKx.png",
+    "decimals": 6
+  },
+  "ULSx": {
+    "name": "UL Solutions xStock",
+    "symbol": "ULSx",
+    "mint": "Xspg7dCVnegasgemg56htgBWpemdffjvY9joWyNvJww",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ULSx.png",
+    "decimals": 6
+  },
+  "HLx": {
+    "name": "Hecla Mining xStock",
+    "symbol": "HLx",
+    "mint": "Xsp5pDV28HxQDLcoC24G6G2yCNBvVpPJ3DZCjhs7YNR",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HLx.png",
+    "decimals": 6
+  },
+  "RBRKx": {
+    "name": "Rubrik xStock",
+    "symbol": "RBRKx",
+    "mint": "XsJRuk3Mn8wSkc3aTkG2oqxFJiZqC3YU3gmNZSFbLvb",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/RBRKx.png",
+    "decimals": 6
+  },
+  "OWLx": {
+    "name": "Blue Owl Capital xStock",
+    "symbol": "OWLx",
+    "mint": "Xsnb4PjGtFsvTyp7HJNWfJLEbK6MoSZV8o7xMo3PuBn",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/OWLx.png",
+    "decimals": 6
+  },
+  "CRBGx": {
+    "name": "Corebridge Financial xStock",
+    "symbol": "CRBGx",
+    "mint": "XswAx2kd4aKQtTszJ4zuA4nAY49hHzT82Vn8DqNcktY",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CRBGx.png",
+    "decimals": 6
+  },
+  "NVRx": {
+    "name": "NVR xStock",
+    "symbol": "NVRx",
+    "mint": "Xso5KNztULjrQZQGzJQEwGcwBLSneMDpunzSu243URw",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/NVRx.png",
+    "decimals": 6
+  },
+  "Ux": {
+    "name": "Unity Software xStock",
+    "symbol": "Ux",
+    "mint": "XsZygGhZ5GWq1TMrbBAibrH5Par33cKxrtZAuTQ9r9o",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/Ux.png",
+    "decimals": 6
+  },
+  "BENx": {
+    "name": "Franklin Templeton xStock",
+    "symbol": "BENx",
+    "mint": "XsHXhZf6yLqBvcbuswpbio7m6yNTMrMiQWWN7csQMAr",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BENx.png",
+    "decimals": 6
+  },
+  "CDEx": {
+    "name": "Coeur Mining xStock",
+    "symbol": "CDEx",
+    "mint": "Xst5zttaWoyT8Td5jNhxwVQ1ku4bSRv8EVJe3SHoGdc",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CDEx.png",
+    "decimals": 6
+  },
+  "IOTx": {
+    "name": "Samsara xStock",
+    "symbol": "IOTx",
+    "mint": "XsriZ58QT8GfKLep8Vof8oMGq3P9qPhowG8NfyLrLzQ",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/IOTx.png",
+    "decimals": 6
+  },
+  "IONQx": {
+    "name": "IonQ xStock",
+    "symbol": "IONQx",
+    "mint": "XsqFgFeprZEpayi92MTQGheZiNFmTi2TRJRmrHjCzMx",
+    "logo": "https://xstocks-metadata.backed.fi/logos/tokens/IONQx.png",
+    "decimals": 6
+  }
+}

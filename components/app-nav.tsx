@@ -20,7 +20,7 @@ function WalletLink() {
 
 export function AppNav({ ctaHref = "/app", ctaLabel = "Browse stocks", hideCta = false }: AppNavProps) {
   const pathname = usePathname();
-  const primary = [["/app", "Market"], ["/app/analytics", "Analyze"], ["/app/automation", "Automate"], ["/app/activity", "Activity"]];
+  const primary = [["/app", "Market"], ["/launch", "Launch"], ["/app/analytics", "Analyze"], ["/app/automation", "Automate"], ["/app/activity", "Activity"]];
   const secondary = [["/app/news", "News"], ["/app/alerts", "Watches"], ["/app/alerts/inbox", "Alert inbox"], ["/app/actions", "Events"], ["/app/learn/multipliers", "Share adjustments"]];
   const active = (href: string) => pathname === href || (href === "/app" && pathname.startsWith("/app/asset/")) || (href === "/app/automation" && pathname.startsWith(href + "/"));
   return (
@@ -44,7 +44,7 @@ export function AppFooterNav() {
   const pathname = usePathname();
   return (
     <nav className="footer-nav" aria-label="OpenStock sections">
-      {[["/app", "Market"], ["/app/analytics", "Analyze"], ["/app/automation", "Automate"], ["/app/activity", "Activity"], ["/app/wallet", "Wallet"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href === "/app/automation" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}</Link>)}
+      {[["/app", "Market"], ["/launch", "Launch"], ["/app/analytics", "Analyze"], ["/app/automation", "Automate"], ["/app/activity", "Activity"], ["/app/wallet", "Wallet"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href === "/app/automation" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}</Link>)}
     </nav>
   );
 }

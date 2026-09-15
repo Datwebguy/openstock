@@ -74,6 +74,9 @@ export default function HomePage() {
             <a href="#experience">The experience</a>
             <a href="#markets">Live stocks</a>
             <a href="#constellation">Constellation</a>
+            <Link href="/launch" style={{ color: "var(--solana-purple)", fontWeight: 700 }}>
+              Launch ✦
+            </Link>
             <a href="#workspace">Workspace</a>
             <a href="#faq">FAQ</a>
           </div>

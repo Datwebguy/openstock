@@ -57,7 +57,12 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
 
     {filtered.length ? <div className="stock-grid" aria-label="Tokenized stocks">{filtered.map((asset) => <article className="stock-card" key={asset.symbol}>
       <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`} aria-label={`${issuerName(asset)}, ${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{asset.price !== null && asset.price !== undefined ? displayPrice(asset.price) : "PENDING"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
-      <div className="stock-card__footer"><button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button></div>
+      <div className="stock-card__footer">
+        <button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button>
+        <Link href={`/launch?symbol=${asset.symbol}`} className="stock-card__launch-btn" title={`Launch a community token paired with ${asset.symbol}`}>
+          Pair & Launch ↗
+        </Link>
+      </div>
     </article>)}</div> : <div className="discovery-empty"><strong>{filter === "watchlist" && !query ? "Your watchlist starts with a little curiosity." : "No stocks match your search."}</strong><span>{filter === "watchlist" && !query ? "Save a stock using its star to keep it close. Your list stays in this browser." : "Try a company name or ticker, or reset your filters."}</span><button className="button button--light" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Browse all stocks</button></div>}
   </section>;
 }

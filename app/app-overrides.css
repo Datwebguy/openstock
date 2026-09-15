@@ -1,22 +1,43 @@
 .app-page { padding-top: 132px; }
 .app-market-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin: 44px 0 30px; }
-.app-market-header h1 { max-width: 540px; margin: 10px 0 0; font-family: var(--font-display), "DynaPuff", sans-serif; font-size: clamp(46px, 5.5vw, 76px); font-weight: 500; line-height: .95; letter-spacing: -.055em; }
+.app-market-header h1 { max-width: 540px; margin: 10px 0 0; font-family: var(--font-display, "Space Grotesk"), sans-serif; font-size: clamp(46px, 5.5vw, 76px); font-weight: 600; line-height: .95; letter-spacing: -.04em; color: var(--ink); }
 .app-market-header p { max-width: 360px; margin: 0; color: var(--muted); line-height: 1.55; }
 .app-tabs { display: flex; gap: 8px; margin-bottom: 22px; }
-.app-tab { padding: 11px 18px; border: 1px solid transparent; border-radius: 999px; color: #777487; background: transparent; font-size: 12px; font-weight: 700; }
-.app-tab--active { color: #3e4dba; background: #eef0ff; border-color: #d8ddff; }
+.app-tab { padding: 11px 18px; border: 1px solid transparent; border-radius: 999px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+.app-tab--active { color: var(--solana-purple); background: rgba(153, 69, 255, 0.08); border-color: rgba(153, 69, 255, 0.25); }
 .stock-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
-.stock-card { min-height: 270px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 7px 20px rgba(40,51,95,.06); transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s ease; }
-.stock-card:hover { transform: translateY(-5px); border-color: #bdc7ff; box-shadow: 0 18px 34px rgba(56,69,138,.12); }
-.stock-card__top { display: flex; justify-content: space-between; align-items: center; }
-.stock-card__bookmark { color: #6e7994; font-size: 20px; line-height: 1; }
-.stock-card__ticker { display: block; width: 100%; margin: 20px 0 24px; padding-bottom: 4px; border-bottom: 1px solid #dfe5f1; color: #7c88a2; font: 10px/1 monospace; letter-spacing: .12em; }
-.stock-card h2 { margin: 0 0 12px; font-family: var(--font-body), "DM Sans", sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -.035em; }
-.stock-card__price { display: block; font-size: 17px; font-weight: 700; }
-.stock-card__meta { display: block; margin-top: 7px; color: #78839d; font: 8px/1 monospace; letter-spacing: .12em; }
-.stock-card__footer { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 14px; border-top: 1px solid #dfe5f1; color: #71809d; font-size: 12px; }
-.stock-card__arrow { font-size: 19px; }
-.stock-logo { color: inherit; background: #fff; border: 1px solid #f0f2f8; box-shadow: 0 8px 20px rgba(50,60,100,.06); }
+.stock-card { min-height: 270px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 4px 20px rgba(15, 7, 34, 0.04); transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s ease; }
+.stock-card:hover { transform: translateY(-5px); border-color: rgba(153, 69, 255, 0.35); box-shadow: 0 16px 36px rgba(153, 69, 255, 0.12); }
+.stock-card__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.stock-card__bookmark { color: var(--muted); font-size: 20px; line-height: 1; }
+.stock-card__ticker { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: rgba(153, 69, 255, 0.08); color: var(--solana-purple); font: 600 11px/1 ui-monospace, monospace; letter-spacing: .08em; border: 1px solid rgba(153, 69, 255, 0.18); }
+.stock-card h2 { margin: 0 0 8px; font-family: var(--font-display, "Space Grotesk"), sans-serif; font-size: 21px; font-weight: 600; letter-spacing: -.03em; color: var(--ink); }
+.stock-card__price { display: block; font-size: 19px; font-weight: 700; color: var(--ink); }
+.stock-card__meta { display: block; margin-top: 8px; color: var(--muted); font: 10px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.stock-card__footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.stock-card__arrow { font-size: 19px; color: var(--solana-purple); }
+.stock-logo { color: inherit; background: #fff; border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(15, 7, 34, 0.06); }
+.stock-card__launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--solana-purple);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(153, 69, 255, 0.08);
+  border: 1px solid rgba(153, 69, 255, 0.2);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.stock-card__launch-btn:hover {
+  background: linear-gradient(100deg, var(--solana-purple), #6c5ce7 46%, var(--solana-green));
+  color: #ffffff;
+  border-color: transparent;
+  transform: translateY(-1px);
+}
 .app-panel { margin-top: 36px; }
 @media (max-width: 900px) { .stock-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 560px) { .app-market-header { display: block; } .app-market-header p { margin-top: 18px; } .stock-grid { grid-template-columns: 1fr; } .stock-card { min-height: 242px; } }
+

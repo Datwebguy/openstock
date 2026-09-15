@@ -2,17 +2,17 @@
    Controls: 10px radius. Panels: 20px. Marketing compositions: 28px.
    Landing dials: variance 7, motion 5, density 3. Native CSS + existing React. */
 :root {
-  --paper: #f5f7f5; --ink: #172c25; --muted: #596c63; --line: #dce4de;
-  --surface: #ffffff; --accent: #176748; --accent-soft: #e5efe8;
-  --accent-ink: #ffffff; --warning: #875b19; --nav-bg: rgba(250,252,250,.94); --nav-border: #dce4de;
-  --solana-purple: #176748; --solana-green: #30b880; --solana-blue: #438b70;
+  --paper: #f7f5fc; --ink: #161321; --muted: #6e6782; --line: rgba(22, 19, 33, 0.1);
+  --surface: #ffffff; --accent: #9945ff; --accent-soft: rgba(153, 69, 255, 0.08);
+  --accent-ink: #ffffff; --warning: #eab308; --nav-bg: rgba(255, 255, 255, 0.85); --nav-border: rgba(22, 19, 33, 0.1);
+  --solana-purple: #9945ff; --solana-green: #14f195; --solana-blue: #03e1ff;
   --radius: 20px;
 }
 html[data-theme="dark"] {
-  --paper: #101a16; --ink: #edf3ef; --muted: #afc1b5; --line: #304039;
-  --surface: #1a2921; --accent: #96dbb4; --accent-soft: #233d2d;
-  --accent-ink: #102c1e; --warning: #edc080; --nav-bg: rgba(16,26,22,.95); --nav-border: #304039;
-  --solana-purple: #96dbb4; --solana-green: #72d4a3; --solana-blue: #8ec7ab;
+  --paper: #07050f; --ink: #f5f2fc; --muted: #aba2c5; --line: rgba(255, 255, 255, 0.1);
+  --surface: #0f0b1d; --accent: #9945ff; --accent-soft: rgba(153, 69, 255, 0.16);
+  --accent-ink: #ffffff; --warning: #facc15; --nav-bg: rgba(13, 9, 26, 0.88); --nav-border: rgba(255, 255, 255, 0.12);
+  --solana-purple: #9945ff; --solana-green: #14f195; --solana-blue: #03e1ff;
 }
 body { background: var(--paper); color: var(--ink); }
 button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
@@ -20,18 +20,18 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 .skip-link { position: fixed; top: 8px; left: 16px; z-index: 60; padding: 14px 20px; transform: translateY(-160%); background: var(--surface); border: 2px solid var(--accent); border-radius: 10px; }
 .skip-link:focus { transform: none; }
-.nav, html[data-theme="dark"] .nav { min-height: 66px; top: 16px; border-radius: 18px; background: var(--nav-bg); border-color: var(--line); box-shadow: 0 8px 30px #15322208; gap: 20px; }
+.nav, html[data-theme="dark"] .nav { min-height: 66px; top: 16px; border-radius: 18px; background: var(--nav-bg); border-color: var(--line); box-shadow: 0 8px 30px rgba(153, 69, 255, 0.08); gap: 20px; }
 .nav-links, html[data-theme="dark"] .nav-links { gap: 8px; color: var(--muted); }
 .nav-links a { padding: 10px 12px; border-radius: 9px; }
 .nav-links a[aria-current="page"], .nav-links a:hover { color: var(--accent); background: var(--accent-soft); }
-.button { min-height: 46px; border-radius: 10px; gap: 14px; font-weight: 700; }
-.button--gradient, .story .button--gradient { color: var(--accent-ink); background: var(--accent); }
-.button:hover { transform: translateY(-2px); box-shadow: 0 7px 18px #173f2314; }
-.button--light, html[data-theme="dark"] .button--light { color: var(--ink); background: var(--surface); }
-.button--dark, html[data-theme="dark"] .button--dark { color: var(--accent-ink); background: var(--accent); }
-button.theme-toggle { color: var(--ink); border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.button { min-height: 46px; border-radius: 999px; gap: 14px; font-weight: 700; }
+.button--gradient, .story .button--gradient { color: #ffffff; background: linear-gradient(100deg, var(--solana-purple), #6c5ce7 46%, var(--solana-green)); }
+.button:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(153, 69, 255, 0.2); }
+.button--light, html[data-theme="dark"] .button--light { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
+.button--dark, html[data-theme="dark"] .button--dark { color: #ffffff; background: linear-gradient(100deg, var(--solana-purple), #6c5ce7 46%, var(--solana-green)); }
+button.theme-toggle { color: var(--ink); border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
 .brand { white-space: nowrap; }
-.brand-mark { background: var(--accent-soft); color: var(--accent); }
+.brand-mark { background: linear-gradient(135deg, var(--solana-purple), var(--solana-blue) 50%, var(--solana-green)); color: #07070d; border-radius: 9px 9px 9px 2px; }
 .story { background: var(--paper); color: var(--ink); }
 .story .container { width: min(1220px, calc(100% - 80px)); }
 .story section[id] { scroll-margin-top: 110px; }

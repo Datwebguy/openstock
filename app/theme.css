@@ -1,21 +1,31 @@
 :root {
+  --solana-purple: #9945ff;
+  --solana-green: #14f195;
+  --solana-blue: #03e1ff;
+  --paper: #f7f5fc;
+  --ink: #161321;
+  --muted: #6e6782;
+  --line: rgba(22, 19, 33, 0.1);
   --surface: #ffffff;
-  --nav-bg: rgba(250, 249, 253, .74);
-  --nav-border: rgba(255, 255, 255, .8);
-  --positive: #118967;
-  --danger: #b54655;
+  --nav-bg: rgba(255, 255, 255, 0.85);
+  --nav-border: rgba(22, 19, 33, 0.1);
+  --positive: #14f195;
+  --danger: #f07180;
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #07070d;
-  --ink: #f4f1fb;
-  --muted: #b7b1c6;
-  --line: rgba(255, 255, 255, .12);
-  --surface: #161422;
-  --nav-bg: rgba(12, 10, 22, .82);
-  --nav-border: rgba(255, 255, 255, .12);
-  --positive: #3ee6b0;
+  --solana-purple: #9945ff;
+  --solana-green: #14f195;
+  --solana-blue: #03e1ff;
+  --paper: #07050f;
+  --ink: #f5f2fc;
+  --muted: #aba2c5;
+  --line: rgba(255, 255, 255, 0.1);
+  --surface: #0f0b1d;
+  --nav-bg: rgba(13, 9, 26, 0.88);
+  --nav-border: rgba(255, 255, 255, 0.12);
+  --positive: #14f195;
   --danger: #f07180;
 }
 
