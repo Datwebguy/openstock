@@ -22,8 +22,8 @@ export function MarketNewsFeed({ symbols, symbol, compact = false }: { symbols: 
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState("Loading");
   const [social, setSocial] = useState<{ bluesky: boolean }>({ bluesky: false });
-  const load = useCallback(async () => {
-    setStatus("Loading");
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setStatus("Loading");
     try {
       const query = selected === "all" ? "" : "?symbol=" + encodeURIComponent(selected);
       const response = await fetch("/api/news" + query, { cache: "no-store" });
@@ -33,12 +33,25 @@ export function MarketNewsFeed({ symbols, symbol, compact = false }: { symbols: 
       setStatus((payload.items?.length ?? 0) ? "" : "No news.");
     } catch (error) { setItems([]); setStatus(error instanceof Error ? error.message : "News unavailable."); }
   }, [selected]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = window.setInterval(refresh, 300_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
   const visible = useMemo(() => items.filter((item) => mode === "all" || item.channel === mode).slice(0, compact ? 3 : 18), [compact, items, mode]);
   return <section className={compact ? styles.compact : styles.feed} aria-live="polite">
     {compact ? <div className={styles.feedHead}><div><h2>News</h2></div><Link href="/app/news" className={styles.allLink}>All news</Link></div> : <div className={styles.feedHead}><button className="button button--light" type="button" onClick={() => void load()}>Refresh</button></div>}
     {!compact ? <div className={styles.controls}><label><span className="sr-only">Choose stock</span><select value={selected} onChange={(event) => setSelected(event.target.value)}><option value="all">All supported stocks</option>{symbols.map((item) => <option key={item.symbol} value={item.symbol}>{item.name}</option>)}</select></label><div className={styles.filters} role="group" aria-label="News type"><button type="button" className={mode === "all" ? styles.active : ""} onClick={() => setMode("all")}>All</button><button type="button" className={mode === "news" ? styles.active : ""} onClick={() => setMode("news")}>Reporting</button><button type="button" className={mode === "social" ? styles.active : ""} onClick={() => setMode("social")}>Social</button></div></div> : null}
-    <div className={styles.list}>{status.startsWith("Loading") ? [1, 2, 3].map((item) => <div className={styles.skeleton} key={item} />) : visible.map((item) => <a className={styles.item} key={item.id} href={item.url} target="_blank" rel="noreferrer"><div className={styles.itemMeta}><span>{item.channel === "news" ? "Reporting" : "Social"}</span><span>{item.source}{item.author ? " " + item.author : ""}</span><time dateTime={item.publishedAt}>{timeAgo(item.publishedAt)}</time></div><strong>{item.headline}</strong><span className={styles.open}>Open source ↗</span></a>)}</div>
+    <div className={styles.list}>{status.startsWith("Loading") ? [1, 2, 3].map((item) => <div className={styles.skeleton} key={item} />) : visible.map((item) => <a className={styles.item} key={item.id} href={item.url} target="_blank" rel="noreferrer"><div className={styles.itemMeta}><span>{item.channel === "news" ? "Reporting" : "Social"}</span>{item.symbol ? <span>{item.symbol}</span> : null}<span>{item.source}{item.author ? " " + item.author : ""}</span><time dateTime={item.publishedAt}>{timeAgo(item.publishedAt)}</time></div><strong>{item.headline}</strong><span className={styles.open}>Open source ↗</span></a>)}</div>
     {!status.startsWith("Loading") && visible.length === 0 ? <p className={styles.empty}>{status}</p> : null}
     {!compact ? <div className={styles.note}><span>{social.bluesky ? "" : "Social unavailable."}</span><span>News is context, not advice.</span></div> : null}
   </section>;

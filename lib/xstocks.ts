@@ -1,5 +1,7 @@
+import curatedSymbols from "@/lib/curated-symbols.json";
+
 export const XSTOCKS_API_BASE = process.env.XSTOCKS_API_BASE ?? "https://api.xstocks.fi/api/v2";
-export const CURATED_SYMBOLS = ["AAPLx", "AMZNx", "GOOGLx", "NVDAx", "TSLAx", "METAx", "MSFTx", "COINx", "CRCLx", "SPYx"];
+export const CURATED_SYMBOLS: string[] = curatedSymbols;
 type Stablecoin = { symbol?: string; currency?: string; address?: string; decimals?: number; solanaTokenProgram?: "TokenProgram" | "Token2022Program" };
 export type XStocksAsset = { id: string; name: string; symbol: string; logo?: string; description?: string; isTradingHalted?: boolean; underlying?: { symbol?: string; type?: "Equity" | "ETF" | null; listingCountry?: string | null } | null; trading?: { isTradingHalted?: boolean; currentPeriod?: "market" | "extended" | "overnight" | "closed"; openNow?: boolean; nextChangeAt?: string | null; exchange?: { abbreviation?: string; name?: string; timezone?: string } | null } | null; deployments?: Array<{ network?: string; address?: string; decimals?: number; stablecoins?: Stablecoin[]; solanaTokenProgram?: "TokenProgram" | "Token2022Program" }> };
 export type XStocksMultiplier = { currentMultiplier?: number | null; newMultiplier?: number | null; activationDateTime?: number | string | null; reason?: "FeeAccrual" | "Dividend" | "Split" | "ReverseSplit" | "Administrative" | null };

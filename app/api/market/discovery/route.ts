@@ -7,7 +7,9 @@ export async function GET() {
     const results = await Promise.allSettled(CURATED_SYMBOLS.map(async (symbol) => {
       const asset = await getHydratedAsset(symbol);
       const pools = await getMeteoraPools(asset);
-      return { symbol, tvl: pools.reduce((sum, pool) => sum + pool.tvl, 0), volume24h: pools.reduce((sum, pool) => sum + pool.volume24h, 0), poolCount: pools.length, priceUsd: pools.find((pool) => pool.priceUsd !== null)?.priceUsd ?? null };
+      const tvls = pools.map((pool) => pool.tvl).filter((value): value is number => value !== null);
+      const volumes = pools.map((pool) => pool.volume24h).filter((value): value is number => value !== null);
+      return { symbol, tvl: tvls.length ? tvls.reduce((sum, value) => sum + value, 0) : null, volume24h: volumes.length ? volumes.reduce((sum, value) => sum + value, 0) : null, poolCount: pools.length, priceUsd: pools.find((pool) => pool.priceUsd !== null)?.priceUsd ?? null };
     }));
     const metrics = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
     return NextResponse.json({ metrics, generatedAt: new Date().toISOString() }, { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=60" } });

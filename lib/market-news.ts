@@ -25,7 +25,7 @@ function part(value: string, tag: string) {
 }
 function queryFor(symbol?: string) {
   if (symbol && TERMS[symbol]) return TERMS[symbol].company + " " + TERMS[symbol].ticker + " stock";
-  return "xStocks OR tokenized stocks Solana OR (Apple Amazon Alphabet Nvidia Tesla Meta Microsoft Coinbase Circle) stock";
+  return "xStocks OR tokenized stocks Solana";
 }
 function date(value: string | null | undefined) {
   const stamp = value ? new Date(value).getTime() : Number.NaN;
@@ -59,14 +59,35 @@ async function blueskyPosts(symbol?: string): Promise<MarketNewsItem[]> {
 
 export async function getMarketNews(symbol?: string) {
   const safeSymbol = symbol && CURATED_SYMBOLS.includes(symbol) ? symbol : undefined;
-  const results = await Promise.allSettled([googleNews(safeSymbol), blueskyPosts(safeSymbol)]);
-  const items = results.flatMap((result) => result.status === "fulfilled" ? result.value : []).sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  const reportingSymbols = safeSymbol ? [safeSymbol] : CURATED_SYMBOLS;
+  const reportingResults = await Promise.allSettled(reportingSymbols.map((item) => googleNews(item)));
+  const socialResult = await blueskyPosts(safeSymbol).then((items) => ({ status: "fulfilled" as const, value: items })).catch(() => ({ status: "rejected" as const }));
+  const items = [
+    ...reportingResults.flatMap((result) => result.status === "fulfilled" ? result.value : []),
+    ...(socialResult.status === "fulfilled" ? socialResult.value : []),
+  ].sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
   const seen = new Set<string>();
   const unique = items.filter((item) => {
     const key = item.channel + ":" + item.headline.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, 24);
-  return { items: unique, social: { bluesky: results[1].status === "fulfilled" }, failures: results.flatMap((result, index) => result.status === "rejected" ? [["news", "Bluesky"][index]] : []) };
+  });
+  // The combined feed must represent every listed asset. Preserve the most
+  // recent item for each name first, then fill the rest with the newest feed.
+  // Asset-specific feeds keep their normal strict newest-first order.
+  const coverage = safeSymbol ? [] : CURATED_SYMBOLS.flatMap((item) => {
+    const story = unique.find((candidate) => candidate.channel === "news" && candidate.symbol === item);
+    return story ? [story] : [];
+  }).sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  const coverageIds = new Set(coverage.map((item) => item.id));
+  const selected = [...coverage, ...unique.filter((item) => !coverageIds.has(item.id))].slice(0, 48);
+  return {
+    items: selected,
+    social: { bluesky: socialResult.status === "fulfilled" },
+    failures: [
+      ...reportingResults.flatMap((result) => result.status === "rejected" ? ["News"] : []),
+      ...(socialResult.status === "rejected" ? ["Bluesky"] : []),
+    ],
+  };
 }

@@ -3,9 +3,9 @@ import { PublicKey } from "@solana/web3.js";
 import { getMarketEvidence } from "@/lib/market-evidence";
 import { getHydratedAsset, XStocksApiError } from "@/lib/xstocks";
 import { uiToRaw } from "@/lib/scaled-amounts";
+import { USDC_DECIMALS, USDC_MINT } from "@/lib/solana";
 
 const JUPITER_API_BASE = process.env.JUPITER_SWAP_API_BASE ?? "https://api.jup.ag/swap/v2";
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 type TradeRequest = { symbol?: string; side?: "buy" | "sell"; shares?: number; wallet?: string };
 type OrderResponse = { transaction?: string | null; requestId?: string; lastValidBlockHeight?: number; errorMessage?: string };
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const halted = Boolean(asset.isTradingHalted || asset.trading?.isTradingHalted), multiplier = asset.multiplier?.currentMultiplier, decimals = evidence.tokenDecimals.data, stockMint = asset.solanaDeployment?.address;
     if (halted) return NextResponse.json({ error: "Trading is paused for this stock." }, { status: 409 });
     if (typeof price !== "number" || !Number.isFinite(price) || typeof multiplier !== "number" || !Number.isFinite(multiplier) || decimals === null || decimals === undefined || !stockMint) return NextResponse.json({ error: "No live issuer or onchain price is available for this order." }, { status: 409 });
-    const coin = stablecoin(asset), stableMint = coin.address ?? USDC_MINT, stableDecimals = typeof coin.decimals === "number" && Number.isInteger(coin.decimals) && coin.decimals >= 0 && coin.decimals <= 18 ? coin.decimals : 6;
+    const coin = stablecoin(asset), stableMint = coin.address ?? USDC_MINT, stableDecimals = typeof coin.decimals === "number" && Number.isInteger(coin.decimals) && coin.decimals >= 0 && coin.decimals <= 18 ? coin.decimals : USDC_DECIMALS;
     const inputMint = side === "buy" ? stableMint : stockMint, outputMint = side === "buy" ? stockMint : stableMint, sellConversion = side === "sell" ? uiToRaw(Number(shares), multiplier, decimals) : null;
     if (side === "sell" && !sellConversion) return NextResponse.json({ error: "The share amount could not be converted safely." }, { status: 400 });
     const inputAmount = side === "buy" ? String(Math.max(1, Math.round(Number(shares) * price * 10 ** stableDecimals))) : sellConversion!.rawAmount;

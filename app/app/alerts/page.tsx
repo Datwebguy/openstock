@@ -8,5 +8,5 @@ const names: Record<string, string> = { AAPLx: "Apple", AMZNx: "Amazon", GOOGLx:
 export default async function AlertsPage({ searchParams }: { searchParams: Promise<{ symbol?: string }> }) {
   const { symbol } = await searchParams;
   const initialSymbol = symbol && CURATED_SYMBOLS.includes(symbol) ? symbol : undefined;
-  return <main className="page"><AppNav ctaHref="/app" ctaLabel="Market" /><div className="container app-page"><Link className="back-link" href="/app">← Market</Link><header className="app-market-header history-header"><div><h1>Watches</h1></div></header><MarketWatchWorkspace symbols={CURATED_SYMBOLS.map((item) => ({ symbol: item, name: names[item] ?? item }))} initialSymbol={initialSymbol} /></div><AppFooterNav /></main>;
+  return <main className="page"><AppNav ctaHref="/app" ctaLabel="Market" /><div className="container app-page"><Link className="back-link" href="/app">← Market</Link><header className="app-market-header history-header"><div><h1>Watches</h1><p className="workspace-description">Choose a price or liquidity condition. Check the alert inbox while OpenStock is open.</p></div></header><MarketWatchWorkspace symbols={CURATED_SYMBOLS.map((item) => ({ symbol: item, name: names[item] ?? item }))} initialSymbol={initialSymbol} /></div><AppFooterNav /></main>;
 }

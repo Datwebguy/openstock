@@ -17,16 +17,15 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("alphabetical");
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [storageMessage, setStorageMessage] = useState("");
 
   useEffect(() => {
-    try { setWatchlist(JSON.parse(localStorage.getItem("openstock:watchlist") ?? "[]")); } catch { setWatchlist([]); }
+    try { const saved: unknown = JSON.parse(localStorage.getItem("openstock:watchlist") ?? "[]"); setWatchlist(Array.isArray(saved) ? saved.filter((item): item is string => typeof item === "string") : []); } catch { setWatchlist([]); }
   }, []);
   function toggleWatchlist(symbol: string) {
-    setWatchlist((current) => {
-      const next = current.includes(symbol) ? current.filter((item) => item !== symbol) : [...current, symbol];
-      localStorage.setItem("openstock:watchlist", JSON.stringify(next));
-      return next;
-    });
+    const next = watchlist.includes(symbol) ? watchlist.filter((item) => item !== symbol) : [...watchlist, symbol];
+    setWatchlist(next);
+    try { localStorage.setItem("openstock:watchlist", JSON.stringify(next)); setStorageMessage(""); } catch { setStorageMessage("Your watchlist is available for this visit, but this browser could not save it."); }
   }
 
   const filtered = useMemo(() => {
@@ -45,19 +44,20 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   }, [assets, filter, query, sort, watchlist]);
 
   return <section className="discovery" aria-label="Market discovery">
+    {storageMessage ? <p className="workspace-note" role="status">{storageMessage}</p> : null}
     <div className="discovery-toolbar">
       <div className="discovery-search"><span aria-hidden="true">⌕</span><label className="sr-only" htmlFor="stock-search">Search stocks</label><input id="stock-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Apple, Tesla, AAPL…" /></div>
       <div className="discovery-filters" role="group" aria-label="Filter stocks">
-        {(["all", "watchlist"] as Filter[]).map((item) => <button type="button" className={filter === item ? "is-active" : ""} onClick={() => setFilter(item)} key={item}>{item === "all" ? "All stocks" : "Watchlist"}</button>)}
+        {(["all", "watchlist"] as Filter[]).map((item) => <button type="button" aria-pressed={filter === item} className={filter === item ? "is-active" : ""} onClick={() => setFilter(item)} key={item}>{item === "all" ? "All stocks" : "Watchlist (" + watchlist.length + ")"}</button>)}
       </div>
       <label className="discovery-sort">Sort by<select value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="alphabetical">Name</option><option value="price-high">Price: high to low</option><option value="price-low">Price: low to high</option></select></label>
     </div>
 
-    <div className="discovery-results"><span>{filtered.length}</span>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</button> : <Link href="/app/actions">Events</Link>}</div>
+    <div className="discovery-results"><span role="status">{filtered.length} {filtered.length === 1 ? "stock" : "stocks"}{filter === "watchlist" ? " in your watchlist" : " to explore"}</span>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</button> : <span>Issuer reference prices</span>}</div>
 
     {filtered.length ? <div className="stock-grid" aria-label="Tokenized stocks">{filtered.map((asset) => <article className="stock-card" key={asset.symbol}>
       <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`} aria-label={`${issuerName(asset)}, ${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{asset.price !== null && asset.price !== undefined ? displayPrice(asset.price) : "PENDING"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
       <div className="stock-card__footer"><button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button></div>
-    </article>)}</div> : <div className="discovery-empty"><strong>No stocks found.</strong><span>Clear filters.</span></div>}
+    </article>)}</div> : <div className="discovery-empty"><strong>{filter === "watchlist" && !query ? "Your watchlist starts with a little curiosity." : "No stocks match your search."}</strong><span>{filter === "watchlist" && !query ? "Save a stock using its star to keep it close. Your list stays in this browser." : "Try a company name or ticker, or reset your filters."}</span><button className="button button--light" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Browse all stocks</button></div>}
   </section>;
 }

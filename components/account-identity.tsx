@@ -1,6 +1,48 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import bs58 from "bs58";
-type Provider = { publicKey?: { toString(): string } | null; connect(): Promise<{ publicKey?: { toString(): string } | null }>; signMessage?(message: Uint8Array): Promise<Uint8Array | { signature: Uint8Array }> };
-function wallet() { const current = window as Window & { solana?: Provider; solflare?: Provider }; return current.solana ?? current.solflare ?? null; }
-export function AccountIdentity() { const [walletAddress, setWalletAddress] = useState<string | null>(null); const [verified, setVerified] = useState(false); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); useEffect(() => { fetch("/api/account", { cache: "no-store" }).then((response) => response.json()).then((data: { account?: { wallet?: string } | null }) => { if (data.account?.wallet) { setWalletAddress(data.account.wallet); setVerified(true); } }).catch(() => undefined); }, []); async function verify() { const provider = wallet(); if (!provider) { setMessage("Install Phantom or Solflare."); return; } if (!provider.signMessage) { setMessage("Wallet cannot verify."); return; } setBusy(true); try { const connected = await provider.connect(); const address = connected.publicKey?.toString() ?? provider.publicKey?.toString(); if (!address) throw new Error("Choose an account and retry."); setWalletAddress(address); const challenge = await fetch("/api/account/challenge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ wallet: address }) }).then((response) => response.json() as Promise<{ message?: string; error?: string }>); if (!challenge.message) throw new Error(challenge.error ?? "Verification unavailable. Retry."); const signed = await provider.signMessage(new TextEncoder().encode(challenge.message)); const signature = signed instanceof Uint8Array ? signed : signed.signature; const result = await fetch("/api/account/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ wallet: address, signature: bs58.encode(signature) }) }).then((response) => response.json() as Promise<{ account?: unknown; error?: string }>); if (!result.account) throw new Error(result.error ?? "Verification failed. Retry."); setVerified(true); setMessage("Verified."); } catch (error) { setMessage(error instanceof Error ? error.message : "Verification cancelled."); } finally { setBusy(false); } } return <section className="panel settings-card settings-card--verify"><div><h2>Verify wallet</h2><p>{verified && walletAddress ? walletAddress.slice(0, 6) + "…" + walletAddress.slice(-4) : message}</p></div><button className="button button--light" type="button" onClick={() => void verify()} disabled={busy || verified}>{busy ? "Verifying" : verified ? "Verified" : "Verify wallet"}</button></section>; }
+import { shortWallet, useWallet } from "@/components/wallet-session";
+
+export function AccountIdentity() {
+  const { address, connect, signMessage } = useWallet();
+  const [verified, setVerified] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/account", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { account?: { wallet?: string } | null }) => {
+        if (data.account?.wallet && data.account.wallet === address) setVerified(true);
+      })
+      .catch(() => undefined);
+  }, [address]);
+
+  async function verify() {
+    setBusy(true);
+    try {
+      const walletAddress = address ?? await connect();
+      if (!walletAddress) throw new Error("Connect a wallet first.");
+      const challenge = await fetch("/api/account/challenge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ wallet: walletAddress }) }).then((response) => response.json() as Promise<{ message?: string; error?: string }>);
+      if (!challenge.message) throw new Error(challenge.error ?? "Verification unavailable. Retry.");
+      const signature = await signMessage(new TextEncoder().encode(challenge.message));
+      const result = await fetch("/api/account/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ wallet: walletAddress, signature: bs58.encode(signature) }) }).then((response) => response.json() as Promise<{ account?: unknown; error?: string }>);
+      if (!result.account) throw new Error(result.error ?? "Verification failed. Retry.");
+      setVerified(true);
+      setMessage("Verified.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Verification cancelled.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="panel settings-card settings-card--verify">
+    <div>
+      <h2>Verify wallet</h2>
+      <p>{verified && address ? shortWallet(address) : message || "Sign once to unlock alerts and automation."}</p>
+    </div>
+    <button className="button button--light" type="button" onClick={() => void verify()} disabled={busy || verified}>{busy ? "Verifying" : verified ? "Verified" : address ? "Verify wallet" : "Connect and verify"}</button>
+  </section>;
+}

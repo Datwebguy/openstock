@@ -9,10 +9,12 @@ The app uses live xStocks data and public market sources to show issuer identity
 - Live xStocks issuer data, reference prices, market phase, reserve data, oracle metadata, company updates, and share adjustments.
 - Jupiter market quotes, Meteora liquidity context, and optional Pyth price checks.
 - Share amount calculations that stay aligned with the current issuer adjustment.
-- A stock-logo network on the homepage and stock-specific motion on asset details.
-- Live order preparation through Jupiter Swap API v2, with a user-owned Phantom or Solflare wallet signing boundary. OpenStock never creates, stores, or controls wallets.
+- Listed xStock names on the homepage, linked into the live market.
+- Live order preparation through Jupiter Swap API v2 only when `JUPITER_API_KEY` is set. Without it, the desk stays browse-only and saves paper reviews locally. Signing happens in the user's Phantom or Solflare wallet. OpenStock never creates, stores, or controls wallets.
 - Onchain context remains available outside issuer reference hours; the UI labels official reference data separately from executable or indicative Solana quotes.
-- Local review records at `/app/receipt/[id]`, live receipt/history views at `/app/orders` and `/app/receipts`, wallet settings at `/app/you`, and a plain-language share-adjustment guide at `/app/learn/multipliers`.
+- Local review records at `/app/receipt/[id]`, history at `/app/activity`, wallet and holdings at `/app/wallet`, and a plain-language share-adjustment guide at `/app/learn/multipliers`. `/app/orders` and `/app/receipts` redirect to Activity.
+- One wallet session across market, orders, automation, and holdings. Connect once; the same address is reused until you disconnect.
+- Automation review lives at `/app/automation/review` after you press **Review rule**. It is not a separate nav item.
 
 ## Run locally
 
@@ -23,7 +25,7 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-Copy `.env.example` to `.env.local` when changing data sources. `PYTH_HERMES_API_KEY` is optional. Set `JUPITER_API_KEY` only when you are ready to enable server-side live route preparation and execution; no key means the app remains browse-only and will not request a signature.
+Copy `.env.example` to `.env.local` when changing data sources. `PYTH_HERMES_API_KEY` is optional. Set `JUPITER_API_KEY` only when you are ready to enable server-side live route preparation and execution; no key means the app remains browse-only and will not request a signature. Set `NEXT_PUBLIC_PRIVY_APP_ID` to add email login beside Phantom and Solflare.
 
 The app does not ship with a wallet, private key, seed phrase, or funded account. A user must explicitly connect an existing wallet and approve each transaction.
 
@@ -32,6 +34,7 @@ The app does not ship with a wallet, private key, seed phrase, or funded account
 ```bash
 npm run build
 npm run typecheck
+npm test
 ```
 
 The browser checklist is in `docs/OPENSTOCK_QA_CHECKLIST.md`.

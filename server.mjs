@@ -1,12 +1,16 @@
+import { createRequire } from "node:module";
 import { createServer } from "node:http";
 import next from "next";
 import { WebSocketServer } from "ws";
+
+const require = createRequire(import.meta.url);
+const curated = require("./lib/curated-symbols.json");
 
 const port = Number(process.env.PORT ?? 3000);
 const dev = process.argv.includes("--dev");
 const app = next({ dev });
 const handle = app.getRequestHandler();
-const symbols = new Set(["AAPLx", "AMZNx", "GOOGLx", "NVDAx", "TSLAx", "METAx", "MSFTx", "COINx", "CRCLx", "SPYx"]);
+const symbols = new Set(curated);
 const sockets = new Set();
 
 await app.prepare();

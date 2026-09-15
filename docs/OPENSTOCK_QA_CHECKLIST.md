@@ -3,7 +3,7 @@
 ## Browser and visual
 
 - Test landing and app at 375, 768, 1440 widths.
-- Test light and dark modes.
+- Test light and dark modes (nav Dark/Light control, or `prefers-color-scheme`).
 - Test keyboard navigation, focus, Escape, and dialog focus trapping.
 - Test `prefers-reduced-motion`.
 - Check no horizontal overflow or sticky navigation obstruction.
@@ -28,7 +28,7 @@
 
 ## Order safety
 
-- Paper mode is the default in development/demo.
+- Paper mode is the default when `JUPITER_API_KEY` is unset. Live signing is disabled until that key is present.
 - Live order requires explicit user intent and wallet signature.
 - Expired quotes cannot be submitted.
 - Hard-block states cannot be bypassed through animation or keyboard shortcuts.

@@ -19,8 +19,9 @@ export default async function AppPage() {
   return <main className="page">
 <AppNav hideCta />
     <div className="app-page container">
+      <header className="workspace-heading"><div><span className="workspace-kicker">Your market workspace</span><h1>Find your next perspective.</h1><p>Explore xStocks, save a watchlist, and inspect the context behind each price.</p></div><a className="workspace-help" href="/app/learn/multipliers">New to xStocks? Start here ↗</a></header>
       <section id="stock-market" className="market-browse-anchor" aria-label="Available tokenized stocks">
-        {error ? <div className="data-state data-state--error" role="alert"><strong>Market unavailable.</strong><span>Refresh.</span></div> : <MarketDiscovery assets={assets} />}
+        {error ? <div className="data-state data-state--error" role="alert"><strong>Market data is temporarily unavailable.</strong><span>We could not load the issuer feed. Try again in a moment.</span><a className="button button--light" href="/app">Try again</a></div> : <MarketDiscovery assets={assets} />}
       </section>
     </div><AppFooterNav />
   </main>;

@@ -28,3 +28,7 @@ services:
         sync: false
       - key: JUPITER_SWAP_API_BASE
         sync: false
+      - key: JUPITER_PRICE_URL
+        sync: false
+      - key: NEXT_PUBLIC_PRIVY_APP_ID
+        sync: false

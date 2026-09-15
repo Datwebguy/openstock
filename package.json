@@ -7,18 +7,16 @@
     "build": "next build",
     "start": "node server.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node scripts/verify-scaled-amounts.mjs"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.8",
-    "@react-three/fiber": "^9.7.0",
     "@solana/web3.js": "^1.99.0",
     "bs58": "^6.0.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "simple-icons": "^16.30.0",
-    "three": "^0.186.0",
     "tweetnacl": "^1.0.3",
     "ws": "^8.21.3"
   },
