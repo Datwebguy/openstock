@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { LandingStage, LandingReveals } from "@/components/landing-stage";
-import { LandingCanvas } from "@/components/landing-canvas";
 import { StockLogo } from "@/components/stock-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CURATED_SYMBOLS } from "@/lib/xstocks";
@@ -73,7 +72,7 @@ export default function HomePage() {
           <div className="os-site-links">
             <a href="#experience">The experience</a>
             <a href="#markets">Live stocks</a>
-            <a href="#constellation">Constellation</a>
+            <a href="#architecture">Architecture</a>
             <Link href="/launch" style={{ color: "var(--solana-purple)", fontWeight: 700 }}>
               Launch ✦
             </Link>
@@ -312,26 +311,80 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 3: Interactive Constellation Orbit Stage */}
-      <section id="constellation" className="os-section os-section-tint">
+      {/* Section 3: Architecture & Security */}
+      <section id="architecture" className="os-section os-section-tint">
         <div className="os-shell">
           <div className="os-section-head os-head-center" data-reveal>
-            <span className="os-micro os-micro-blue">Tactile Market Physics</span>
+            <span className="os-micro os-micro-green">Solana Mainnet Core</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
-                  <span>The on-chain constellation.</span>
+                  <span>Built for continuous markets.</span>
                 </span>
                 <span className="os-line" style={{ "--i": 1 } as React.CSSProperties}>
-                  <span>Touch the liquidity.</span>
+                  <span>Engineered on Solana.</span>
                 </span>
               </span>
             </h2>
-            <p>24/7 tokenized equity liquidity orbiting Solana core. Click steps or drag to rotate.</p>
+            <p>1:1 backed equities, sub-second dual oracles, and permissionless meme-to-stock pairing.</p>
           </div>
 
-          <div className="os-orbit-wrapper" data-reveal>
-            <LandingCanvas />
+          <div className="os-arch-grid" data-reveal>
+            {/* Card 1: Token-2022 Equities */}
+            <article className="os-arch-card">
+              <div className="os-arch-card__top">
+                <span className="os-arch-card__icon">🏛️</span>
+                <span className="os-arch-card__badge os-badge-green">1:1 Backed</span>
+              </div>
+              <h3>Token-2022 Equities</h3>
+              <p>25 curated blue-chip equities and macro ETFs backed by physical custodian shares with on-chain corporate event handling.</p>
+              <div className="os-arch-card__meta">
+                <span>Depository Custody</span>
+                <strong>Backed Finance AG</strong>
+              </div>
+            </article>
+
+            {/* Card 2: Dual Oracles */}
+            <article className="os-arch-card">
+              <div className="os-arch-card__top">
+                <span className="os-arch-card__icon">⚡</span>
+                <span className="os-arch-card__badge os-badge-purple">Sub-Second</span>
+              </div>
+              <h3>Dual-Oracle Consensus</h3>
+              <p>Pyth Network ultra-low latency price benchmarks cross-verified with on-chain Meteora DLMM pool depth to prevent stale quotes.</p>
+              <div className="os-arch-card__meta">
+                <span>Oracle Redundancy</span>
+                <strong>Pyth + DLMM Depth</strong>
+              </div>
+            </article>
+
+            {/* Card 3: ClawPump Meme Pairing */}
+            <article className="os-arch-card">
+              <div className="os-arch-card__top">
+                <span className="os-arch-card__icon">🚀</span>
+                <span className="os-arch-card__badge os-badge-blue">ClawPump Engine</span>
+              </div>
+              <h3>Community Pair Launches</h3>
+              <p>Launch community tokens and memes paired directly against tokenized stocks (e.g. YOUR_TOKEN × AAPLx) with customized tokenomics.</p>
+              <div className="os-arch-card__meta">
+                <span>Market Pairing</span>
+                <strong>Stock × Community</strong>
+              </div>
+            </article>
+
+            {/* Card 4: 24/7 Execution */}
+            <article className="os-arch-card">
+              <div className="os-arch-card__top">
+                <span className="os-arch-card__icon">🌐</span>
+                <span className="os-arch-card__badge os-badge-green">24/7 DEX</span>
+              </div>
+              <h3>Continuous Settlement</h3>
+              <p>Execute swaps and route trades day and night directly on Solana Mainnet with sub-second finality and zero market closing halts.</p>
+              <div className="os-arch-card__meta">
+                <span>Settlement Speed</span>
+                <strong>~400ms On-Chain</strong>
+              </div>
+            </article>
           </div>
         </div>
       </section>

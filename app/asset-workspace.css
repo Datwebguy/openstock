@@ -677,3 +677,139 @@ html[data-theme="dark"] .pro-chart-rail-btn:hover {
     align-self: center;
   }
 }
+
+/* Popover menus for Indicators and Settings */
+.pro-chart-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  width: 280px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+}
+
+.pro-chart-popover--right {
+  left: auto;
+  right: 0;
+  width: 250px;
+}
+
+.pro-chart-popover__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pro-chart-popover__head strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.pro-chart-popover__head button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pro-chart-popover__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pro-chart-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pro-chart-checkbox input {
+  accent-color: var(--solana-purple);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.pro-chart-setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pro-chart-style-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--paper);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.pro-chart-style-toggle button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pro-chart-style-toggle button.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.pro-chart-cursor-badge {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--solana-purple);
+  color: #ffffff;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Tick flash animations */
+.pro-chart-live-badge.is-flashing-up {
+  animation: tick-flash-green 0.7s ease-out;
+}
+.pro-chart-live-badge.is-flashing-down {
+  animation: tick-flash-red 0.7s ease-out;
+}
+
+@keyframes tick-flash-green {
+  0% { transform: translateY(-50%) scale(1.15); box-shadow: 0 0 16px rgba(20, 241, 149, 0.9); }
+  100% { transform: translateY(-50%) scale(1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); }
+}
+
+@keyframes tick-flash-red {
+  0% { transform: translateY(-50%) scale(1.15); box-shadow: 0 0 16px rgba(244, 63, 94, 0.9); }
+  100% { transform: translateY(-50%) scale(1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); }
+}
