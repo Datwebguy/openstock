@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StockLogo } from "@/components/stock-logo";
 import { displayPrice, type OpenStockAsset } from "@/lib/xstocks";
+import { getAssetMarketStats } from "@/lib/market-stats";
 
 type Filter = "all" | "tech" | "fintech" | "macro" | "consumer" | "watchlist";
 type Sort = "alphabetical" | "price-high" | "price-low" | "change-high" | "volume-high";
@@ -37,27 +38,6 @@ const SECTOR_MAP: Record<string, "tech" | "fintech" | "macro" | "consumer"> = {
   ABNBx: "consumer",
 };
 
-// Benchmark 24h market stats for curated assets
-const BENCHMARK_24H_STATS: Record<
-  string,
-  { change24h: number; volume24h: string; liquidity: string }
-> = {
-  NVDAx: { change24h: 2.84, volume24h: "$18.4M", liquidity: "$4.8M" },
-  AAPLx: { change24h: 1.12, volume24h: "$14.2M", liquidity: "$3.9M" },
-  TSLAx: { change24h: 4.65, volume24h: "$16.8M", liquidity: "$3.2M" },
-  MSFTx: { change24h: 0.94, volume24h: "$11.6M", liquidity: "$3.4M" },
-  AMZNx: { change24h: 1.48, volume24h: "$9.8M", liquidity: "$2.8M" },
-  GOOGLx: { change24h: -0.42, volume24h: "$8.4M", liquidity: "$2.6M" },
-  METAx: { change24h: 2.15, volume24h: "$12.1M", liquidity: "$3.1M" },
-  COINx: { change24h: 5.34, volume24h: "$15.6M", liquidity: "$3.5M" },
-  MSTRx: { change24h: 6.88, volume24h: "$19.2M", liquidity: "$4.1M" },
-  SPYx: { change24h: 0.62, volume24h: "$24.5M", liquidity: "$14.2M" },
-  QQQx: { change24h: 0.88, volume24h: "$21.0M", liquidity: "$11.8M" },
-  AMDx: { change24h: 3.12, volume24h: "$7.9M", liquidity: "$2.1M" },
-  PLTRx: { change24h: 4.18, volume24h: "$8.8M", liquidity: "$2.4M" },
-  GLDx: { change24h: 0.35, volume24h: "$6.5M", liquidity: "$3.8M" },
-};
-
 function issuerName(asset: OpenStockAsset) {
   return asset.name.replace(/ xStock$/, "");
 }
@@ -66,14 +46,8 @@ function ticker(asset: OpenStockAsset) {
   return asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "").toUpperCase();
 }
 
-function getAssetStats(symbol: string) {
-  return (
-    BENCHMARK_24H_STATS[symbol] ?? {
-      change24h: 1.25,
-      volume24h: "$3.8M",
-      liquidity: "$1.9M",
-    }
-  );
+function getAssetStats(symbol: string, currentPrice?: number) {
+  return getAssetMarketStats(symbol, currentPrice);
 }
 
 export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {

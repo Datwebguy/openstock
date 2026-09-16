@@ -594,6 +594,56 @@ html[data-theme="dark"] .bubblemaps-mint-bar {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.bubblemaps-context-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(3, 225, 255, 0.06);
+  border: 1px solid rgba(3, 225, 255, 0.25);
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-theme="dark"] .bubblemaps-context-banner {
+  background: rgba(3, 225, 255, 0.08);
+  border-color: rgba(3, 225, 255, 0.3);
+}
+
+.bubblemaps-context-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bubblemaps-context-text strong {
+  display: block;
+  font-size: 12px;
+  color: var(--solana-cyan, #03e1ff);
+  margin-bottom: 2px;
+}
+
+.bubblemaps-context-text p {
+  margin: 0;
+  color: var(--os-muted, #6e6782);
+}
+
+html[data-theme="dark"] .bubblemaps-context-text p {
+  color: #c7c2d6;
+}
+
+.bubblemaps-context-text code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(153, 69, 255, 0.15);
+  color: var(--solana-purple, #9945ff);
+}
+
 .bubblemaps-metrics-strip {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

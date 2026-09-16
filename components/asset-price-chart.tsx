@@ -54,8 +54,12 @@ function compact(value: number | null | undefined) {
     : "$" + value.toFixed(0);
 }
 
-// Generate realistic synthetic candles based on timeframe resolution
-function generateCandlesForTimeframe(basePrice: number, tf: "1m" | "5m" | "15m" | "1h" | "4h" | "1d"): Candle[] {
+// Generate realistic synthetic candles based on timeframe resolution and true 24h direction
+function generateCandlesForTimeframe(
+  basePrice: number,
+  tf: "1m" | "5m" | "15m" | "1h" | "4h" | "1d",
+  change24hPct = 1.84
+): Candle[] {
   const count = tf === "1m" ? 60 : tf === "5m" ? 48 : tf === "15m" ? 40 : tf === "1h" ? 36 : tf === "4h" ? 30 : 28;
   const stepMs =
     tf === "1m"
@@ -75,16 +79,22 @@ function generateCandlesForTimeframe(basePrice: number, tf: "1m" | "5m" | "15m" 
   const volMult = tf === "1m" ? 0.08 : tf === "5m" ? 0.2 : tf === "15m" ? 0.5 : tf === "1h" ? 1.0 : tf === "4h" ? 2.5 : 8.0;
   const volatility = tf === "1m" ? 0.003 : tf === "5m" ? 0.006 : tf === "15m" ? 0.009 : tf === "1h" ? 0.014 : tf === "4h" ? 0.022 : 0.035;
 
-  let prevClose = basePrice * (1 - (count * volatility) / 4);
+  // If change is negative (e.g. -2.45%), startPrice is higher than basePrice, trending downward (red chart).
+  // If change is positive (e.g. +3.14%), startPrice is lower than basePrice, trending upward (green chart).
+  const timeframeRatio = Math.min(1.0, count / 36);
+  const effectiveChange = (change24hPct / 100) * timeframeRatio;
+  const startPrice = Math.max(0.01, basePrice / (1 + effectiveChange));
+  const trendStep = (basePrice - startPrice) / count;
+  let prevClose = startPrice;
 
   for (let i = 0; i < count; i++) {
     const timestamp = now - (count - i) * stepMs;
-    // Organic wave variation
-    const wave = Math.sin(i * 0.45) * volatility + ((i % 4) - 1.5) * (volatility * 0.4);
+    const targetTrend = startPrice + trendStep * i;
+    const wave = Math.sin(i * 0.45) * volatility + ((i % 4) - 1.5) * (volatility * 0.35);
     const open = prevClose;
-    const close = Math.max(open * (1 + wave), 0.01);
-    const high = Math.max(open, close) * (1 + Math.abs(Math.cos(i * 0.5)) * (volatility * 0.7));
-    const low = Math.min(open, close) * (1 - Math.abs(Math.sin(i * 0.8)) * (volatility * 0.7));
+    const close = i === count - 1 ? basePrice : Math.max(0.01, targetTrend * (1 + wave));
+    const high = Math.max(open, close) * (1 + Math.abs(Math.cos(i * 0.5)) * (volatility * 0.6));
+    const low = Math.min(open, close) * (1 - Math.abs(Math.sin(i * 0.8)) * (volatility * 0.6));
     const volume = (35000 + Math.abs(Math.sin(i * 1.2)) * 140000) * volMult;
     candles.push({ timestamp, open, high, low, close, volume });
     prevClose = close;
@@ -175,10 +185,15 @@ export function AssetPriceChart({
     return () => clearInterval(timer);
   }, []);
 
+  // Benchmark market stats for asset to determine realistic trend direction
+  const assetMarketStats = useMemo(() => {
+    return getAssetMarketStats(symbol, referencePrice ?? undefined);
+  }, [symbol, referencePrice]);
+
   // Generate candles dynamically for current timeframe and anchor to livePrice
   const candles = useMemo(() => {
-    return generateCandlesForTimeframe(livePrice, timeframe);
-  }, [symbol, timeframe, Math.floor(livePrice * 10) /* recalibrate slightly on noticeable tick */]);
+    return generateCandlesForTimeframe(livePrice, timeframe, assetMarketStats.change24h);
+  }, [symbol, timeframe, assetMarketStats.change24h, Math.floor(livePrice * 10)]);
 
   // Keep last candle close synced with livePrice
   useEffect(() => {
@@ -208,9 +223,9 @@ export function AssetPriceChart({
   const currentY = Math.max(5, Math.min(95, 90 - ((livePrice - minPrice) / priceRange) * 80));
 
   const change24h = useMemo(() => {
-    if (candles.length < 2 || candles[0].close <= 0) return 1.84;
+    if (candles.length < 2 || candles[0].open <= 0) return assetMarketStats.change24h;
     return ((livePrice - candles[0].open) / candles[0].open) * 100;
-  }, [candles, livePrice]);
+  }, [candles, livePrice, assetMarketStats.change24h]);
 
   const isUp = change24h >= 0;
 

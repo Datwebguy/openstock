@@ -8,6 +8,7 @@ import { PaperOrderForm } from "@/components/paper-order-form";
 import { ProStockHeader } from "@/components/pro-stock-header";
 import { getMarketEvidence, reserveCoverage } from "@/lib/market-evidence";
 import { getMarketVerdict } from "@/lib/market-verdict";
+import { getAssetMarketStats } from "@/lib/market-stats";
 import { liveTradingEnabled } from "@/lib/trading";
 import { displayPrice, getHydratedAsset, XStocksApiError } from "@/lib/xstocks";
 
@@ -57,28 +58,29 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
     { label: "Multiplier", value: multiplier(asset.multiplier?.currentMultiplier) },
   ];
 
-  return <main className="page">
-    <AppNav ctaHref="/app" ctaLabel="Market" />
-    <div className="app-page container asset-workspace">
-      <Link href="/app" className="back-link">← Back to market</Link>
-      <ProStockHeader
-        symbol={asset.symbol}
-        name={asset.name}
-        logo={asset.logo}
-        underlyingSymbol={asset.underlying?.symbol}
-        price={priceForTrade ?? asset.price}
-        officialReady={officialReady}
-        priceFormatted={officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}
-        change24h={1.84}
-        liquidityUsd={pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "$1.9M"}
-        volume24h={pool && pool.volume24h !== null ? "$" + number(pool.volume24h, 0) : "$6.2M"}
-        oraclePrice={evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : undefined}
-        reserveCoverage={coverage ? number(coverage * 100) + "% Backed" : "100% Backed"}
-        mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"}
-        decimals={decimals ?? asset.solanaDeployment?.decimals ?? 6}
-        venueStatus={venueStatus}
-        sessionStatus={sessionStatus}
-      />
+      const stats = getAssetMarketStats(asset.symbol, priceForTrade ?? asset.price);
+      return <main className="page">
+        <AppNav ctaHref="/app" ctaLabel="Market" />
+        <div className="app-page container asset-workspace">
+          <Link href="/app" className="back-link">← Back to market</Link>
+          <ProStockHeader
+            symbol={asset.symbol}
+            name={asset.name}
+            logo={asset.logo}
+            underlyingSymbol={asset.underlying?.symbol}
+            price={priceForTrade ?? asset.price}
+            officialReady={officialReady}
+            priceFormatted={officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}
+            change24h={stats.change24h}
+            liquidityUsd={pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : stats.liquidity}
+            volume24h={pool && pool.volume24h !== null ? "$" + number(pool.volume24h, 0) : stats.volume24h}
+            oraclePrice={evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : undefined}
+            reserveCoverage={coverage ? number(coverage * 100) + "% Backed" : "100% Backed"}
+            mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"}
+            decimals={decimals ?? asset.solanaDeployment?.decimals ?? 6}
+            venueStatus={venueStatus}
+            sessionStatus={sessionStatus}
+          />
       <MarketVerdictCard verdict={verdict} />
       <nav className="asset-detail-tabs" aria-label="Stock sections">
         <a href="#overview">Overview</a>

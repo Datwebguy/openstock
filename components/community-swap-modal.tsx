@@ -253,14 +253,27 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
 
         {/* Footer External Links */}
         <div className="community-swap-footer-links">
-          <a
-            href={token.pumpUrl || `https://pump.fun/coin/${token.mint}`}
-            target="_blank"
-            rel="noreferrer"
-            className="community-swap-ext-link"
-          >
-            Trade on Pump.fun ↗
-          </a>
+          {token.meteoraUrl ? (
+            <a
+              href={token.meteoraUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="community-swap-ext-link"
+              style={{ color: "var(--solana-green, #14f195)" }}
+            >
+              Meteora DLMM Pool ↗
+            </a>
+          ) : null}
+          {token.pumpUrl ? (
+            <a
+              href={token.pumpUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="community-swap-ext-link"
+            >
+              Trade on Pump.fun ↗
+            </a>
+          ) : null}
           <a
             href={`https://jup.ag/swap/SOL-${token.mint}`}
             target="_blank"
@@ -268,6 +281,14 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             className="community-swap-ext-link"
           >
             Jupiter DEX Route ↗
+          </a>
+          <a
+            href={`https://solscan.io/token/${token.mint}`}
+            target="_blank"
+            rel="noreferrer"
+            className="community-swap-ext-link"
+          >
+            Solscan ↗
           </a>
         </div>
       </div>

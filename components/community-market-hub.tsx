@@ -294,7 +294,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
                     {/* Market Cap */}
                     <td className="trends-td--mcap">
-                      ${(item.marketCapUsd / 1_000_000).toFixed(2)}M
+                      {item.marketCapUsd >= 1_000_000
+                        ? `$${(item.marketCapUsd / 1_000_000).toFixed(2)}M`
+                        : `$${(item.marketCapUsd / 1000).toFixed(1)}K`}
                     </td>
 
                     {/* Action Buttons */}
@@ -385,7 +387,11 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                   </div>
                   <div>
                     <span>Market Cap</span>
-                    <strong>${(item.marketCapUsd / 1_000_000).toFixed(2)}M</strong>
+                    <strong>
+                      {item.marketCapUsd >= 1_000_000
+                        ? `$${(item.marketCapUsd / 1_000_000).toFixed(2)}M`
+                        : `$${(item.marketCapUsd / 1000).toFixed(1)}K`}
+                    </strong>
                   </div>
                 </div>
 
