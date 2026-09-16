@@ -22,32 +22,16 @@ html[data-theme="dark"] .launch-page {
   max-width: 1360px;
   margin-inline: auto;
   padding-inline: clamp(16px, 3vw, 32px);
-  padding-top: clamp(20px, 3vw, 36px);
+  padding-top: clamp(100px, 9vw, 124px);
 }
 
-/* Top bar */
-.launch-top-bar {
+.launch-intro__kicker-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 28px;
-}
-
-.launch-back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--os-muted, #6e6782);
-  text-decoration: none;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.launch-back-link:hover {
-  color: var(--solana-purple, #9945ff);
-  transform: translateX(-3px);
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .launch-header-chips {
@@ -491,6 +475,92 @@ html[data-theme="dark"] .launch-drop-zone {
 }
 
 /* Stock Pair Filter & Selector (Step 02) */
+.launch-selected-pair-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(153, 69, 255, 0.06);
+  border: 1px solid rgba(153, 69, 255, 0.2);
+  margin-bottom: 16px;
+}
+
+html[data-theme="dark"] .launch-selected-pair-banner {
+  background: rgba(153, 69, 255, 0.12);
+  border-color: rgba(153, 69, 255, 0.3);
+}
+
+.launch-selected-pair-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.launch-selected-pair-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--solana-purple, #9945ff);
+}
+
+.launch-selected-pair-info strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .launch-selected-pair-info strong {
+  color: #f5f2fc;
+}
+
+.launch-selected-pair-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0c8a58;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 241, 149, 0.12);
+  border: 1px solid rgba(20, 241, 149, 0.28);
+  white-space: nowrap;
+}
+
+html[data-theme="dark"] .launch-selected-pair-badge {
+  color: var(--solana-green, #14f195);
+}
+
+.launch-pair-dropdown-select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--os-line, rgba(22, 19, 33, 0.14));
+  background: var(--os-porcelain, #f7f5fc);
+  color: var(--os-ink, #161321);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+  margin-top: 6px;
+}
+
+html[data-theme="dark"] .launch-pair-dropdown-select {
+  background: #17112b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f5f2fc;
+}
+
+.launch-pair-dropdown-select:focus {
+  border-color: var(--solana-purple, #9945ff);
+}
+
 .launch-pair-filter-row {
   display: flex;
   align-items: center;

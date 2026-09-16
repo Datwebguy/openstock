@@ -367,25 +367,20 @@ export function LaunchClient() {
 
   return (
     <div className="launch-container">
-      {/* Top Header Navigation */}
-      <div className="launch-top-bar">
-        <Link href="/app" className="launch-back-link">
-          <span aria-hidden="true">←</span> Back to Market Desk
-        </Link>
-        <div className="launch-header-chips">
-          <span className="launch-network-pill">
-            <span className="launch-pulse-dot" /> Solana Mainnet
-          </span>
-          <span className="launch-protocol-pill">Powered by ClawPump</span>
-        </div>
-      </div>
-
       {/* Main Studio Grid: Left Form Pane + Right Live Holographic Simulator */}
       <div className="launch-studio-layout">
         {/* Left Column: Studio Controls */}
         <div className="launch-controls-column">
           <div className="launch-intro">
-            <span className="launch-studio-kicker">Solana Token Studio</span>
+            <div className="launch-intro__kicker-row">
+              <span className="launch-studio-kicker">Solana Token Studio</span>
+              <div className="launch-header-chips">
+                <span className="launch-network-pill">
+                  <span className="launch-pulse-dot" /> Solana Mainnet
+                </span>
+                <span className="launch-protocol-pill">ClawPump Engine</span>
+              </div>
+            </div>
             <h1>Launch a Token Paired to Real Stocks</h1>
             <p>Pair community tokens with xStocks on Solana.</p>
           </div>
@@ -543,19 +538,61 @@ export function LaunchClient() {
                 </div>
               </div>
 
-            {/* Pair Search Filter */}
-            <div className="launch-pair-filter-row">
-              <input
-                type="text"
-                placeholder="Search stocks (NVDA, Apple, Tesla, Coinbase, S&P 500...)"
-                value={pairFilter}
-                onChange={(e) => setPairFilter(e.target.value)}
-                className="launch-pair-search-input"
-              />
-              <span className="launch-pair-count">
-                {visiblePairs.length} of {pairs.length} pairs
-              </span>
-            </div>
+              {/* Active Selected Stock Pair Banner */}
+              {selectedPair && (
+                <div className="launch-selected-pair-banner">
+                  <div className="launch-selected-pair-info">
+                    <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={36} />
+                    <div>
+                      <span className="launch-selected-pair-label">Active Market Pair</span>
+                      <strong>{selectedPair.symbol} · {selectedPair.name.replace(/ xStock$/, "")}</strong>
+                    </div>
+                  </div>
+                  <span className="launch-selected-pair-badge">
+                    <span className="launch-pulse-dot" /> Verified DLMM
+                  </span>
+                </div>
+              )}
+
+              {/* Quick Dropdown Select + Search Filter */}
+              <div className="launch-pair-controls">
+                <div className="launch-field" style={{ marginBottom: 12 }}>
+                  <label htmlFor="pair-dropdown-select">Select Pair (Dropdown)</label>
+                  <select
+                    id="pair-dropdown-select"
+                    className="launch-pair-dropdown-select"
+                    value={selectedPair?.mint || ""}
+                    onChange={(e) => {
+                      const matched = pairs.find((p) => p.mint === e.target.value);
+                      if (matched) {
+                        startTransition(() => {
+                          setSelectedPair(matched);
+                        });
+                      }
+                    }}
+                  >
+                    {pairs.map((p) => (
+                      <option key={p.mint} value={p.mint}>
+                        {p.symbol} — {p.name.replace(/ xStock$/, "")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Pair Search Filter */}
+                <div className="launch-pair-filter-row">
+                  <input
+                    type="text"
+                    placeholder="Or search filter (NVDA, Apple, Tesla, S&P 500...)"
+                    value={pairFilter}
+                    onChange={(e) => setPairFilter(e.target.value)}
+                    className="launch-pair-search-input"
+                  />
+                  <span className="launch-pair-count">
+                    {visiblePairs.length} of {pairs.length} pairs
+                  </span>
+                </div>
+              </div>
 
             {/* Stock Pairs Grid */}
             <div className="launch-pairs-container">
