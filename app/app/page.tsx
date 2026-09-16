@@ -114,8 +114,8 @@ export default async function AppPage() {
             <a className="workspace-pill-link" href="/launch">
               Pair &amp; Launch Token ↗
             </a>
-            <a className="workspace-pill-link workspace-pill-link--secondary" href="/app/learn/multipliers">
-              Multiplier Rules ↗
+            <a className="workspace-pill-link workspace-pill-link--secondary" href="/app/analytics">
+              Pool Analytics ↗
             </a>
           </div>
         </header>

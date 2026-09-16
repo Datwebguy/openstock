@@ -32,19 +32,160 @@ html[data-theme="dark"] {
 html[data-theme="dark"] body { background: var(--paper); color: var(--ink); }
 html[data-theme="dark"] .nav { background: var(--nav-bg); border-color: var(--nav-border); box-shadow: 0 18px 50px rgba(0, 0, 0, .4); }
 html[data-theme="dark"] .nav-links { color: #c8c2d6; }
-html[data-theme="dark"] .button--light { background: var(--surface); color: var(--ink); }
+html[data-theme="dark"] .button--light {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f2fc;
+}
+html[data-theme="dark"] .button--light:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(153, 69, 255, 0.5);
+  color: #ffffff;
+}
+html[data-theme="dark"] .button--outline {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f2fc;
+}
+html[data-theme="dark"] .button--outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--solana-purple);
+  color: #ffffff;
+}
 html[data-theme="dark"] .button--dark { background: #f4f1fb; color: #07070d; }
 html[data-theme="dark"] .panel,
 html[data-theme="dark"] .stock-card,
 html[data-theme="dark"] .pulse,
-html[data-theme="dark"] .cast-card { background: var(--surface); border-color: var(--line); color: var(--ink); }
-html[data-theme="dark"] .stock-card__ticker,
+html[data-theme="dark"] .cast-card,
+html[data-theme="dark"] .settings-panel,
+html[data-theme="dark"] .settings-card,
+html[data-theme="dark"] .asset-detail-header,
+html[data-theme="dark"] .asset-chart-card,
+html[data-theme="dark"] .asset-order-card,
+html[data-theme="dark"] .asset-overview,
+html[data-theme="dark"] .asset-event-card,
+html[data-theme="dark"] .discovery-toolbar,
+html[data-theme="dark"] .evidence-card,
+html[data-theme="dark"] .analytics-chart-panel,
+html[data-theme="dark"] .paper-order {
+  background: #0d091e;
+  border: 1px solid rgba(153, 69, 255, 0.22);
+  color: #f5f2fc;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+html[data-theme="dark"] .stock-card:hover {
+  border-color: rgba(20, 241, 149, 0.45);
+  box-shadow: 0 12px 36px rgba(153, 69, 255, 0.18);
+}
+html[data-theme="dark"] .stock-card__ticker {
+  background: rgba(153, 69, 255, 0.18);
+  color: #d1b3ff;
+  border: 1px solid rgba(153, 69, 255, 0.35);
+}
+html[data-theme="dark"] .stock-card__price,
+html[data-theme="dark"] .stock-card h2 {
+  color: #ffffff;
+}
 html[data-theme="dark"] .stock-card__meta,
-html[data-theme="dark"] .stock-card__footer { color: var(--muted); border-color: var(--line); }
+html[data-theme="dark"] .stock-card__footer { color: var(--muted); border-color: rgba(255, 255, 255, 0.08); }
 html[data-theme="dark"] .footer-nav { background: var(--nav-bg); color: var(--ink); }
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
-html[data-theme="dark"] textarea { background: var(--surface); color: var(--ink); border-color: var(--line); }
+html[data-theme="dark"] textarea {
+  background: #140f2b;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
+  border-color: var(--solana-purple);
+  box-shadow: 0 0 0 2px rgba(153, 69, 255, 0.3);
+}
+html[data-theme="dark"] .settings-panel__address {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .settings-panel p,
+html[data-theme="dark"] .settings-grid p,
+html[data-theme="dark"] .empty-history p,
+html[data-theme="dark"] .settings-panel__body small {
+  color: #aba2c5 !important;
+}
+html[data-theme="dark"] .status-chip--good,
+html[data-theme="dark"] .paper-order__safe,
+html[data-theme="dark"] .settings-panel__state {
+  color: #14f195 !important;
+  background: rgba(20, 241, 149, 0.15) !important;
+  border: 1px solid rgba(20, 241, 149, 0.4) !important;
+}
+html[data-theme="dark"] .status-chip--warn {
+  color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.15) !important;
+  border: 1px solid rgba(255, 209, 102, 0.4) !important;
+}
+html[data-theme="dark"] .formula {
+  background: rgba(153, 69, 255, 0.15);
+  color: #d1b3ff;
+  border: 1px solid rgba(153, 69, 255, 0.3);
+}
+html[data-theme="dark"] .paper-order__quote {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-theme="dark"] .paper-order__quote > strong,
+html[data-theme="dark"] .paper-order__details strong {
+  color: #ffffff;
+}
+html[data-theme="dark"] .paper-order__toggle {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .paper-order__toggle button {
+  color: var(--muted);
+}
+html[data-theme="dark"] .paper-order__toggle button.is-active {
+  background: rgba(153, 69, 255, 0.3);
+  color: #ffffff;
+}
+html[data-theme="dark"] .discovery-filters {
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-theme="dark"] .discovery-filters button {
+  color: var(--muted);
+}
+html[data-theme="dark"] .discovery-filters button.is-active {
+  background: rgba(153, 69, 255, 0.28);
+  color: #ffffff;
+}
+html[data-theme="dark"] .discovery-search {
+  background: #140f2b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+html[data-theme="dark"] .analytics-controls {
+  background: #0d091e;
+  border-color: rgba(153, 69, 255, 0.22);
+}
+html[data-theme="dark"] .analytics-controls select {
+  background: #140f2b;
+  color: #ffffff;
+}
+html[data-theme="dark"] .analytics-timeframes {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .analytics-timeframes button.is-active {
+  background: rgba(153, 69, 255, 0.3);
+  color: #ffffff;
+}
+html[data-theme="dark"] .analytics-metrics article {
+  background: #140f2b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .analytics-metrics strong,
+html[data-theme="dark"] .analytics-current-price {
+  color: #ffffff;
+}
+html[data-theme="dark"] .analytics-chart line,
+html[data-theme="dark"] .asset-chart-svg line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
 html[data-theme="dark"] .landing-read,
 html[data-theme="dark"] .landing-names,
 html[data-theme="dark"] .landing-close { color: var(--ink); }

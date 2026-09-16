@@ -70,12 +70,12 @@ export function PaperOrderForm({ symbol, name, price, solPriceUsd, priceIsIndica
   const totalValue = estimatedUsd === null ? "0.00 USDC" : estimatedUsd.toFixed(2) + " USDC";
   const solValue = estimatedSol === null ? "Updating" : estimatedSol.toFixed(4) + " SOL";
   return <form className="paper-order" onSubmit={submit} aria-label={"Live order for " + symbol}>
-    <div className="paper-order__head"><div><span className="eyebrow">Order</span><h3>{side === "buy" ? "Buy" : "Sell"} {symbol}</h3></div><span className="paper-order__safe">{shortWallet(wallet) ?? "NO WALLET"}</span></div>
+    <div className="paper-order__head"><div><span className="eyebrow">Order</span><h3>{side === "buy" ? "Buy" : "Sell"} {symbol}</h3></div><span className="paper-order__safe">{wallet ? shortWallet(wallet) : "Non-Custodial"}</span></div>
     <div className="paper-order__toggle" role="group" aria-label="Order side"><button type="button" className={side === "buy" ? "is-active" : ""} onClick={() => setSide("buy")}>Buy</button><button type="button" className={side === "sell" ? "is-active" : ""} onClick={() => setSide("sell")}>Sell</button></div>
     <label>Shares<input inputMode="decimal" min="0" step="any" value={shares} onChange={(event) => { setShares(event.target.value); setMessage(null); }} /></label>
     <div className="paper-order__quote"><span>{totalLabel}</span><strong>{totalValue}</strong></div>
     <div className="paper-order__details"><span>SOL equivalent</span><strong>{solValue}</strong><span>Share adjustment</span><strong>{rounded(multiplier)}</strong></div>
     {message ? <p className="form-error" role="alert">{message}</p> : null}
-    <button className="button button--light" type="submit" disabled={submitting || halted || !canTrade}>{buttonText}</button>
+    <button className="button button--gradient" type="submit" disabled={submitting || halted || !canTrade}>{buttonText}</button>
   </form>;
 }

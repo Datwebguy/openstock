@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { AppNav } from "@/components/app-nav";
+import { redirect } from "next/navigation";
 
 export default function MultiplierGuidePage() {
-  return <main className="page"><AppNav ctaHref="/app" ctaLabel="Back to market" /><div className="app-page container"><header className="learn-hero"><div className="eyebrow">Share adjustments</div><h1>One share can change shape.</h1><p>Company events can change how many shares a token represents. OpenStock keeps the number you choose and the current share adjustment visible together.</p></header><div className="learn-grid"><section className="panel"><div className="eyebrow">How it works</div><h2>Your chosen shares stay clear.</h2><p>Before you continue, we show the current adjustment and the estimated value of your shares. If the market data is changing, we pause and explain why.</p><div className="formula">shares you choose × current adjustment = displayed position</div></section><section className="panel panel--dark"><div className="eyebrow" style={{ color: "var(--solana-green)" }}>OpenStock rule</div><h2>No silent changes.</h2><p>If the share adjustment is missing or changing, the review waits for a fresh value instead of guessing.</p><Link className="button button--light" href="/app">Choose a stock</Link></section></div></div></main>;
+  redirect("/app");
 }

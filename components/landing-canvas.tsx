@@ -104,7 +104,7 @@ const ARCHITECTURE_STEPS = [
     step: "01",
     label: "Curated Equities",
     tag: "Token-2022",
-    desc: "1:1 backed shares with transparent corporate split multipliers.",
+    desc: "1:1 backed shares with on-chain corporate event feeds.",
   },
   {
     id: 2,

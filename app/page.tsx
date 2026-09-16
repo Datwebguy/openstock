@@ -29,7 +29,7 @@ const questions = [
   ],
   [
     "Is an xStock the same as a company share?",
-    "xStocks are Token-2022 assets backed 1:1 by underlying shares and managed with transparent corporate split multipliers.",
+    "xStocks are Token-2022 assets backed 1:1 by underlying shares with on-chain oracle verification.",
   ],
   [
     "Why can reference prices differ from pool quotes?",
@@ -211,7 +211,7 @@ export default function HomePage() {
               </div>
               <span className="os-card-tag">Robotics & Energy</span>
               <h3>Clean energy</h3>
-              <p>Tesla EVs, power storage, and transparent corporate split multipliers.</p>
+              <p>Tesla EVs, energy storage, and 24/7 on-chain equity trading.</p>
               <Link href="/app/asset/TSLAx" className="os-card-link">
                 View TSLAx desk <span aria-hidden="true">↗</span>
               </Link>
@@ -462,8 +462,8 @@ export default function HomePage() {
             <Link href="/app/wallet">
               Wallet session & balances <span aria-hidden="true">↗</span>
             </Link>
-            <Link href="/app/learn/multipliers">
-              Share adjustment guide <span aria-hidden="true">↗</span>
+            <Link href="/app/analytics">
+              Liquidity &amp; pool analytics <span aria-hidden="true">↗</span>
             </Link>
           </div>
         </div>
@@ -494,7 +494,7 @@ export default function HomePage() {
             </li>
             <li>
               <strong>02. Verify</strong>
-              <p>Cross-check Pyth benchmarks, pool spreads, and corporate stock split multipliers.</p>
+              <p>Cross-check Pyth benchmarks, pool spreads, and verified reserve coverage.</p>
             </li>
             <li>
               <strong>03. Execute</strong>
@@ -596,8 +596,8 @@ export default function HomePage() {
             <h3>Resources</h3>
             <Link href="/app/news">Market news</Link>
             <Link href="/app/actions">Corporate events</Link>
-            <Link href="/app/alerts">Watches & alerts</Link>
-            <Link href="/app/learn/multipliers">Share multipliers</Link>
+            <Link href="/app/alerts">Watches &amp; alerts</Link>
+            <Link href="/app/analytics">Pool analytics</Link>
           </nav>
 
           <nav aria-label="Workspace" className="os-footer-col">
