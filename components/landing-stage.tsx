@@ -61,6 +61,8 @@ const STOCK_DATA: Record<string, StockMeta> = {
 };
 
 export function LandingReveals() {
+  const [scrollPercent, setScrollPercent] = useState(0);
+
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -72,6 +74,15 @@ export function LandingReveals() {
 
     document.documentElement.classList.add("os-motion-ready");
 
+    // Reveal elements currently in initial viewport immediately
+    const vh = window.innerHeight;
+    elements.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < vh * 0.88) {
+        el.classList.add("is-in");
+      }
+    });
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -81,41 +92,42 @@ export function LandingReveals() {
           }
         });
       },
-      { threshold: 0.05, rootMargin: "300px 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
     );
 
-    elements.forEach((el) => observer.observe(el));
+    elements.forEach((el) => {
+      if (!el.classList.contains("is-in")) {
+        observer.observe(el);
+      }
+    });
 
-    // Active scroll trigger so fast scrolls or full-page captures reveal all elements
-    const onScroll = () => {
-      const vh = window.innerHeight;
-      elements.forEach((el) => {
-        if (!el.classList.contains("is-in")) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top < vh + 350) {
-            el.classList.add("is-in");
-            observer.unobserve(el);
-          }
-        }
-      });
+    // Scroll progress scrubber and parallax variables
+    const handleScroll = () => {
+      const scrollY = window.scrollY || window.pageYOffset;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? Math.min(1, Math.max(0, scrollY / maxScroll)) : 0;
+      setScrollPercent(progress);
+
+      document.documentElement.style.setProperty("--scroll-y", `${scrollY}px`);
+      document.documentElement.style.setProperty("--scroll-progress", progress.toFixed(4));
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-
-    // Failsafe timer: ensure everything reveals after 2s regardless
-    const timer = setTimeout(() => {
-      elements.forEach((el) => el.classList.add("is-in"));
-    }, 2000);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("scroll", onScroll);
-      clearTimeout(timer);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  return null;
+  return (
+    <div
+      className="os-scroll-scrubber"
+      style={{ transform: `scaleX(${scrollPercent})` }}
+      aria-hidden="true"
+    />
+  );
 }
 
 export function LandingStage({ assets }: { assets: Asset[] }) {

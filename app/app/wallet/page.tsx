@@ -29,7 +29,7 @@ export default function WalletPage() {
     <AppNav ctaHref="/app" ctaLabel="Market" />
     <div className="app-page container wallet-page">
       <header className="app-market-header history-header">
-        <div><h1>Wallet</h1><p className="workspace-description">Your holdings and account, connected across the workspace.</p></div>
+        <div><h1>Wallet</h1><p className="workspace-description">Non-custodial Solana holdings &amp; activity.</p></div>
       </header>
       <section className="panel settings-panel">
         <div className="settings-panel__icon" aria-hidden="true">◒</div>
@@ -37,10 +37,8 @@ export default function WalletPage() {
           <h2>{address ? shortWallet(address) : "Not connected"}</h2>
           <p className="settings-panel__address">
             {address 
-              ? "Solana Mainnet-Beta account active across market desk and orders." 
-              : emailEnabled 
-              ? "Connect with Phantom, Solflare, or email to view your holdings." 
-              : "Connect your Phantom or Solflare wallet to view your holdings."}
+              ? "Solana Mainnet-Beta account." 
+              : "Connect Phantom or Solflare."}
           </p>
         </div>
         {address ? (

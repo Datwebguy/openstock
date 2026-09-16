@@ -291,40 +291,39 @@ html[data-theme="dark"] .launch-field textarea {
 
 /* Artwork Upload & Drop Zone */
 .launch-artwork-box {
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: 16px;
-  align-items: start;
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
 .launch-drop-zone {
-  width: 88px;
-  height: 88px;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
   border-radius: 18px;
   background: var(--os-porcelain, #f7f5fc);
-  border: 2px dashed var(--os-line, rgba(22, 19, 33, 0.22));
+  border: 2px dashed var(--os-line, rgba(22, 19, 33, 0.2));
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
   position: relative;
-  transition: all 0.2s ease;
-  text-align: center;
-  padding: 4px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 3px;
 }
 
 html[data-theme="dark"] .launch-drop-zone {
   background: #17112b;
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .launch-drop-zone:hover,
 .launch-drop-zone.is-dragging {
   border-color: var(--solana-purple, #9945ff);
   background: rgba(153, 69, 255, 0.08);
-  transform: scale(1.02);
+  transform: scale(1.04);
+  box-shadow: 0 8px 24px rgba(153, 69, 255, 0.2);
 }
 
 .launch-drop-zone img {
@@ -336,49 +335,63 @@ html[data-theme="dark"] .launch-drop-zone {
 
 .launch-drop-icon {
   font-size: 24px;
-  margin-bottom: 2px;
+  opacity: 0.6;
 }
 
-.launch-drop-hint {
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1.15;
-  color: var(--os-muted, #6e6782);
-  text-align: center;
+.launch-drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 19, 33, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  border-radius: 14px;
+}
+
+.launch-drop-overlay span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.launch-drop-zone:hover .launch-drop-overlay {
+  opacity: 1;
 }
 
 .launch-artwork-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.launch-upload-row {
+.launch-upload-status {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.launch-upload-btn {
+.launch-clear-file-btn {
+  background: transparent;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.2));
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--solana-purple, #9945ff);
-  background: rgba(153, 69, 255, 0.08);
-  color: var(--solana-purple, #9945ff);
+  justify-content: center;
+  font-size: 9px;
   cursor: pointer;
-  transition: all 0.18s ease;
+  color: var(--os-muted, #6e6782);
+  padding: 0;
 }
 
-.launch-upload-btn:hover {
-  background: var(--solana-purple, #9945ff);
+.launch-clear-file-btn:hover {
+  background: #ff4757;
+  border-color: #ff4757;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(153, 69, 255, 0.25);
 }
 
 .launch-filename-badge {
@@ -387,17 +400,12 @@ html[data-theme="dark"] .launch-drop-zone {
   font-weight: 600;
   color: var(--solana-green, #14f195);
   background: rgba(20, 241, 149, 0.1);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.launch-image-url-input {
-  font-size: 12px !important;
-  padding: 8px 12px !important;
 }
 
 .launch-preset-chips {

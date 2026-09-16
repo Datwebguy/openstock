@@ -387,9 +387,7 @@ export function LaunchClient() {
           <div className="launch-intro">
             <span className="launch-studio-kicker">Solana Token Studio</span>
             <h1>Launch a Token Paired to Real Stocks</h1>
-            <p>
-              Set your token identity, supply, and fee structure. Then deploy in one click against verified Backed equities on Solana.
-            </p>
+            <p>Pair community tokens with xStocks on Solana.</p>
           </div>
 
           {/* Hidden File Input for Device Upload */}
@@ -457,7 +455,7 @@ export function LaunchClient() {
             {/* Artwork Upload & Picker */}
             <div className="launch-field" style={{ marginTop: 18 }}>
               <label>
-                Token Artwork <span>(Device upload, presets, or URL)</span>
+                Token Artwork <span>(Click square to upload from device)</span>
               </label>
               <div className="launch-artwork-box">
                 {/* Drag & Drop Thumbnail */}
@@ -475,7 +473,7 @@ export function LaunchClient() {
                     if (file) handleFileSelect(file);
                   }}
                   onClick={() => fileInputRef.current?.click()}
-                  title="Click or drag image to upload from device"
+                  title="Click to choose image from device"
                 >
                   {imageUrl ? (
                     <img
@@ -486,41 +484,14 @@ export function LaunchClient() {
                       }}
                     />
                   ) : (
-                    <span className="launch-drop-icon">📁</span>
+                    <span className="launch-drop-icon">📷</span>
                   )}
-                  <span className="launch-drop-hint">
-                    {isUploadingImage ? "Uploading..." : "Click or drop device image"}
-                  </span>
+                  <div className="launch-drop-overlay">
+                    <span>{isUploadingImage ? "..." : "Edit ✎"}</span>
+                  </div>
                 </div>
 
                 <div className="launch-artwork-actions">
-                  <div className="launch-upload-row">
-                    <button
-                      type="button"
-                      className="launch-upload-btn"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                    >
-                      📁 Upload from device
-                    </button>
-                    {uploadedFileName && (
-                      <span className="launch-filename-badge" title={uploadedFileName}>
-                        ✓ {uploadedFileName}
-                      </span>
-                    )}
-                  </div>
-
-                  <input
-                    id="token-image"
-                    placeholder="Or paste https:// image URL..."
-                    value={imageUrl.startsWith("data:") ? "(Image loaded from device)" : imageUrl}
-                    onChange={(e) => {
-                      setUploadedFileName("");
-                      setImageUrl(e.target.value);
-                    }}
-                    className="launch-image-url-input"
-                  />
-
                   <div className="launch-preset-chips">
                     <span className="launch-preset-label">Presets:</span>
                     {PRESET_AVATARS.map((preset) => (
@@ -537,6 +508,25 @@ export function LaunchClient() {
                       </button>
                     ))}
                   </div>
+
+                  {uploadedFileName ? (
+                    <div className="launch-upload-status">
+                      <span className="launch-filename-badge" title={uploadedFileName}>
+                        ✓ {uploadedFileName}
+                      </span>
+                      <button
+                        type="button"
+                        className="launch-clear-file-btn"
+                        onClick={() => {
+                          setUploadedFileName("");
+                          setImageUrl(PRESET_AVATARS[0].url);
+                        }}
+                        title="Reset to default preset"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

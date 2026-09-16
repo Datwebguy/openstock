@@ -108,9 +108,7 @@ export default async function AppPage() {
               <span>Solana Mainnet · 25 Tokenized Equities</span>
             </div>
             <h1>Tokenized Equities Desk</h1>
-            <p>
-              Trade Backed Token-2022 equities 24/7 on Solana with real-time Pyth oracles and Meteora DLMM depth.
-            </p>
+            <p>24/7 tokenized stocks on Solana.</p>
           </div>
           <div className="workspace-heading__actions">
             <a className="workspace-pill-link" href="/launch">

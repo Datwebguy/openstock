@@ -40,9 +40,9 @@ export function AccountIdentity() {
 
   return <section className="panel settings-card settings-card--verify">
     <div>
-      <h2>Verify wallet</h2>
-      <p>{verified && address ? shortWallet(address) : message || "Sign once to unlock alerts and automation."}</p>
+      <h2>Wallet Signature</h2>
+      <p>{verified && address ? "Signature verified. Alerts & automation unlocked." : address ? "Optional one-click signature to sync cloud alerts." : "Connect wallet to sync alerts."}</p>
     </div>
-    <button className="button button--light" type="button" onClick={() => void verify()} disabled={busy || verified}>{busy ? "Verifying" : verified ? "Verified" : address ? "Verify wallet" : "Connect and verify"}</button>
+    <button className="button button--light" type="button" onClick={() => void verify()} disabled={busy || verified}>{busy ? "Verifying..." : verified ? "Verified ✓" : address ? "Sign to verify" : "Connect wallet"}</button>
   </section>;
 }
