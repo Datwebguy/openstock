@@ -1029,7 +1029,7 @@ export function LaunchClient() {
                 </p>
               </div>
 
-              {/* Architectural Specs */}
+              {/* Consolidated Deployment & Architectural Specs (Single Source of Truth) */}
               <div className="launch-holo-specs">
                 <div className="launch-holo-spec-row">
                   <span>Execution Venue</span>
@@ -1058,41 +1058,6 @@ export function LaunchClient() {
                   <strong>{selectedVenue === "pumpfun" ? "Raydium / PumpAMM" : "Meteora DLMM"}</strong>
                 </div>
                 <div className="launch-holo-spec-row">
-                  <span>Settlement Latency</span>
-                  <strong>~400ms Sub-second</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Deployment Summary & Checkout Console */}
-            <div className="launch-checkout-card">
-              <div className="launch-checkout-header">
-                <h3 className="launch-checkout-title">Deployment Summary</h3>
-                <span className="launch-checkout-badge">Mainnet Ready</span>
-              </div>
-
-              <div className="launch-checkout-specs">
-                <div className="launch-checkout-spec-row">
-                  <span>Asset Pair</span>
-                  <strong>${tokenSymbol || "TOKEN"} × {selectedPair?.symbol || "xStock"}</strong>
-                </div>
-                <div className="launch-checkout-spec-row">
-                  <span>Venue</span>
-                  <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                    {selectedVenue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
-                  </strong>
-                </div>
-                <div className="launch-checkout-spec-row">
-                  <span>Supply</span>
-                  <strong>{new Intl.NumberFormat("en-US").format(tokenSupply)}</strong>
-                </div>
-                <div className="launch-checkout-spec-row">
-                  <span>Creator Fee</span>
-                  <strong style={{ color: "var(--solana-green, #14f195)" }}>
-                    {(creatorFeeBps / 100).toFixed(1)}% in {selectedPair?.symbol}
-                  </strong>
-                </div>
-                <div className="launch-checkout-spec-row">
                   <span>Est. Network Gas</span>
                   <strong>~0.0075 SOL</strong>
                 </div>
