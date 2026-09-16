@@ -24,6 +24,7 @@ export function AppNav({ ctaHref = "/app", ctaLabel = "Market", hideCta = false 
     ["/app", "Market"],
     ["/app/community", "Memes & Pairs"],
     ["/launch", "Launch"],
+    ["/app/portfolio", "Portfolio"],
     ["/app/analytics", "Analytics"],
     ["/app/activity", "Activity"],
   ];
@@ -62,6 +63,7 @@ export function AppFooterNav() {
         ["/app", "Market"],
         ["/app/community", "Memes & Pairs"],
         ["/launch", "Launch"],
+        ["/app/portfolio", "Portfolio"],
         ["/app/analytics", "Analytics"],
         ["/app/activity", "Activity"],
         ["/app/wallet", "Wallet"],

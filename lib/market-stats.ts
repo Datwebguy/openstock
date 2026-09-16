@@ -1,5 +1,6 @@
 // Shared benchmark and real-time market stats for curated Solana tokenized stocks
 export type AssetMarketStats = {
+  price: number;
   change24h: number;
   volume24h: string;
   liquidity: string;
@@ -49,11 +50,12 @@ export function getAssetMarketStats(symbol: string, currentPrice?: number | null
     holders: "5.0K",
   };
 
-  const price = currentPrice ?? 100;
+  const price = currentPrice ?? (base.high24h && base.low24h ? +( (base.high24h + base.low24h) / 2 ).toFixed(2) : 100);
   const high = base.high24h ?? +(price * 1.025).toFixed(2);
   const low = base.low24h ?? +(price * 0.975).toFixed(2);
 
   return {
+    price,
     change24h: base.change24h ?? -0.52,
     volume24h: base.volume24h ?? "$4.2M",
     liquidity: base.liquidity ?? "$1.8M",

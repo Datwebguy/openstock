@@ -1,0 +1,528 @@
+/* ==========================================================================
+   OpenStock Portfolio & Creator Royalty Desk
+   Institutional Styling for US Equities, Community Pairs & Creator Royalties
+   ========================================================================== */
+
+.portfolio-page {
+  min-height: 100vh;
+  background-color: var(--os-porcelain, #f7f5fc);
+  color: var(--os-ink, #161321);
+  padding-bottom: 96px;
+}
+
+html[data-theme="dark"] .portfolio-page {
+  background-color: #07050f;
+  color: #f5f2fc;
+}
+
+.portfolio-container {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3vw, 36px);
+  padding-top: clamp(82px, 6vw, 102px);
+}
+
+/* Header & Executive Balance Summary */
+.portfolio-hero-card {
+  margin-bottom: 24px;
+  padding: 28px 32px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 243, 255, 0.94) 55%, rgba(240, 249, 255, 0.9) 100%);
+  border: 1px solid rgba(153, 69, 255, 0.18);
+  box-shadow: 0 14px 36px rgba(153, 69, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-theme="dark"] .portfolio-hero-card {
+  background: linear-gradient(135deg, rgba(20, 15, 38, 0.95) 0%, rgba(13, 9, 26, 0.95) 60%, rgba(12, 22, 32, 0.9) 100%);
+  border-color: rgba(153, 69, 255, 0.28);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.portfolio-hero-card::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(153, 69, 255, 0.15), rgba(20, 241, 149, 0.08) 50%, transparent 75%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.portfolio-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.portfolio-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(153, 69, 255, 0.08);
+  border: 1px solid rgba(153, 69, 255, 0.2);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--solana-purple, #9945ff);
+}
+
+.portfolio-hero-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portfolio-wallet-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(20, 241, 149, 0.1);
+  color: #0c8a58;
+  border: 1px solid rgba(20, 241, 149, 0.25);
+}
+
+html[data-theme="dark"] .portfolio-wallet-pill {
+  color: var(--solana-green, #14f195);
+}
+
+.portfolio-balance-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.portfolio-main-val-box span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--os-muted, #6e6782);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.portfolio-main-val {
+  font-family: var(--font-display, "Space Grotesk"), sans-serif;
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .portfolio-main-val {
+  color: #ffffff;
+}
+
+.portfolio-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+.portfolio-delta-badge.is-up {
+  color: #0c8a58;
+  background: rgba(20, 241, 149, 0.14);
+}
+
+html[data-theme="dark"] .portfolio-delta-badge.is-up {
+  color: var(--solana-green, #14f195);
+  background: rgba(20, 241, 149, 0.18);
+}
+
+.portfolio-delta-badge.is-down {
+  color: #e53935;
+  background: rgba(229, 57, 53, 0.12);
+}
+
+/* Royalty Vault Highlight Banner */
+.portfolio-royalty-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(153, 69, 255, 0.06);
+  border: 1.5px solid rgba(153, 69, 255, 0.22);
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+html[data-theme="dark"] .portfolio-royalty-banner {
+  background: rgba(153, 69, 255, 0.12);
+  border-color: rgba(153, 69, 255, 0.32);
+}
+
+.portfolio-royalty-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portfolio-royalty-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--solana-purple, #9945ff), #6c5ce7);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  box-shadow: 0 4px 14px rgba(153, 69, 255, 0.25);
+}
+
+.portfolio-royalty-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .portfolio-royalty-text strong {
+  color: #ffffff;
+}
+
+.portfolio-royalty-text span {
+  display: block;
+  font-size: 12px;
+  color: var(--os-muted, #6e6782);
+  margin-top: 2px;
+}
+
+.portfolio-claim-all-btn {
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(100deg, var(--solana-purple, #9945ff), #6c5ce7 50%, var(--solana-green, #14f195));
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(153, 69, 255, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portfolio-claim-all-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(153, 69, 255, 0.38);
+}
+
+.portfolio-claim-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Tabs Navigation */
+.portfolio-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+html[data-theme="dark"] .portfolio-tabs-bar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.portfolio-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.portfolio-tab {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: var(--font-display, "Space Grotesk"), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--os-muted, #6e6782);
+  transition: all 0.2s ease;
+}
+
+.portfolio-tab.is-active {
+  background: #ffffff;
+  color: var(--solana-purple, #9945ff);
+  border-color: rgba(153, 69, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(153, 69, 255, 0.08);
+}
+
+html[data-theme="dark"] .portfolio-tab.is-active {
+  background: #17112b;
+  color: var(--solana-green, #14f195);
+  border-color: rgba(20, 241, 149, 0.25);
+}
+
+/* Vault Cards Grid */
+.royalty-vaults-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.royalty-vault-card {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1.5px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  padding: 22px;
+  box-shadow: 0 8px 24px rgba(15, 7, 34, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+html[data-theme="dark"] .royalty-vault-card {
+  background: #0e0a1c;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.royalty-vault-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(153, 69, 255, 0.4);
+}
+
+.royalty-vault-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.royalty-vault-tokens {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.royalty-vault-avatar {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid rgba(153, 69, 255, 0.25);
+  background: #f7f5fc;
+}
+
+html[data-theme="dark"] .royalty-vault-avatar {
+  background: #17112b;
+}
+
+.royalty-vault-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.royalty-vault-pair-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--solana-green, #14f195);
+  background: #ffffff;
+}
+
+.royalty-vault-title h3 {
+  margin: 0;
+  font-family: var(--font-display, "Space Grotesk"), sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.royalty-vault-title span {
+  font-size: 12px;
+  color: var(--os-muted, #6e6782);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.royalty-vault-venue {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(3, 225, 255, 0.1);
+  color: var(--solana-cyan, #03e1ff);
+  border: 1px solid rgba(3, 225, 255, 0.25);
+}
+
+.royalty-vault-metrics {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--os-porcelain, #f7f5fc);
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.08));
+}
+
+html[data-theme="dark"] .royalty-vault-metrics {
+  background: #17112b;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.royalty-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.royalty-metric-row span {
+  color: var(--os-muted, #6e6782);
+}
+
+.royalty-metric-row strong {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12.5px;
+}
+
+.royalty-claim-btn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 12px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--solana-purple, #9945ff), #6c5ce7);
+  color: #ffffff;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(153, 69, 255, 0.2);
+}
+
+.royalty-claim-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(153, 69, 255, 0.3);
+}
+
+.royalty-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--os-line, rgba(22, 19, 33, 0.12));
+  color: var(--os-muted, #6e6782);
+  box-shadow: none;
+}
+
+/* Holdings Table */
+.holdings-table-wrap {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  overflow-x: auto;
+  box-shadow: 0 8px 24px rgba(15, 7, 34, 0.04);
+  margin-bottom: 32px;
+}
+
+html[data-theme="dark"] .holdings-table-wrap {
+  background: #0e0a1c;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.holdings-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.holdings-table th {
+  padding: 14px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--os-muted, #6e6782);
+  border-bottom: 1px solid var(--os-line, rgba(22, 19, 33, 0.08));
+  background: rgba(153, 69, 255, 0.02);
+}
+
+html[data-theme="dark"] .holdings-table th {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.holdings-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--os-line, rgba(22, 19, 33, 0.06));
+}
+
+html[data-theme="dark"] .holdings-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+.holdings-table tr:hover td {
+  background: rgba(153, 69, 255, 0.03);
+}
+
+.holding-asset-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.holding-asset-name strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.holding-asset-name span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--os-muted, #6e6782);
+}
+
+/* History Ledger */
+.claim-history-table-wrap {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  overflow-x: auto;
+  box-shadow: 0 8px 24px rgba(15, 7, 34, 0.04);
+}
+
+html[data-theme="dark"] .claim-history-table-wrap {
+  background: #0e0a1c;
+  border-color: rgba(255, 255, 255, 0.08);
+}
