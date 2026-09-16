@@ -374,7 +374,7 @@ export function LaunchClient() {
         </Link>
         <div className="launch-header-chips">
           <span className="launch-network-pill">
-            <span className="launch-pulse-dot" /> Solana Mainnet-Beta
+            <span className="launch-pulse-dot" /> Solana Mainnet
           </span>
           <span className="launch-protocol-pill">Powered by ClawPump</span>
         </div>
@@ -532,14 +532,16 @@ export function LaunchClient() {
             </div>
           </section>
 
-          {/* Step 02: Stock Market Pairing */}
-          <section className="launch-panel" aria-labelledby="step-2-heading">
-            <div className="launch-panel-head">
-              <div className="launch-step-pill">02</div>
-              <div>
-                <h2 id="step-2-heading">Stock Market Pairing</h2>
+          {/* Row container: Market Pairing (Left) and Supply & Economics (Right) on Desktop */}
+          <div className="launch-market-economics-row">
+            {/* Step 02: Stock Market Pairing */}
+            <section className="launch-panel launch-panel--market" aria-labelledby="step-2-heading">
+              <div className="launch-panel-head">
+                <div className="launch-step-pill">02</div>
+                <div>
+                  <h2 id="step-2-heading">Stock Market Pairing</h2>
+                </div>
               </div>
-            </div>
 
             {/* Pair Search Filter */}
             <div className="launch-pair-filter-row">
@@ -592,14 +594,14 @@ export function LaunchClient() {
             </div>
           </section>
 
-          {/* Step 03: Set Supply & Creator Fee Economics */}
-          <section className="launch-panel" aria-labelledby="step-3-heading">
-            <div className="launch-panel-head">
-              <div className="launch-step-pill">03</div>
-              <div>
-                <h2 id="step-3-heading">Supply &amp; Economics</h2>
+            {/* Step 03: Set Supply & Creator Fee Economics */}
+            <section className="launch-panel launch-panel--economics" aria-labelledby="step-3-heading">
+              <div className="launch-panel-head">
+                <div className="launch-step-pill">03</div>
+                <div>
+                  <h2 id="step-3-heading">Supply &amp; Economics</h2>
+                </div>
               </div>
-            </div>
 
             {/* Token Supply Selector */}
             <div className="launch-field" style={{ marginBottom: 20 }}>
@@ -753,6 +755,7 @@ export function LaunchClient() {
             )}
           </section>
         </div>
+      </div>
 
         {/* Right Column: Interactive Holographic Token Simulator */}
         <div className="launch-stage-column">

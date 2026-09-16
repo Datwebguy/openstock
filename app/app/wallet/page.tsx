@@ -37,7 +37,7 @@ export default function WalletPage() {
           <h2>{address ? shortWallet(address) : "Not connected"}</h2>
           <p className="settings-panel__address">
             {address 
-              ? "Solana Mainnet-Beta account." 
+              ? "Solana Mainnet account." 
               : "Connect Phantom or Solflare."}
           </p>
         </div>

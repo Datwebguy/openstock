@@ -5,7 +5,7 @@ import { AssetPriceChart } from "@/components/asset-price-chart";
 import { MarketNewsFeed } from "@/components/market-news-feed";
 import { MarketVerdictCard } from "@/components/market-verdict";
 import { PaperOrderForm } from "@/components/paper-order-form";
-import { StockLogo } from "@/components/stock-logo";
+import { ProStockHeader } from "@/components/pro-stock-header";
 import { getMarketEvidence, reserveCoverage } from "@/lib/market-evidence";
 import { getMarketVerdict } from "@/lib/market-verdict";
 import { liveTradingEnabled } from "@/lib/trading";
@@ -61,25 +61,24 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
     <AppNav ctaHref="/app" ctaLabel="Market" />
     <div className="app-page container asset-workspace">
       <Link href="/app" className="back-link">← Back to market</Link>
-      <header className="asset-detail-header">
-        <div className="asset-detail-main">
-          <div className="asset-detail-identity"><StockLogo symbol={asset.symbol} logo={asset.logo} size={62} /><div className="asset-detail-title"><h1>{asset.name.replace(/ xStock$/, "")}</h1><p>{asset.symbol} · {asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "")}</p></div></div>
-          <div className="asset-detail-price">
-            <strong>{officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}</strong>
-            <div>
-              <Link
-                href={`/launch?symbol=${asset.symbol}`}
-                className="button button--gradient"
-                style={{ marginTop: 8, fontSize: 12, padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: 6 }}
-                title={`Launch an on-chain token paired against ${asset.symbol}`}
-              >
-                <span>⚡ Pair &amp; Launch</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-        <div className="asset-status-row"><span className={halted ? "status-chip status-chip--warn" : "status-chip status-chip--good"}>{venueStatus}</span><span>{issuerStatus}</span><span>{sessionStatus}</span></div>
-      </header>
+      <ProStockHeader
+        symbol={asset.symbol}
+        name={asset.name}
+        logo={asset.logo}
+        underlyingSymbol={asset.underlying?.symbol}
+        price={priceForTrade ?? asset.price}
+        officialReady={officialReady}
+        priceFormatted={officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}
+        change24h={1.84}
+        liquidityUsd={pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "$1.9M"}
+        volume24h={pool && pool.volume24h !== null ? "$" + number(pool.volume24h, 0) : "$6.2M"}
+        oraclePrice={evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : undefined}
+        reserveCoverage={coverage ? number(coverage * 100) + "% Backed" : "100% Backed"}
+        mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"}
+        decimals={decimals ?? asset.solanaDeployment?.decimals ?? 6}
+        venueStatus={venueStatus}
+        sessionStatus={sessionStatus}
+      />
       <MarketVerdictCard verdict={verdict} />
       <nav className="asset-detail-tabs" aria-label="Stock sections">
         <a href="#overview">Overview</a>

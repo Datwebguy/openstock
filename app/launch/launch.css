@@ -19,10 +19,10 @@ html[data-theme="dark"] .launch-page {
 
 .launch-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1360px;
   margin-inline: auto;
-  padding-inline: clamp(16px, 3.5vw, 36px);
-  padding-top: clamp(20px, 3vw, 40px);
+  padding-inline: clamp(16px, 3vw, 32px);
+  padding-top: clamp(20px, 3vw, 36px);
 }
 
 /* Top bar */
@@ -188,6 +188,37 @@ html[data-theme="dark"] .launch-panel {
   background: #0e0a1c;
   border-color: rgba(255, 255, 255, 0.09);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Row Container: Stock Market Pairing (Left) and Supply & Economics (Right) on Desktop */
+.launch-market-economics-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .launch-market-economics-row {
+    grid-template-columns: 1.12fr 1fr;
+    align-items: stretch;
+  }
+
+  .launch-panel--market,
+  .launch-panel--economics {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+
+  .launch-panel--economics {
+    justify-content: flex-start;
+  }
+
+  .launch-pairs-container {
+    max-height: 420px;
+    flex: 1;
+  }
 }
 
 .launch-panel-head {
