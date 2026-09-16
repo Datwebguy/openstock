@@ -14,7 +14,6 @@ async function requestJson<T>(url: string): Promise<T> { const response = await 
 function stablecoin(asset: Awaited<ReturnType<typeof getHydratedAsset>>) { const stablecoins = (asset.solanaDeployment?.stablecoins ?? []) as Array<{ currency?: string; symbol?: string; address?: string; decimals?: number }>; return stablecoins.find((coin) => coin.currency === "USD" && coin.symbol === "USDC") ?? stablecoins.find((coin) => coin.currency === "USD") ?? { address: USDC_MINT, decimals: 6 }; }
 
 export async function POST(request: Request) {
-  if (!process.env.JUPITER_API_KEY) return NextResponse.json({ error: "Live trading is not configured yet. Add a Jupiter API key before enabling signed orders." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   let body: TradeRequest;
   try { body = (await request.json()) as TradeRequest; } catch { return NextResponse.json({ error: "Enter a valid order." }, { status: 400 }); }
   const symbol = body.symbol?.trim(), side = body.side, shares = body.shares, wallet = body.wallet?.trim();
@@ -32,8 +31,39 @@ export async function POST(request: Request) {
     const inputMint = side === "buy" ? stableMint : stockMint, outputMint = side === "buy" ? stockMint : stableMint, sellConversion = side === "sell" ? uiToRaw(Number(shares), multiplier, decimals) : null;
     if (side === "sell" && !sellConversion) return NextResponse.json({ error: "The share amount could not be converted safely." }, { status: 400 });
     const inputAmount = side === "buy" ? String(Math.max(1, Math.round(Number(shares) * price * 10 ** stableDecimals))) : sellConversion!.rawAmount;
-    const params = new URLSearchParams({ inputMint, outputMint, amount: inputAmount, taker: wallet });
-    const order = await requestJson<OrderResponse>(JUPITER_API_BASE + "/order?" + params);
+
+    let order: OrderResponse;
+
+    if (process.env.JUPITER_API_KEY) {
+      const params = new URLSearchParams({ inputMint, outputMint, amount: inputAmount, taker: wallet });
+      order = await requestJson<OrderResponse>(JUPITER_API_BASE + "/order?" + params);
+    } else {
+      // Free public Jupiter Lite route
+      const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(inputAmount)}&slippageBps=50`;
+      const quoteRes = await fetch(quoteUrl, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+      if (!quoteRes.ok) throw new Error("Jupiter Lite returned " + quoteRes.status);
+      const quoteResponse = await quoteRes.json();
+
+      const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          quoteResponse,
+          userPublicKey: wallet,
+          wrapAndUnwrapSol: true,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (!swapRes.ok) throw new Error("Jupiter Swap builder returned " + swapRes.status);
+      const swapData = await swapRes.json() as { swapTransaction?: string; lastValidBlockHeight?: number };
+      order = {
+        transaction: swapData.swapTransaction,
+        requestId: `lite_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        lastValidBlockHeight: swapData.lastValidBlockHeight,
+      };
+    }
+
     if (!order.transaction || !order.requestId) return NextResponse.json({ error: order.errorMessage ?? "Jupiter did not return a live route for this stock." }, { status: 502 });
     return NextResponse.json({ symbol: asset.symbol, side, shares: Number(shares), referencePrice: price, priceSource: officialReferencePrice !== null ? "official" : "onchain_pool", multiplier, decimals, inputMint, outputMint, inputAmount, ...order, preparedAt: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

@@ -16,11 +16,11 @@ function typeLabel(value: string) {
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 function dateLabel(value: string | null) {
-  if (!value) return "PENDING";
+  if (!value) return "Scheduled";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
 function relativeDate(value: string | null) {
-  if (!value) return "PENDING";
+  if (!value) return "Upcoming";
   const days = Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
   if (days < 0) return "Effective";
   if (days === 0) return "Today";

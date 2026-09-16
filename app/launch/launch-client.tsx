@@ -409,8 +409,7 @@ export function LaunchClient() {
             <div className="launch-panel-head">
               <div className="launch-step-pill">01</div>
               <div>
-                <h2 id="step-1-heading">Token Identity &amp; Artwork</h2>
-                <p>Upload artwork from your device or paste a URL, then name your asset.</p>
+                <h2 id="step-1-heading">Token Identity</h2>
               </div>
             </div>
 
@@ -442,16 +441,15 @@ export function LaunchClient() {
               </div>
             </div>
 
-            <div className="launch-field" style={{ marginTop: 18 }}>
+            <div className="launch-field" style={{ marginTop: 16 }}>
               <label htmlFor="token-desc">
-                Thesis / Description <span>({description.length}/350 chars)</span>
+                Bio / Tagline <span>(optional)</span>
               </label>
-              <textarea
+              <input
                 id="token-desc"
-                placeholder="The community asset tracking AI silicon demand and high-throughput data centers on Solana..."
+                placeholder={`Short tagline or default: ${tokenName || "Token"} paired against ${selectedPair?.symbol || "Stock"}`}
                 value={description}
-                maxLength={350}
-                rows={3}
+                maxLength={100}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
@@ -550,7 +548,6 @@ export function LaunchClient() {
               <div className="launch-step-pill">02</div>
               <div>
                 <h2 id="step-2-heading">Stock Market Pairing</h2>
-                <p>Select which verified Solana tokenized equity your token trades against.</p>
               </div>
             </div>
 
@@ -610,22 +607,21 @@ export function LaunchClient() {
             <div className="launch-panel-head">
               <div className="launch-step-pill">03</div>
               <div>
-                <h2 id="step-3-heading">Supply &amp; Fee Economics</h2>
-                <p>Set initial token supply and creator royalty yield in {selectedPair?.symbol || "xStock"}.</p>
+                <h2 id="step-3-heading">Supply &amp; Economics</h2>
               </div>
             </div>
 
             {/* Token Supply Selector */}
-            <div className="launch-field" style={{ marginBottom: 22 }}>
+            <div className="launch-field" style={{ marginBottom: 20 }}>
               <label htmlFor="token-supply">
-                Total Token Supply <span>(minted on bonding curve)</span>
+                Total Supply
               </label>
               <div className="launch-supply-controls">
                 <div className="launch-preset-chips" style={{ marginBottom: 10 }}>
                   {[
                     { label: "100M", val: 100_000_000 },
                     { label: "500M", val: 500_000_000 },
-                    { label: "1B (Standard)", val: 1_000_000_000 },
+                    { label: "1B", val: 1_000_000_000 },
                     { label: "10B", val: 10_000_000_000 },
                   ].map((tier) => (
                     <button
@@ -652,7 +648,7 @@ export function LaunchClient() {
             {/* Creator Fee Selector */}
             <div className="launch-field">
               <label htmlFor="creator-fee">
-                Creator Trading Royalty <span>(accrues in {selectedPair?.symbol || "xStock"})</span>
+                Creator Royalty <span>(in {selectedPair?.symbol || "xStock"})</span>
               </label>
               <div className="launch-fee-pills" role="group" aria-label="Creator fee">
                 {[
@@ -671,9 +667,6 @@ export function LaunchClient() {
                     {tier.label}
                   </button>
                 ))}
-              </div>
-              <div className="launch-fee-note">
-                💡 You automatically earn {creatorFeeBps / 100}% on all buy and sell volume settled in {selectedPair?.symbol || "xStock"} directly to your wallet.
               </div>
             </div>
 

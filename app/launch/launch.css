@@ -111,32 +111,64 @@ html[data-theme="dark"] .launch-network-pill {
 }
 
 .launch-intro {
-  margin-bottom: 4px;
+  margin-bottom: 24px;
+  padding: 26px 30px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(247, 243, 255, 0.92) 55%, rgba(240, 249, 255, 0.88) 100%);
+  border: 1px solid rgba(153, 69, 255, 0.18);
+  box-shadow: 0 12px 32px rgba(153, 69, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+}
+
+html[data-theme="dark"] .launch-intro {
+  background: linear-gradient(135deg, rgba(20, 15, 38, 0.92) 0%, rgba(13, 9, 26, 0.92) 60%, rgba(12, 22, 32, 0.85) 100%);
+  border-color: rgba(153, 69, 255, 0.28);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.launch-intro::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(153, 69, 255, 0.12), rgba(20, 241, 149, 0.08) 50%, transparent 75%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .launch-studio-kicker {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(153, 69, 255, 0.08);
+  border: 1px solid rgba(153, 69, 255, 0.2);
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 11px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;
   color: var(--solana-purple, #9945ff);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .launch-intro h1 {
   font-family: var(--font-display, "Space Grotesk"), sans-serif;
-  font-size: clamp(28px, 3.2vw, 38px);
+  font-size: clamp(26px, 3vw, 34px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
 
 .launch-intro p {
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--os-muted, #6e6782);
   margin: 0;
   max-width: 58ch;

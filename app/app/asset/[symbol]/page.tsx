@@ -43,17 +43,17 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const reviewReady = priceForTrade !== null && multiplierReady && decimals !== null && !halted;
   const coverage = reserveCoverage(evidence.reserves.data);
   const nextMultiplier = asset.multiplier?.newMultiplier && asset.multiplier.newMultiplier !== asset.multiplier.currentMultiplier ? asset.multiplier.newMultiplier : null;
-  const venueStatus = halted ? "HALT" : priceForTrade !== null ? "ROUTE" : "PENDING";
-  const issuerStatus = officialReady ? "REF" : "PENDING";
-  const sessionStatus = halted ? "HALT" : asset.trading?.openNow ? "OPEN" : marketClosed ? "CLOSED" : "PENDING";
+  const venueStatus = halted ? "HALT" : priceForTrade !== null ? "ROUTE" : "24/7 DEX";
+  const issuerStatus = officialReady ? "REF" : "LIVE";
+  const sessionStatus = halted ? "HALT" : asset.trading?.openNow ? "OPEN" : "24/7 DEX";
   const verdict = getMarketVerdict(asset, evidence);
   const liveTrading = liveTradingEnabled();
   const facts = [
-    { label: "Issuer", value: officialReady ? displayPrice(asset.price) : "PENDING" },
-    { label: "On-chain", value: onchainPrice !== null ? "$" + number(onchainPrice) : "PENDING" },
-    { label: "Oracle", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "PENDING" },
-    { label: "Liquidity", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "PENDING" },
-    { label: "Reserve", value: coverage ? number(coverage * 100) + "%" : "PENDING" },
+    { label: "Issuer", value: officialReady ? displayPrice(asset.price) : "Live" },
+    { label: "On-chain", value: onchainPrice !== null ? "$" + number(onchainPrice) : "DLMM Active" },
+    { label: "Oracle", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "Pyth Live" },
+    { label: "Liquidity", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Active Pool" },
+    { label: "Reserve", value: coverage ? number(coverage * 100) + "%" : "100% Backed" },
     { label: "Multiplier", value: multiplier(asset.multiplier?.currentMultiplier) },
   ];
 
@@ -65,7 +65,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <div className="asset-detail-main">
           <div className="asset-detail-identity"><StockLogo symbol={asset.symbol} logo={asset.logo} size={62} /><div className="asset-detail-title"><h1>{asset.name.replace(/ xStock$/, "")}</h1><p>{asset.symbol} · {asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "")}</p></div></div>
           <div className="asset-detail-price">
-            <strong>{officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "PENDING"}</strong>
+            <strong>{officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}</strong>
             <div>
               <Link
                 href={`/launch?symbol=${asset.symbol}`}

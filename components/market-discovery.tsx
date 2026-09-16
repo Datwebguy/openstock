@@ -1,5 +1,4 @@
 "use client";
-"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -39,7 +38,11 @@ const SECTOR_MAP: Record<string, "tech" | "fintech" | "macro" | "consumer"> = {
 
 function issuerName(asset: OpenStockAsset) { return asset.name.replace(/ xStock$/, ""); }
 function ticker(asset: OpenStockAsset) { return asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "").toUpperCase(); }
-function session(asset: OpenStockAsset) { if (asset.isTradingHalted || asset.trading?.isTradingHalted) return "HALT"; if (asset.trading?.openNow === true) return "OPEN"; return "PENDING"; }
+function session(asset: OpenStockAsset) {
+  if (asset.isTradingHalted || asset.trading?.isTradingHalted) return "HALTED";
+  if (asset.trading?.currentPeriod === "market" || asset.trading?.openNow === true) return "MARKET OPEN";
+  return "24/7 DEX";
+}
 
 export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   const [query, setQuery] = useState("");
@@ -109,7 +112,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
     <div className="discovery-results"><span role="status">{filtered.length} {filtered.length === 1 ? "stock" : "stocks"}{filter === "watchlist" ? " in your watchlist" : " to explore"}</span>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</button> : <span>Issuer reference prices</span>}</div>
 
     {filtered.length ? <div className="stock-grid" aria-label="Tokenized stocks">{filtered.map((asset) => <article className="stock-card" key={asset.symbol}>
-      <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`} aria-label={`${issuerName(asset)}, ${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{asset.price !== null && asset.price !== undefined ? displayPrice(asset.price) : "PENDING"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
+      <Link className="stock-card__main" href={`/app/asset/${asset.symbol}`} aria-label={`${issuerName(asset)}, ${asset.symbol}`}><div className="stock-card__top"><StockLogo symbol={asset.symbol} logo={asset.logo} /><span className="stock-card__ticker">{asset.symbol}</span></div><h2>{issuerName(asset)}</h2><span className="stock-card__price">{typeof asset.price === "number" && Number.isFinite(asset.price) ? displayPrice(asset.price) : "Live"}</span><span className="stock-card__meta">{ticker(asset)} · {session(asset)}</span></Link>
       <div className="stock-card__footer">
         <button type="button" className={watchlist.includes(asset.symbol) ? "is-saved" : ""} aria-label={(watchlist.includes(asset.symbol) ? "Remove " : "Add ") + asset.symbol + " from watchlist"} aria-pressed={watchlist.includes(asset.symbol)} onClick={() => toggleWatchlist(asset.symbol)}>{watchlist.includes(asset.symbol) ? "★" : "☆"}</button>
         <Link href={`/launch?symbol=${asset.symbol}`} className="stock-card__launch-btn" title={`Launch a community token paired with ${asset.symbol}`}>

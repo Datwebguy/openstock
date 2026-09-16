@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
     if (!symbol || typeof symbol !== "string" || symbol.trim().length < 1 || symbol.length > 10) {
       return NextResponse.json({ error: "Token symbol must be between 1 and 10 characters." }, { status: 400 });
     }
-    if (!description || typeof description !== "string" || description.trim().length < 10 || description.length > 500) {
-      return NextResponse.json({ error: "Description must be between 10 and 500 characters." }, { status: 400 });
-    }
+    const resolvedDescription = (typeof description === "string" && description.trim().length >= 3)
+      ? description.trim().slice(0, 500)
+      : `${name.trim()} paired against ${symbol.trim()} on Solana via OpenStock`;
 
     // Support device upload path (/uploads/...), data URI, or external HTTPS URL
     let resolvedImageUrl = imageUrl;
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const preflight = await requestPreflightQuote({
       name: name.trim(),
       symbol: symbol.trim().toUpperCase(),
-      description: description.trim(),
+      description: resolvedDescription,
       imageUrl: resolvedImageUrl,
       pumpQuoteMint,
       pumpCreatorFeeBps: feeBps,

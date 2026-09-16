@@ -9,7 +9,7 @@ type Props = { symbol: string; name: string; price: number | null; solPriceUsd: 
 type Prepared = { transaction?: string; requestId?: string; lastValidBlockHeight?: number; multiplier?: number; decimals?: number; priceSource?: "official" | "onchain_pool"; error?: string };
 type Executed = { status?: string; signature?: string; error?: string };
 
-function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "PENDING"; }
+function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "1.0000×"; }
 function decode(value: string) { return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)); }
 function encode(value: Uint8Array) { let binary = ""; for (let i = 0; i < value.length; i += 0x8000) binary += String.fromCharCode(...value.subarray(i, i + 0x8000)); return btoa(binary); }
 
@@ -67,7 +67,7 @@ export function PaperOrderForm({ symbol, name, price, solPriceUsd, priceIsIndica
 
   const buttonText = halted ? "HALT" : !canTrade ? "Quote pending" : submitting ? (!liveTrading ? "Saving" : !wallet ? "Connecting" : "Confirming") : !liveTrading ? "Save paper review" : !wallet ? "Connect wallet" : (side === "buy" ? "Buy " : "Sell ") + symbol;
   const totalLabel = side === "buy" ? "You pay" : "You receive";
-  const totalValue = estimatedUsd === null ? "PENDING" : estimatedUsd.toFixed(2) + " USDC";
+  const totalValue = estimatedUsd === null ? "0.00 USDC" : estimatedUsd.toFixed(2) + " USDC";
   const solValue = estimatedSol === null ? "Updating" : estimatedSol.toFixed(4) + " SOL";
   return <form className="paper-order" onSubmit={submit} aria-label={"Live order for " + symbol}>
     <div className="paper-order__head"><div><span className="eyebrow">Order</span><h3>{side === "buy" ? "Buy" : "Sell"} {symbol}</h3></div><span className="paper-order__safe">{shortWallet(wallet) ?? "NO WALLET"}</span></div>

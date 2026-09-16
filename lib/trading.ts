@@ -1,3 +1,3 @@
 export function liveTradingEnabled() {
-  return Boolean(process.env.JUPITER_API_KEY);
+  return process.env.ENABLE_LIVE_TRADING !== "false";
 }
