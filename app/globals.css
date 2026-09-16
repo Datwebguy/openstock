@@ -63,7 +63,7 @@ button { font: inherit; }
 .marquee { display: flex; overflow: hidden; background: var(--night); color: white; border-block: 1px solid rgba(255,255,255,.12); }
 .marquee__track { display: flex; min-width: max-content; gap: 50px; padding: 20px 25px; animation: marquee 28s linear infinite; }
 .marquee__item { font-size: 12px; font-weight: 800; letter-spacing: .08em; white-space: nowrap; }
-.marquee__item::before { content: "✦"; margin-right: 50px; color: var(--solana-green); }
+.marquee__item::before { content: "·"; margin-right: 50px; color: var(--solana-green); }
 .section { position: relative; padding: 170px 0; }
 .section--dark { color: white; background: var(--night); }
 .section--dark .eyebrow { color: var(--solana-green); }

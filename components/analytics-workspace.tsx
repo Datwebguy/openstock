@@ -155,7 +155,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             className={`analytics-module-tab ${activeTab === "depth" ? "is-active" : ""}`}
             onClick={() => setActiveTab("depth")}
           >
-            🌊 Meteora DLMM Liquidity Depth
+            DLMM Liquidity Depth
           </button>
           <button
             type="button"
@@ -164,7 +164,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             className={`analytics-module-tab ${activeTab === "oracles" ? "is-active" : ""}`}
             onClick={() => setActiveTab("oracles")}
           >
-            ⚡ Dual-Oracle Consensus
+            Dual-Oracle Consensus
           </button>
           <button
             type="button"
@@ -173,7 +173,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             className={`analytics-module-tab ${activeTab === "audit" ? "is-active" : ""}`}
             onClick={() => setActiveTab("audit")}
           >
-            🏛️ Token-2022 Reserves Audit
+            Token-2022 Reserves Audit
           </button>
           <button
             type="button"
@@ -182,7 +182,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             className={`analytics-module-tab ${activeTab === "clawpump" ? "is-active" : ""}`}
             onClick={() => setActiveTab("clawpump")}
           >
-            🚀 ClawPump Meme Pairing
+            ClawPump Pairing
           </button>
         </div>
 
@@ -370,7 +370,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
                   className="button button--gradient"
                   style={{ padding: "12px 24px", fontSize: 13, fontWeight: 800 }}
                 >
-                  ⚡ Pair &amp; Launch on ClawPump
+                  Pair &amp; Launch on ClawPump
                 </Link>
               </div>
             </div>

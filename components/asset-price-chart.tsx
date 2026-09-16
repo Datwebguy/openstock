@@ -419,7 +419,7 @@ export function AssetPriceChart({
               onClick={() => setShowIndicatorModal(!showIndicatorModal)}
               title="Configure Technical Indicators"
             >
-              <span>📈 Indicators</span>
+              <span>Indicators</span>
               <span className="pro-chart-indicator-dot" />
             </button>
 
@@ -618,7 +618,7 @@ export function AssetPriceChart({
             onClick={() => setMagnetActive(!magnetActive)}
             title="Magnet Snap (Snap to high/low wick)"
           >
-            🧲
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15V8a8 8 0 1 1 16 0v7"/><path d="M4 11h4"/><path d="M16 11h4"/><path d="M4 15h4"/><path d="M16 15h4"/></svg>
           </button>
           <button
             type="button"
@@ -626,7 +626,7 @@ export function AssetPriceChart({
             onClick={() => setDrawingsVisible(!drawingsVisible)}
             title="Toggle Visibility of Drawings & Indicators"
           >
-            👁
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
           <button
             type="button"
@@ -638,7 +638,7 @@ export function AssetPriceChart({
             }}
             title="Clear All Drawings"
           >
-            🗑
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </button>
         </aside>
 
@@ -914,7 +914,7 @@ export function AssetPriceChart({
                 if (d.type === "text") {
                   return (
                     <text key={d.id} x={d.x} y={d.y} fill="#f5f2fc" fontSize="3.5" fontWeight="800">
-                      🏷 {d.text}
+                      {d.text}
                     </text>
                   );
                 }

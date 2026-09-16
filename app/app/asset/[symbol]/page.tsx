@@ -87,7 +87,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <a href="#events">Issuer events</a>
         <a href="#trade">Trade</a>
         <Link href={`/launch?symbol=${asset.symbol}`} style={{ color: "var(--accent, #9945ff)", fontWeight: 700 }}>
-          Launch Pair ⚡
+          Launch Pair
         </Link>
       </nav>
       <div className="asset-trade-grid"><div className="asset-analysis-stack"><AssetPriceChart symbol={asset.symbol} name={asset.name.replace(/ xStock$/, "")} referencePrice={asset.price} /><div id="news"><MarketNewsFeed compact symbol={asset.symbol} symbols={[{ symbol: asset.symbol, name: asset.name.replace(/ xStock$/, "") }]} /></div></div><section className="asset-order-card" id="trade"><PaperOrderForm symbol={asset.symbol} name={asset.name} price={priceForTrade} solPriceUsd={evidence.solPriceUsd} priceIsIndicative={priceIsIndicative} multiplier={asset.multiplier?.currentMultiplier ?? null} decimals={decimals} halted={halted} ready={reviewReady} liveTrading={liveTrading} /></section></div>

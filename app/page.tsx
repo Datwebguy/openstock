@@ -74,7 +74,7 @@ export default function HomePage() {
             <a href="#markets">Live stocks</a>
             <a href="#architecture">Architecture</a>
             <Link href="/launch" style={{ color: "var(--solana-purple)", fontWeight: 700 }}>
-              Launch ✦
+              Launch
             </Link>
             <a href="#workspace">Workspace</a>
             <a href="#faq">FAQ</a>
@@ -113,7 +113,7 @@ export default function HomePage() {
                 Explore Markets <span aria-hidden="true">→</span>
               </Link>
               <Link className="os-button os-button-ghost" href="/launch">
-                Launch Token ✦
+                Launch Token
               </Link>
             </div>
             <div className="os-hero-live-pill" style={{ "--i": 5 } as React.CSSProperties}>
@@ -330,59 +330,71 @@ export default function HomePage() {
           </div>
 
           <div className="os-arch-grid" data-reveal>
-            {/* Card 1: Token-2022 Equities */}
+            {/* Card 1: Token-2022 Equities with Apple and NVIDIA real logos */}
             <article className="os-arch-card">
               <div className="os-arch-card__top">
-                <span className="os-arch-card__icon">🏛️</span>
+                <div className="os-arch-card__logos">
+                  <StockLogo symbol="AAPLx" size={32} />
+                  <StockLogo symbol="NVDAx" size={32} />
+                </div>
                 <span className="os-arch-card__badge os-badge-green">1:1 Backed</span>
               </div>
               <h3>Token-2022 Equities</h3>
-              <p>25 curated blue-chip equities and macro ETFs backed by physical custodian shares with on-chain corporate event handling.</p>
+              <p>25 curated blue-chip stocks backed by physical custodian shares.</p>
               <div className="os-arch-card__meta">
-                <span>Depository Custody</span>
+                <span>Depository</span>
                 <strong>Backed Finance AG</strong>
               </div>
             </article>
 
-            {/* Card 2: Dual Oracles */}
+            {/* Card 2: Dual Oracles with Microsoft and Alphabet real logos */}
             <article className="os-arch-card">
               <div className="os-arch-card__top">
-                <span className="os-arch-card__icon">⚡</span>
+                <div className="os-arch-card__logos">
+                  <StockLogo symbol="MSFTx" size={32} />
+                  <StockLogo symbol="GOOGLx" size={32} />
+                </div>
                 <span className="os-arch-card__badge os-badge-purple">Sub-Second</span>
               </div>
               <h3>Dual-Oracle Consensus</h3>
-              <p>Pyth Network ultra-low latency price benchmarks cross-verified with on-chain Meteora DLMM pool depth to prevent stale quotes.</p>
+              <p>Pyth benchmarks cross-verified with on-chain DLMM pool depth.</p>
               <div className="os-arch-card__meta">
-                <span>Oracle Redundancy</span>
-                <strong>Pyth + DLMM Depth</strong>
+                <span>Oracles</span>
+                <strong>Pyth + Meteora</strong>
               </div>
             </article>
 
-            {/* Card 3: ClawPump Meme Pairing */}
+            {/* Card 3: ClawPump Pairing with Tesla and Coinbase real logos */}
             <article className="os-arch-card">
               <div className="os-arch-card__top">
-                <span className="os-arch-card__icon">🚀</span>
-                <span className="os-arch-card__badge os-badge-blue">ClawPump Engine</span>
+                <div className="os-arch-card__logos">
+                  <StockLogo symbol="TSLAx" size={32} />
+                  <StockLogo symbol="COINx" size={32} />
+                </div>
+                <span className="os-arch-card__badge os-badge-blue">ClawPump</span>
               </div>
-              <h3>Community Pair Launches</h3>
-              <p>Launch community tokens and memes paired directly against tokenized stocks (e.g. YOUR_TOKEN × AAPLx) with customized tokenomics.</p>
+              <h3>Stock Pair Launches</h3>
+              <p>Launch community tokens paired directly against xStocks.</p>
               <div className="os-arch-card__meta">
-                <span>Market Pairing</span>
-                <strong>Stock × Community</strong>
+                <span>Pairing</span>
+                <strong>YOUR_TOKEN × TSLAx</strong>
               </div>
             </article>
 
-            {/* Card 4: 24/7 Execution */}
+            {/* Card 4: 24/7 Execution with Amazon and Meta real logos */}
             <article className="os-arch-card">
               <div className="os-arch-card__top">
-                <span className="os-arch-card__icon">🌐</span>
+                <div className="os-arch-card__logos">
+                  <StockLogo symbol="AMZNx" size={32} />
+                  <StockLogo symbol="METAx" size={32} />
+                </div>
                 <span className="os-arch-card__badge os-badge-green">24/7 DEX</span>
               </div>
               <h3>Continuous Settlement</h3>
-              <p>Execute swaps and route trades day and night directly on Solana Mainnet with sub-second finality and zero market closing halts.</p>
+              <p>Instant on-chain execution with zero market closing halts.</p>
               <div className="os-arch-card__meta">
-                <span>Settlement Speed</span>
-                <strong>~400ms On-Chain</strong>
+                <span>Settlement</span>
+                <strong>Solana Mainnet</strong>
               </div>
             </article>
           </div>

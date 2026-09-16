@@ -124,7 +124,7 @@ export function ProStockHeader({
             className="button button--gradient pro-asset-header__launch-cta"
             title={`Launch a community meme or token paired with ${symbol}`}
           >
-            <span>⚡ Pair &amp; Launch Token</span>
+            <span>Pair &amp; Launch Token</span>
           </Link>
         </div>
       </div>

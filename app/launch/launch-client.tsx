@@ -484,10 +484,10 @@ export function LaunchClient() {
                       }}
                     />
                   ) : (
-                    <span className="launch-drop-icon">📷</span>
+                    <span className="launch-drop-icon" style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Upload</span>
                   )}
                   <div className="launch-drop-overlay">
-                    <span>{isUploadingImage ? "..." : "Edit ✎"}</span>
+                    <span>{isUploadingImage ? "..." : "Change"}</span>
                   </div>
                 </div>
 
@@ -663,28 +663,23 @@ export function LaunchClient() {
             </div>
 
             {/* Action Zone: One-Click Launch Button */}
-            <div className="launch-execution-zone" style={{ marginTop: 24 }}>
-              <div className="launch-wallet-bar">
-                <div className="launch-wallet-id">
-                  <span className="launch-pulse-dot" />
-                  <span>
-                    {ready && address
-                      ? `Active Wallet: ${shortWallet(address)}`
-                      : "Connect Phantom or Solflare wallet"}
-                  </span>
+            <div className="launch-execution-zone" style={{ marginTop: 20 }}>
+              {ready && address && (
+                <div className="launch-connected-status" style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
+                  <span className="live-dot" />
+                  <span>Wallet: <strong>{shortWallet(address)}</strong></span>
                 </div>
-                <span className="launch-quote-tag">ClawPump Rent: ~0.0075 SOL</span>
-              </div>
+              )}
 
               {errorMessage && (
                 <div className="launch-error-banner" role="alert">
-                  ⚠️ {errorMessage}
+                  {errorMessage}
                 </div>
               )}
 
               {stepState !== "idle" && stepState !== "error" && stepState !== "success" && (
                 <div className="launch-status-pill">
-                  <span className="launch-spin">✦</span> {statusMessage}
+                  {statusMessage}
                 </div>
               )}
 
@@ -697,28 +692,25 @@ export function LaunchClient() {
                 {!address ? (
                   "Connect Wallet to Launch"
                 ) : stepState === "quoting" ? (
-                  <>
-                    <span className="launch-spin">✦</span> Calculating Quote...
-                  </>
+                  "Calculating Quote..."
                 ) : stepState === "paying" ? (
-                  <>
-                    <span className="launch-spin">✦</span> Approve ~0.0075 SOL in Wallet...
-                  </>
+                  "Approve in Wallet..."
                 ) : stepState === "confirming" ? (
-                  <>
-                    <span className="launch-spin">✦</span> Minting on ClawPump...
-                  </>
+                  "Creating Market on Solana..."
                 ) : (
-                  <>🚀 One-Click Launch: {tokenSymbol || "Token"} × {selectedPair?.symbol || "xStock"}</>
+                  <>Create Market: {tokenSymbol || "Token"} × {selectedPair?.symbol || "xStock"}</>
                 )}
               </button>
+
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: "var(--muted)", textAlign: "center" }}>
+                Estimated network fee: ~0.0075 SOL · Paired on Solana Mainnet
+              </p>
             </div>
 
             {/* Success Receipt Modal */}
             {launchReceipt && (
               <div className="launch-success-card" role="status">
                 <div className="launch-success-title">
-                  <span>🎉</span>
                   <h3>Successfully Paired &amp; Minted!</h3>
                 </div>
                 <p>Your community token is now live and trading against {selectedPair?.symbol} on Solana.</p>

@@ -259,7 +259,7 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
             Trade {asset.symbol} on Solana <span aria-hidden="true">→</span>
           </Link>
           <Link href={`/launch?symbol=${asset.symbol}`} className="os-button os-button-ghost">
-            Pair &amp; Launch <span aria-hidden="true">⚡</span>
+            Pair &amp; Launch
           </Link>
         </div>
       </div>

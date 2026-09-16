@@ -162,7 +162,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {mostTraded && (
           <Link href={`/app/asset/${mostTraded.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">🔥 Most Traded</span>
+              <span className="market-pulse-tile__kicker">Most Traded</span>
               <span className="market-pulse-tile__delta is-up">
                 +{getAssetStats(mostTraded.symbol).change24h}%
               </span>
@@ -181,7 +181,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {topGainer && (
           <Link href={`/app/asset/${topGainer.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">🚀 Top Mover</span>
+              <span className="market-pulse-tile__kicker">Top Mover</span>
               <span className="market-pulse-tile__delta is-up">
                 +{getAssetStats(topGainer.symbol).change24h}%
               </span>
@@ -200,7 +200,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {mostLiquid && (
           <Link href={`/app/asset/${mostLiquid.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">💧 Deepest Liquidity</span>
+              <span className="market-pulse-tile__kicker">Deepest Liquidity</span>
               <span className="market-pulse-tile__tag">Meteora DLMM</span>
             </div>
             <div className="market-pulse-tile__main">
@@ -216,7 +216,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
 
         <div className="market-pulse-tile market-pulse-tile--network">
           <div className="market-pulse-tile__top">
-            <span className="market-pulse-tile__kicker">⚡ Settlement</span>
+            <span className="market-pulse-tile__kicker">Settlement</span>
             <span className="market-pulse-tile__badge">Solana Mainnet</span>
           </div>
           <div className="market-pulse-tile__main">
@@ -225,7 +225,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
               <span>Token-2022 · 100% Backed</span>
             </div>
             <Link href="/launch" className="market-pulse-tile__launch-cta" title="Launch stock-paired token">
-              Pair ⚡
+              Pair &amp; Launch
             </Link>
           </div>
         </div>
@@ -281,7 +281,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
               title="Trends Table View"
               aria-label="Trends Table View"
             >
-              ☰ Trends
+              Trends
             </button>
             <button
               type="button"
@@ -290,7 +290,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
               title="Grid Cards View"
               aria-label="Grid Cards View"
             >
-              ▦ Cards
+              Cards
             </button>
           </div>
         </div>
@@ -422,7 +422,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                           className="trends-launch-btn"
                           title={`Launch community meme or token paired against ${asset.symbol}`}
                         >
-                          Pair ⚡
+                          Pair &amp; Launch
                         </Link>
                       </div>
                     </td>
@@ -484,7 +484,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                     className="stock-card__launch-btn"
                     title={`Launch a community token paired with ${asset.symbol}`}
                   >
-                    Pair &amp; Launch ⚡
+                    Pair &amp; Launch
                   </Link>
                 </div>
               </article>
