@@ -128,21 +128,42 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="discovery-controls" style={{ marginTop: 24 }}>
-        <div className="discovery-search">
-          <span className="search-icon" aria-hidden="true">
-            ⌕
-          </span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search meme or paired stock (COMPUTE, NVDAx, Tesla, Apple, DOGE...)"
-            aria-label="Search community tokens"
-          />
+      <div className="discovery-toolbar">
+        <div className="discovery-toolbar__top">
+          <div className="discovery-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search meme or paired stock (COMPUTE, NVDAx, Tesla, Apple, DOGE...)"
+              aria-label="Search community tokens"
+            />
+          </div>
+
+          <div className="discovery-toolbar__right">
+            <div className="discovery-view-toggle" role="group" aria-label="View format toggle">
+              <button
+                type="button"
+                className={`discovery-view-btn ${viewMode === "table" ? "is-active" : ""}`}
+                onClick={() => setViewMode("table")}
+                title="Trends Table View"
+              >
+                Trends
+              </button>
+              <button
+                type="button"
+                className={`discovery-view-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                onClick={() => setViewMode("grid")}
+                title="Grid Cards View"
+              >
+                Cards
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="discovery-pills" role="tablist" aria-label="Filter community launches">
+        <div className="discovery-filters" role="tablist" aria-label="Filter community launches">
           {[
             { id: "all", label: `All Launches (${tokens.length})` },
             { id: "new", label: `New Launches (${newCount})` },
@@ -154,7 +175,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
               type="button"
               role="tab"
               aria-selected={filter === tab.id}
-              className={`discovery-pill ${filter === tab.id ? "is-active" : ""}`}
+              className={filter === tab.id ? "is-active" : ""}
               onClick={() => {
                 startTransition(() => {
                   setFilter(tab.id as FilterTab);
@@ -164,25 +185,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
               {tab.label}
             </button>
           ))}
-        </div>
-
-        <div className="discovery-view-toggle" role="group" aria-label="View format toggle">
-          <button
-            type="button"
-            className={`discovery-toggle-btn ${viewMode === "table" ? "is-active" : ""}`}
-            onClick={() => setViewMode("table")}
-            title="Trends Table View"
-          >
-            Trends
-          </button>
-          <button
-            type="button"
-            className={`discovery-toggle-btn ${viewMode === "grid" ? "is-active" : ""}`}
-            onClick={() => setViewMode("grid")}
-            title="Grid Cards View"
-          >
-            Cards
-          </button>
+          <Link href="/launch" className="discovery-filter-link" title="Launch a new stock-paired token">
+            Launch New Pair ↗
+          </Link>
         </div>
       </div>
 
@@ -198,32 +203,36 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
       {/* Table View */}
       {viewMode === "table" && filteredTokens.length > 0 && (
-        <div className="trends-table-wrap" style={{ marginTop: 20 }}>
+        <div className="trends-table-wrapper" style={{ marginTop: 20 }}>
           <table className="trends-table" aria-label="Community meme and stock paired tokens">
             <thead>
               <tr>
-                <th scope="col" className="trends-th trends-th--rank">#</th>
-                <th scope="col" className="trends-th">TOKEN</th>
-                <th scope="col" className="trends-th">PAIRED STOCK</th>
-                <th scope="col" className="trends-th">PRICE</th>
-                <th scope="col" className="trends-th">24H CHANGE</th>
-                <th scope="col" className="trends-th">24H VOLUME</th>
-                <th scope="col" className="trends-th">BONDING CURVE</th>
-                <th scope="col" className="trends-th">MARKET CAP</th>
-                <th scope="col" className="trends-th trends-th--actions">ACTIONS</th>
+                <th scope="col" className="trends-th--rank">#</th>
+                <th scope="col" className="trends-th--asset">TOKEN</th>
+                <th scope="col" className="trends-th--stock">PAIRED STOCK</th>
+                <th scope="col" className="trends-th--price">PRICE</th>
+                <th scope="col" className="trends-th--change">24H CHANGE</th>
+                <th scope="col" className="trends-th--volume">24H VOLUME</th>
+                <th scope="col" className="trends-th--bonding">BONDING CURVE</th>
+                <th scope="col" className="trends-th--mcap">MARKET CAP</th>
+                <th scope="col" className="trends-th--actions">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filteredTokens.map((item, index) => {
                 const isPositive = item.change24h >= 0;
                 const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
+                const volumeFormatted =
+                  item.volume24hUsd >= 1_000_000
+                    ? `$${(item.volume24hUsd / 1_000_000).toFixed(2)}M`
+                    : `$${(item.volume24hUsd / 1000).toFixed(1)}K`;
 
                 return (
-                  <tr key={item.mint} className="trends-row">
-                    <td className="trends-td trends-td--rank">{index + 1}</td>
+                  <tr key={item.mint} className="trends-tr">
+                    <td className="trends-td--rank">{index + 1}</td>
 
                     {/* Token Identity */}
-                    <td className="trends-td">
+                    <td className="trends-td--asset">
                       <div className="trends-brand-cell">
                         <img src={item.imageUrl} alt={item.name} className="community-token-avatar" />
                         <div className="trends-brand-details">
@@ -239,7 +248,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     </td>
 
                     {/* Paired Stock with Real Stock Logo */}
-                    <td className="trends-td">
+                    <td className="trends-td--stock">
                       <div className="community-paired-cell">
                         <StockLogo symbol={item.pairedStockSymbol} size={28} />
                         <div>
@@ -250,7 +259,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     </td>
 
                     {/* Price */}
-                    <td className="trends-td">
+                    <td className="trends-td--price">
                       <div className="trends-price-cell">
                         <strong>${item.priceUsd.toFixed(4)}</strong>
                         <small>{item.priceSol.toFixed(6)} SOL</small>
@@ -258,20 +267,18 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     </td>
 
                     {/* 24h Change */}
-                    <td className="trends-td">
-                      <span className={`trends-delta-pill ${isPositive ? "is-up" : "is-down"}`}>
+                    <td className="trends-td--change">
+                      <span className={`trends-change-pill ${isPositive ? "is-up" : "is-down"}`}>
                         {isPositive ? "+" : ""}
                         {item.change24h}%
                       </span>
                     </td>
 
                     {/* 24h Volume */}
-                    <td className="trends-td">
-                      <strong>${(item.volume24hUsd / 1000).toFixed(1)}K</strong>
-                    </td>
+                    <td className="trends-td--volume">{volumeFormatted}</td>
 
                     {/* Bonding Curve Progress */}
-                    <td className="trends-td">
+                    <td className="trends-td--bonding">
                       <div className="bonding-progress-cell">
                         <div className="bonding-progress-bar">
                           <div
@@ -286,33 +293,33 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     </td>
 
                     {/* Market Cap */}
-                    <td className="trends-td">
-                      <strong>${(item.marketCapUsd / 1_000_000).toFixed(2)}M</strong>
+                    <td className="trends-td--mcap">
+                      ${(item.marketCapUsd / 1_000_000).toFixed(2)}M
                     </td>
 
-                    {/* Actions */}
-                    <td className="trends-td trends-td--actions">
+                    {/* Action Buttons */}
+                    <td className="trends-td--actions">
                       <div className="trends-action-group">
                         <button
                           type="button"
-                          className="trends-trade-btn"
+                          className="community-action-btn is-swap"
                           onClick={() => setActiveSwapToken(item)}
-                          title={`Instant Swap ${item.symbol}`}
+                          title="Instant buy/sell swap"
                         >
                           Swap
                         </button>
                         <button
                           type="button"
-                          className="community-bubble-btn"
+                          className="community-action-btn is-bubble"
                           onClick={() => setActiveBubbleToken(item)}
-                          title={`View Bubblemaps for ${item.symbol}`}
+                          title="View Bubblemaps cluster distribution"
                         >
                           Bubblemaps
                         </button>
                         <Link
                           href={`/launch?symbol=${item.pairedStockSymbol}`}
-                          className="trends-launch-btn"
-                          title={`Launch similar token paired to ${item.pairedStockSymbol}`}
+                          className="community-action-btn is-pair"
+                          title="Launch another token paired to this stock"
                         >
                           Pair &amp; Launch
                         </Link>

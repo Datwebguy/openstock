@@ -233,17 +233,54 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
 
       {/* Toolbar with Search, Filter Tabs, Sort, and View Mode Toggle */}
       <div className="discovery-toolbar">
-        <div className="discovery-search">
-          <span aria-hidden="true">⌕</span>
-          <label className="sr-only" htmlFor="stock-search">
-            Search stocks
-          </label>
-          <input
-            id="stock-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search NVIDIA, Apple, Tesla, AAPL…"
-          />
+        <div className="discovery-toolbar__top">
+          <div className="discovery-search">
+            <span aria-hidden="true">⌕</span>
+            <label className="sr-only" htmlFor="stock-search">
+              Search stocks
+            </label>
+            <input
+              id="stock-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search NVIDIA, Apple, Tesla, AAPL…"
+            />
+          </div>
+
+          <div className="discovery-toolbar__right">
+            <label className="discovery-sort">
+              Sort by
+              <select value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
+                <option value="alphabetical">Name</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="change-high">24h Gain</option>
+                <option value="volume-high">24h Volume</option>
+              </select>
+            </label>
+
+            {/* View Mode Toggle (Grid vs Ryntra Trends Table) */}
+            <div className="discovery-view-toggle" role="group" aria-label="Layout view">
+              <button
+                type="button"
+                className={`discovery-view-btn ${viewMode === "table" ? "is-active" : ""}`}
+                onClick={() => setViewMode("table")}
+                title="Trends Table View"
+                aria-label="Trends Table View"
+              >
+                Trends
+              </button>
+              <button
+                type="button"
+                className={`discovery-view-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                onClick={() => setViewMode("grid")}
+                title="Grid Cards View"
+                aria-label="Grid Cards View"
+              >
+                Cards
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="discovery-filters" role="group" aria-label="Filter stocks">
@@ -261,41 +298,6 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           <Link href="/app/community" className="discovery-filter-link" title="Explore live community meme & stock pairs on Solana">
             Memes &amp; Pairs ↗
           </Link>
-        </div>
-
-        <div className="discovery-toolbar__right">
-          <label className="discovery-sort">
-            Sort by
-            <select value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
-              <option value="alphabetical">Name</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="change-high">24h Gain</option>
-              <option value="volume-high">24h Volume</option>
-            </select>
-          </label>
-
-          {/* View Mode Toggle (Grid vs Ryntra Trends Table) */}
-          <div className="discovery-view-toggle" role="group" aria-label="Layout view">
-            <button
-              type="button"
-              className={`discovery-view-btn ${viewMode === "table" ? "is-active" : ""}`}
-              onClick={() => setViewMode("table")}
-              title="Trends Table View"
-              aria-label="Trends Table View"
-            >
-              Trends
-            </button>
-            <button
-              type="button"
-              className={`discovery-view-btn ${viewMode === "grid" ? "is-active" : ""}`}
-              onClick={() => setViewMode("grid")}
-              title="Grid Cards View"
-              aria-label="Grid Cards View"
-            >
-              Cards
-            </button>
-          </div>
         </div>
       </div>
 

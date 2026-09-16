@@ -134,21 +134,39 @@
 .market-browse-anchor { scroll-margin-top: 110px; }
 .discovery-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 20px rgba(37, 24, 64, 0.03);
+}
+
+html[data-theme="dark"] .discovery-toolbar {
+  background: rgba(18, 14, 34, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.discovery-toolbar__top {
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .discovery-search {
-  flex: 1 1 220px;
+  flex: 1 1 280px;
   display: flex;
   align-items: center;
   gap: 9px;
   min-height: 42px;
   padding: 0 13px;
   border: 1px solid var(--line);
-  border-radius: 13px;
-  background: var(--surface);
+  border-radius: 12px;
+  background: var(--paper);
 }
 
 .discovery-search span {
@@ -168,28 +186,35 @@
 
 .discovery-filters {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 5px;
-  padding: 4px;
-  border-radius: 13px;
-  background: rgba(22, 19, 33, 0.06);
+  gap: 6px;
+  width: 100%;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  background: transparent;
 }
 
 .discovery-filters button {
   border: 0;
   border-radius: 9px;
-  padding: 8px 11px;
+  padding: 8px 12px;
   color: var(--muted);
-  background: transparent;
+  background: rgba(22, 19, 33, 0.04);
   cursor: pointer;
   font: 800 11px var(--body);
   white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+html[data-theme="dark"] .discovery-filters button {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .discovery-filters button.is-active {
   color: var(--ink);
   background: var(--surface);
-  box-shadow: 0 4px 12px rgba(40, 22, 80, 0.08);
+  box-shadow: 0 4px 12px rgba(40, 22, 80, 0.1);
 }
 
 .discovery-filters .discovery-filter-link {
@@ -197,14 +222,15 @@
   align-items: center;
   gap: 4px;
   border-radius: 9px;
-  padding: 8px 11px;
+  padding: 8px 12px;
   color: var(--solana-purple);
   font: 800 11px var(--body);
   white-space: nowrap;
   background: rgba(153, 69, 255, 0.08);
-  border: 1px dashed rgba(153, 69, 255, 0.3);
+  border: 1px dashed rgba(153, 69, 255, 0.35);
   text-decoration: none;
   transition: all 0.15s ease;
+  margin-left: auto;
 }
 
 .discovery-filters .discovery-filter-link:hover {
@@ -215,7 +241,7 @@
 .discovery-toolbar__right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-left: auto;
 }
 
@@ -426,14 +452,58 @@
   background: rgba(244, 63, 94, 0.12);
 }
 
-.trends-td--volume,
-.trends-td--liquidity {
-  color: var(--ink);
-  font-weight: 600;
+.trends-th--rank,
+.trends-td--rank {
+  width: 48px;
+  text-align: center;
+}
+
+.trends-th--asset,
+.trends-td--asset {
+  text-align: left;
+  min-width: 220px;
+}
+
+.trends-th--price,
+.trends-td--price {
+  text-align: right;
   font-feature-settings: "tnum";
 }
 
+.trends-th--change,
+.trends-td--change {
+  text-align: right;
+}
+
+.trends-th--volume,
+.trends-td--volume {
+  text-align: right;
+  font-feature-settings: "tnum";
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.trends-th--liquidity,
+.trends-td--liquidity {
+  text-align: right;
+  font-feature-settings: "tnum";
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.trends-th--backing,
+.trends-td--backing {
+  text-align: center;
+}
+
+.trends-th--actions,
+.trends-td--actions {
+  text-align: right;
+}
+
 .trends-backing-pill {
+  display: inline-flex;
+  align-items: center;
   padding: 3px 8px;
   border-radius: 6px;
   background: rgba(20, 241, 149, 0.1);
@@ -443,9 +513,11 @@
 }
 
 .trends-action-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  width: 100%;
 }
 
 .trends-star-btn {
