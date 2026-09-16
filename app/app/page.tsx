@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { MarketDiscovery } from "@/components/market-discovery";
 import { CURATED_SYMBOLS, getMultiplier, getPrice, type OpenStockAsset } from "@/lib/xstocks";
@@ -111,12 +112,15 @@ export default async function AppPage() {
             <p>24/7 tokenized stocks on Solana.</p>
           </div>
           <div className="workspace-heading__actions">
-            <a className="workspace-pill-link" href="/launch">
+            <Link className="workspace-pill-link" href="/app/community">
+              Memes &amp; Pairs ↗
+            </Link>
+            <Link className="workspace-pill-link workspace-pill-link--secondary" href="/launch">
               Pair &amp; Launch Token ↗
-            </a>
-            <a className="workspace-pill-link workspace-pill-link--secondary" href="/app/analytics">
+            </Link>
+            <Link className="workspace-pill-link workspace-pill-link--secondary" href="/app/analytics">
               Pool Analytics ↗
-            </a>
+            </Link>
           </div>
         </header>
         <section id="stock-market" className="market-browse-anchor" aria-label="Available tokenized stocks">

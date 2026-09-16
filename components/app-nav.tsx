@@ -22,6 +22,7 @@ export function AppNav({ ctaHref = "/app", ctaLabel = "Market", hideCta = false 
   const pathname = usePathname();
   const primary = [
     ["/app", "Market"],
+    ["/app/community", "Memes & Pairs"],
     ["/launch", "Launch"],
     ["/app/analytics", "Analytics"],
     ["/app/activity", "Activity"],
@@ -59,6 +60,7 @@ export function AppFooterNav() {
     <nav className="footer-nav" aria-label="OpenStock sections">
       {[
         ["/app", "Market"],
+        ["/app/community", "Memes & Pairs"],
         ["/launch", "Launch"],
         ["/app/analytics", "Analytics"],
         ["/app/activity", "Activity"],

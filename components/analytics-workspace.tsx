@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { StockLogo } from "@/components/stock-logo";
 import { AssetPriceChart } from "@/components/asset-price-chart";
 import { ProStockHeader } from "@/components/pro-stock-header";
+import { getAssetMarketStats } from "@/lib/market-stats";
 import curated25Data from "@/lib/solana-curated-25.json";
 
 type SymbolOption = { symbol: string; name: string };
@@ -70,8 +72,28 @@ function generateDlmmBins(currentPrice: number) {
 }
 
 export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
-  const [selected, setSelected] = useState<string>("NVDAx");
+  const searchParams = useSearchParams();
+  const paramSymbol = searchParams?.get("symbol");
+  const initialSymbol = paramSymbol && curated25[paramSymbol] ? paramSymbol : "NVDAx";
+
+  const [selected, setSelected] = useState<string>(initialSymbol);
   const [activeTab, setActiveTab] = useState<"depth" | "oracles" | "audit" | "clawpump">("depth");
+
+  // Keep state synced if URL changes
+  useEffect(() => {
+    if (paramSymbol && curated25[paramSymbol] && paramSymbol !== selected) {
+      setSelected(paramSymbol);
+    }
+  }, [paramSymbol]);
+
+  function handleSelectSymbol(sym: string) {
+    setSelected(sym);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("symbol", sym);
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
 
   const meta = curated25[selected] ?? {
     symbol: selected,
@@ -82,6 +104,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
   };
 
   const currentPrice = VERIFIED_PRICES[selected] ?? 166.01;
+  const stats = getAssetMarketStats(selected, currentPrice);
   const dlmmBins = useMemo(() => generateDlmmBins(currentPrice), [currentPrice]);
   const maxBinDepth = Math.max(...dlmmBins.map((b) => b.depth)) || 1;
 
@@ -102,7 +125,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
               type="button"
               key={item.symbol}
               className={`analytics-ribbon-pill ${isCurrent ? "is-active" : ""}`}
-              onClick={() => setSelected(item.symbol)}
+              onClick={() => handleSelectSymbol(item.symbol)}
             >
               <StockLogo
                 symbol={item.symbol}
@@ -125,9 +148,9 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
         price={currentPrice}
         officialReady={true}
         priceFormatted={`$${currentPrice.toFixed(2)}`}
-        change24h={2.45}
-        liquidityUsd="$4.85M"
-        volume24h="$18.40M"
+        change24h={stats.change24h}
+        liquidityUsd={stats.liquidity}
+        volume24h={stats.volume24h}
         oraclePrice={`$${pythPrice.toFixed(2)}`}
         reserveCoverage="100% Backed"
         mintAddress={meta.mint}

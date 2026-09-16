@@ -192,6 +192,26 @@
   box-shadow: 0 4px 12px rgba(40, 22, 80, 0.08);
 }
 
+.discovery-filters .discovery-filter-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 9px;
+  padding: 8px 11px;
+  color: var(--solana-purple);
+  font: 800 11px var(--body);
+  white-space: nowrap;
+  background: rgba(153, 69, 255, 0.08);
+  border: 1px dashed rgba(153, 69, 255, 0.3);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.discovery-filters .discovery-filter-link:hover {
+  background: rgba(153, 69, 255, 0.16);
+  border-color: var(--solana-purple);
+}
+
 .discovery-toolbar__right {
   display: flex;
   align-items: center;

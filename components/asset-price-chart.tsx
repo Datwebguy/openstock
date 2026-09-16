@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { getAssetMarketStats } from "@/lib/market-stats";
 
 export type Candle = {
   timestamp: number;
@@ -138,6 +139,15 @@ export function AssetPriceChart({
   const [livePrice, setLivePrice] = useState<number>(initialPrice);
   const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
 
+  // Sync livePrice immediately whenever referencePrice or symbol changes
+  useEffect(() => {
+    if (typeof referencePrice === "number" && referencePrice > 0) {
+      setLivePrice(referencePrice);
+      setDrawings([]);
+      setTrendStart(null);
+    }
+  }, [symbol, referencePrice]);
+
   // Drawing state
   const [drawings, setDrawings] = useState<DrawnItem[]>([]);
   const [trendStart, setTrendStart] = useState<{ x: number; y: number } | null>(null);
@@ -168,7 +178,7 @@ export function AssetPriceChart({
   // Generate candles dynamically for current timeframe and anchor to livePrice
   const candles = useMemo(() => {
     return generateCandlesForTimeframe(livePrice, timeframe);
-  }, [timeframe, Math.floor(livePrice * 10) /* recalibrate slightly on noticeable tick */]);
+  }, [symbol, timeframe, Math.floor(livePrice * 10) /* recalibrate slightly on noticeable tick */]);
 
   // Keep last candle close synced with livePrice
   useEffect(() => {
@@ -1047,11 +1057,11 @@ export function AssetPriceChart({
       <div className="asset-chart-foot pro-chart-foot">
         <div className="pro-chart-foot__stat">
           <span>Pool Liquidity</span>
-          <strong>$4.85M</strong>
+          <strong>{getAssetMarketStats(symbol, livePrice).liquidity}</strong>
         </div>
         <div className="pro-chart-foot__stat">
           <span>24h DEX Volume</span>
-          <strong>$18.40M</strong>
+          <strong>{getAssetMarketStats(symbol, livePrice).volume24h}</strong>
         </div>
         <div className="pro-chart-foot__stat">
           <span>Oracle Engine</span>

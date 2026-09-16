@@ -258,6 +258,9 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
               {item.label}
             </button>
           ))}
+          <Link href="/app/community" className="discovery-filter-link" title="Explore live community meme & stock pairs on Solana">
+            Memes &amp; Pairs ↗
+          </Link>
         </div>
 
         <div className="discovery-toolbar__right">
