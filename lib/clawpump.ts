@@ -4,6 +4,8 @@
  * Documentation: https://clawpump.tech/developers
  */
 
+import { getPlatformTreasuryWallet } from "./treasury";
+
 export const CLAWPUMP_API_BASE = "https://clawpump.tech/api/v1";
 
 export type PumpPairAsset = {
@@ -77,8 +79,35 @@ export async function getClawPumpPairs(): Promise<PumpPairsResponse> {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.assets) && data.assets.length > 0) {
+          const verifiedStockSymbols = new Set(VERIFIED_SOLANA_XSTOCKS_PAIRS.map((p) => p.symbol.toLowerCase()));
+          const verifiedStockMints = new Set(VERIFIED_SOLANA_XSTOCKS_PAIRS.map((p) => p.mint.toLowerCase()));
+
+          // Strictly filter out non-stock meme tokens (Fartcoin, MOODENG, Bonk, etc.)
+          const stockAssets = data.assets.filter((asset: PumpPairAsset) => {
+            const sym = (asset.symbol || "").toLowerCase();
+            const mint = (asset.mint || "").toLowerCase();
+            const name = (asset.name || "").toLowerCase();
+
+            const isStock =
+              verifiedStockSymbols.has(sym) ||
+              verifiedStockMints.has(mint) ||
+              sym.endsWith("x") ||
+              name.includes("xstock") ||
+              name.includes("stock") ||
+              Boolean(asset.underlyingStock);
+
+            return isStock;
+          });
+
+          // Merge with our verified xStocks list to ensure all 25 curated stocks are always available
+          const existingMints = new Set(stockAssets.map((a: PumpPairAsset) => a.mint.toLowerCase()));
+          const completeStockList = [
+            ...stockAssets,
+            ...VERIFIED_SOLANA_XSTOCKS_PAIRS.filter((p) => !existingMints.has(p.mint.toLowerCase())),
+          ];
+
           return {
-            assets: data.assets,
+            assets: completeStockList,
             creatorFeeBps: data.creatorFeeBps ?? { min: 100, max: 300, default: 100 },
           };
         }
@@ -102,11 +131,9 @@ export async function getClawPumpPairs(): Promise<PumpPairsResponse> {
 export async function getOrCreateLauncherAgent(tokenName: string): Promise<{ id: string; name: string }> {
   const apiKey = process.env.CLAWPUMP_API_KEY;
   if (!apiKey) {
-    // Return mock agent for dev evaluation
-    return {
-      id: `agt_eval_${Math.random().toString(36).slice(2, 10)}`,
-      name: `${tokenName} Launcher`,
-    };
+    throw new Error(
+      "CLAWPUMP_API_KEY is not configured. Autonomous launcher agent provisioning requires an active ClawPump API key."
+    );
   }
 
   const res = await fetch(`${CLAWPUMP_API_BASE}/agents`, {
@@ -166,28 +193,12 @@ export type PreflightResult = {
  */
 export async function requestPreflightQuote(payload: PreflightPayload): Promise<PreflightResult> {
   const apiKey = process.env.CLAWPUMP_API_KEY;
-  const agent = await getOrCreateLauncherAgent(payload.name);
-
   if (!apiKey) {
-    // Development / evaluation mode: simulate live quote
-    const simulatedLamports = 7510000; // ~0.00751 SOL typical account rent & launch cost
-    return {
-      success: true,
-      agentId: agent.id,
-      agentName: agent.name,
-      payment: {
-        method: "sol",
-        amountLamports: simulatedLamports,
-        amountSol: simulatedLamports / 1e9,
-        payTo: "49CfXAr58cCTGJnYsbm16fEsE5JRpdR8QQP8E1ZinGCq",
-        devBuySol: 0,
-      },
-      retryWith: {
-        preflightToken: `pfl_token_${Math.random().toString(36).slice(2, 14)}`,
-      },
-      meta: { mode: "evaluation" },
-    };
+    throw new Error(
+      "CLAWPUMP_API_KEY is not configured. Live Pump.fun quote and fee estimation requires an authorized ClawPump API key. You can also deploy via Meteora Dynamic Bonding Curve."
+    );
   }
+  const agent = await getOrCreateLauncherAgent(payload.name);
 
   const res = await fetch(`${CLAWPUMP_API_BASE}/launch/self-funded`, {
     method: "POST",
@@ -252,16 +263,9 @@ export async function executeClawPumpLaunch(payload: ConfirmLaunchPayload): Prom
   const apiKey = process.env.CLAWPUMP_API_KEY;
 
   if (!apiKey) {
-    // Development evaluation simulated launch
-    const fakeMint = `Xs${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}`;
-    return {
-      success: true,
-      mintAddress: fakeMint,
-      txHash: payload.txSignature,
-      pumpUrl: `https://pump.fun/coin/${fakeMint}`,
-      explorerUrl: `https://solscan.io/tx/${payload.txSignature}`,
-      meta: { mode: "evaluation" },
-    };
+    throw new Error(
+      "CLAWPUMP_API_KEY is not configured on the server. Live token deployment on Pump.fun via ClawPump requires an authorized API key."
+    );
   }
 
   const res = await fetch(`${CLAWPUMP_API_BASE}/launch/self-funded`, {

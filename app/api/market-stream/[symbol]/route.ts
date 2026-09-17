@@ -1,4 +1,31 @@
 import { NextResponse } from "next/server";
 import { getMeteoraPools } from "@/lib/market-evidence";
 import { CURATED_SYMBOLS, getHydratedAsset } from "@/lib/xstocks";
-export async function GET(_: Request, { params }: { params: Promise<{ symbol: string }> }) { const { symbol } = await params; if (!CURATED_SYMBOLS.includes(symbol)) return NextResponse.json({ error: "Stock not found." }, { status: 404 }); try { const asset = await getHydratedAsset(symbol); const pools = await getMeteoraPools(asset); const pool = pools.find((item) => typeof item.priceUsd === "number" && item.priceUsd > 0) ?? pools[0] ?? null; return NextResponse.json({ symbol, price: asset.price ?? pool?.priceUsd ?? null, liquidity: pool?.tvl ?? null, generatedAt: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } }); } catch { return NextResponse.json({ error: "Live market context is refreshing." }, { status: 502 }); } }
+
+export async function GET(_: Request, { params }: { params: Promise<{ symbol: string }> }) {
+  const { symbol } = await params;
+  if (!CURATED_SYMBOLS.includes(symbol)) {
+    return NextResponse.json({ error: "Stock not found." }, { status: 404 });
+  }
+
+  try {
+    const asset = await getHydratedAsset(symbol);
+    const pools = await getMeteoraPools(asset);
+    const pool = pools.find((item) => typeof item.priceUsd === "number" && item.priceUsd > 0) ?? pools[0] ?? null;
+
+    return NextResponse.json(
+      {
+        symbol,
+        price: asset.price ?? pool?.priceUsd ?? null,
+        poolPrice: pool?.priceUsd ?? null,
+        pythPrice: asset.price ?? null,
+        liquidity: pool?.tvl ?? null,
+        volume24h: pool?.volume24h ?? null,
+        generatedAt: new Date().toISOString(),
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch {
+    return NextResponse.json({ error: "Live market context is refreshing." }, { status: 502 });
+  }
+}

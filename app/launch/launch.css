@@ -1355,6 +1355,33 @@ html[data-theme="dark"] .launch-checkout-header {
   font-size: 12px;
 }
 
+.launch-action-bar {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--os-line, rgba(22, 19, 33, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-theme="dark"] .launch-action-bar {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.launch-holo-footer-note {
+  font-size: 11px;
+  color: var(--os-muted, #6e6782);
+  text-align: center;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(153, 69, 255, 0.16);
+  margin-top: 6px;
+}
+
+html[data-theme="dark"] .launch-holo-footer-note {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  color: #9d96b0;
+}
+
 .launch-connected-bar {
   display: flex;
   align-items: center;
@@ -1430,6 +1457,124 @@ html[data-theme="dark"] .launch-connected-bar {
   font-size: 11px;
   color: var(--os-muted, #6e6782);
   text-align: center;
+}
+
+/* Hardened Priority Fee & Preflight Simulator Bar */
+.launch-priority-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(153, 69, 255, 0.04);
+  border: 1px solid rgba(153, 69, 255, 0.16);
+  margin-bottom: 4px;
+}
+
+html[data-theme="dark"] .launch-priority-box {
+  background: rgba(25, 18, 42, 0.6);
+  border-color: rgba(153, 69, 255, 0.22);
+}
+
+.launch-priority-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.launch-priority-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--os-ink, #161321);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+html[data-theme="dark"] .launch-priority-title {
+  color: #ffffff;
+}
+
+.launch-priority-badge {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--solana-green, #14f195);
+  background: rgba(20, 241, 149, 0.1);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 241, 149, 0.25);
+}
+
+.launch-priority-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.launch-priority-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.14));
+  background: var(--os-porcelain, #f7f5fc);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+html[data-theme="dark"] .launch-priority-pill {
+  background: #17112b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.launch-priority-pill:hover {
+  border-color: var(--solana-purple, #9945ff);
+  transform: translateY(-1px);
+}
+
+.launch-priority-pill.is-active {
+  background: #ffffff;
+  border-color: var(--solana-cyan, #03e1ff);
+  box-shadow: 0 0 0 1px var(--solana-cyan, #03e1ff), 0 4px 14px rgba(3, 225, 255, 0.18);
+}
+
+html[data-theme="dark"] .launch-priority-pill.is-active {
+  background: #1f143a;
+  border-color: var(--solana-cyan, #03e1ff);
+  box-shadow: 0 0 0 1.5px var(--solana-cyan, #03e1ff), 0 4px 16px rgba(3, 225, 255, 0.25);
+}
+
+.launch-priority-pill strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .launch-priority-pill strong {
+  color: #ffffff;
+}
+
+.launch-priority-pill span {
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--os-muted, #6e6782);
+  margin-top: 2px;
+}
+
+.launch-priority-pill.is-active strong {
+  color: var(--solana-cyan, #03e1ff);
+}
+
+.launch-priority-pill.is-active span {
+  color: var(--solana-green, #14f195);
+  font-weight: 600;
 }
 
 /* Success Receipt Card */
@@ -1517,6 +1662,28 @@ html[data-theme="dark"] .launch-connected-bar {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.launch-btn-share-x {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  background: #000000;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+}
+
+.launch-btn-share-x:hover {
+  background: #111111;
+  border-color: #ffffff;
+  transform: translateY(-1px);
 }
 
 /* Animations */

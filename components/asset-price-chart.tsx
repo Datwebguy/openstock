@@ -170,20 +170,35 @@ export function AssetPriceChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Live tick loop: ticks every 1.8 seconds with realistic micro-variations so it's NOT static!
+  // Live tick loop: streams real on-chain quotes from Meteora DLMM and Backed feeds
   useEffect(() => {
-    const timer = setInterval(() => {
-      setLivePrice((prev) => {
-        const deltaPct = (Math.random() - 0.49) * 0.0018; // micro tick +/- 0.09%
-        const next = Math.max(0.01, +(prev * (1 + deltaPct)).toFixed(2));
-        setPriceFlash(next >= prev ? "up" : "down");
-        setTimeout(() => setPriceFlash(null), 800);
-        return next;
-      });
-    }, 1800);
+    let active = true;
+    async function pollLivePrice() {
+      try {
+        const res = await fetch(`/api/market-stream/${symbol}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && typeof data.price === "number" && Number.isFinite(data.price) && data.price > 0) {
+          setLivePrice((prev) => {
+            if (Math.abs(data.price - prev) > 0.001) {
+              setPriceFlash(data.price >= prev ? "up" : "down");
+              setTimeout(() => setPriceFlash(null), 1000);
+              return data.price;
+            }
+            return prev;
+          });
+        }
+      } catch {
+        // Retry silently on next cycle
+      }
+    }
 
-    return () => clearInterval(timer);
-  }, []);
+    const timer = setInterval(pollLivePrice, 4000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [symbol]);
 
   // Benchmark market stats for asset to determine realistic trend direction
   const assetMarketStats = useMemo(() => {

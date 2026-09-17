@@ -24,9 +24,9 @@ export function AppNav({ ctaHref = "/app", ctaLabel = "Market", hideCta = false 
     ["/app", "Market"],
     ["/app/community", "Memes & Pairs"],
     ["/launch", "Launch"],
+    ["/app/orders", "Orders"],
     ["/app/portfolio", "Portfolio"],
     ["/app/analytics", "Analytics"],
-    ["/app/activity", "Activity"],
   ];
   const active = (href: string) => pathname === href || (href === "/app" && pathname.startsWith("/app/asset/"));
   return (
@@ -63,6 +63,7 @@ export function AppFooterNav() {
         ["/app", "Market"],
         ["/app/community", "Memes & Pairs"],
         ["/launch", "Launch"],
+        ["/app/orders", "Orders"],
         ["/app/portfolio", "Portfolio"],
         ["/app/analytics", "Analytics"],
         ["/app/activity", "Activity"],

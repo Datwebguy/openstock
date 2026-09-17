@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { AppNav } from "@/components/app-nav";
+import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { PortfolioDesk } from "@/components/portfolio-desk";
 import "./portfolio.css";
 
@@ -22,6 +22,7 @@ export default function PortfolioPage() {
       >
         <PortfolioDesk />
       </Suspense>
+      <AppFooterNav />
     </main>
   );
 }

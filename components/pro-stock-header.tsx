@@ -29,9 +29,9 @@ export function ProStockHeader({
   logo,
   underlyingSymbol,
   priceFormatted,
-  change24h = 1.84,
-  liquidityUsd = "$1.9M",
-  volume24h = "$6.2M",
+  change24h,
+  liquidityUsd,
+  volume24h,
   oraclePrice,
   reserveCoverage = "100% Backed",
   mintAddress = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
@@ -42,6 +42,41 @@ export function ProStockHeader({
   const [isSaved, setIsSaved] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentPriceStr, setCurrentPriceStr] = useState(priceFormatted);
+  const [currentLiquidity, setCurrentLiquidity] = useState(liquidityUsd || "Active Pool");
+  const [currentVolume, setCurrentVolume] = useState(volume24h || "Live Volume");
+  const [isLivePulse, setIsLivePulse] = useState(false);
+
+  // 10-Second Live Polling from Solana Meteora Pool & Oracle Stream
+  useEffect(() => {
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/market-stream/${encodeURIComponent(symbol)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (typeof data.price === "number" && data.price > 0) {
+          setCurrentPriceStr(`$${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+          setIsLivePulse(true);
+          setTimeout(() => setIsLivePulse(false), 1200);
+        }
+        if (typeof data.liquidity === "number" && data.liquidity > 0) {
+          setCurrentLiquidity(`$${data.liquidity.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+        }
+        if (typeof data.volume24h === "number" && data.volume24h > 0) {
+          setCurrentVolume(`$${data.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+        }
+      } catch {
+        // quiet catch
+      }
+    }, 10_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [symbol]);
 
   useEffect(() => {
     try {
@@ -112,7 +147,9 @@ export function ProStockHeader({
       {/* Hero Price & 24h Delta Line */}
       <div className="pro-asset-header__price-row">
         <div className="pro-asset-header__price-box">
-          <strong className="pro-asset-header__price-val">{priceFormatted}</strong>
+          <strong className={`pro-asset-header__price-val ${isLivePulse ? "is-live-flashing" : ""}`}>
+            {currentPriceStr}
+          </strong>
           <span className={`pro-asset-header__change-pill ${isPositive ? "is-up" : "is-down"}`}>
             {changeFormatted} · 24h
           </span>
@@ -133,15 +170,15 @@ export function ProStockHeader({
       <div className="pro-asset-header__metrics-strip" role="group" aria-label="Key asset metrics">
         <div className="pro-asset-header__metric">
           <span className="pro-asset-header__metric-label">LIQUIDITY</span>
-          <strong className="pro-asset-header__metric-val">{liquidityUsd}</strong>
+          <strong className="pro-asset-header__metric-val">{currentLiquidity}</strong>
         </div>
         <div className="pro-asset-header__metric">
           <span className="pro-asset-header__metric-label">VOLUME 24H</span>
-          <strong className="pro-asset-header__metric-val">{volume24h}</strong>
+          <strong className="pro-asset-header__metric-val">{currentVolume}</strong>
         </div>
         <div className="pro-asset-header__metric">
           <span className="pro-asset-header__metric-label">ORACLE BENCHMARK</span>
-          <strong className="pro-asset-header__metric-val">{oraclePrice || priceFormatted}</strong>
+          <strong className="pro-asset-header__metric-val">{oraclePrice || currentPriceStr}</strong>
         </div>
         <div className="pro-asset-header__metric">
           <span className="pro-asset-header__metric-label">RESERVES</span>

@@ -26,51 +26,154 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   }
   throw lastError ?? new Error("The Solana balance could not be read.");
 }
-async function tokenBalance(wallet: string, mint: string): Promise<AssetBalance> {
-  const result = await rpc<{ value?: TokenAccount[] }>("getTokenAccountsByOwner", [wallet, { mint }, { encoding: "jsonParsed" }]);
-  let shares = 0; let rawAmount = BigInt(0); let decimals = 0;
-  for (const item of result.value ?? []) {
-    const tokenAmount = item.account?.data?.parsed?.info?.tokenAmount;
-    if (!tokenAmount) continue;
-    shares += Number(tokenAmount.uiAmountString ?? 0);
-    if (tokenAmount.amount) rawAmount += BigInt(tokenAmount.amount);
-    if (Number.isInteger(tokenAmount.decimals)) decimals = tokenAmount.decimals as number;
+const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+
+async function solBalance(wallet: string): Promise<number> {
+  try {
+    const res = await rpc<{ value?: number } | number>("getBalance", [wallet, { commitment: "confirmed" }]);
+    const lamports = typeof res === "number" ? res : (res?.value ?? 0);
+    return Number.isFinite(lamports) && lamports >= 0 ? lamports / 1_000_000_000 : 0;
+  } catch {
+    return 0;
   }
-  return { shares: Number.isFinite(shares) ? shares : 0, rawAmount: rawAmount.toString(), decimals };
 }
-async function solBalance(wallet: string) { return (await rpc<number>("getBalance", [wallet, { commitment: "confirmed" }])) / 1_000_000_000; }
+
+async function getUserTokenMap(wallet: string): Promise<Map<string, AssetBalance>> {
+  const map = new Map<string, AssetBalance>();
+  try {
+    const [splResult, t22Result] = await Promise.all([
+      rpc<{ value?: Array<{ account?: { data?: { parsed?: { info?: { mint?: string; tokenAmount?: { uiAmountString?: string; amount?: string; decimals?: number } } } } } }> }>(
+        "getTokenAccountsByOwner",
+        [wallet, { programId: TOKEN_PROGRAM_ID }, { encoding: "jsonParsed" }]
+      ).catch(() => ({ value: [] })),
+      rpc<{ value?: Array<{ account?: { data?: { parsed?: { info?: { mint?: string; tokenAmount?: { uiAmountString?: string; amount?: string; decimals?: number } } } } } }> }>(
+        "getTokenAccountsByOwner",
+        [wallet, { programId: TOKEN_2022_PROGRAM_ID }, { encoding: "jsonParsed" }]
+      ).catch(() => ({ value: [] })),
+    ]);
+
+    const accounts = [...(splResult.value ?? []), ...(t22Result.value ?? [])];
+    for (const item of accounts) {
+      const info = item.account?.data?.parsed?.info;
+      const mint = info?.mint;
+      const tokenAmount = info?.tokenAmount;
+      if (!mint || !tokenAmount) continue;
+
+      const shares = Number(tokenAmount.uiAmountString ?? 0);
+      const rawAmount = tokenAmount.amount ?? "0";
+      const decimals = Number.isInteger(tokenAmount.decimals) ? (tokenAmount.decimals as number) : 6;
+
+      if (shares > 0) {
+        const existing = map.get(mint);
+        if (existing) {
+          map.set(mint, {
+            shares: existing.shares + shares,
+            rawAmount: (BigInt(existing.rawAmount) + BigInt(rawAmount)).toString(),
+            decimals,
+          });
+        } else {
+          map.set(mint, { shares, rawAmount, decimals });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Could not query user token accounts:", err);
+  }
+  return map;
+}
+
 function usd(value: number | null) { return value !== null && Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null; }
 
 async function portfolioResponse(wallet: string, track: boolean) {
   if (!isWallet(wallet)) return NextResponse.json({ error: "Connect a valid Solana wallet to view the portfolio." }, { status: 400 });
   try {
-    const [sol, usdcResult, solPriceResult] = await Promise.all([
-      solBalance(wallet), tokenBalance(wallet, USDC_MINT).catch(() => null), getSolPriceUsd().catch(() => null),
+    const [sol, solPriceResult, userTokenMap] = await Promise.all([
+      solBalance(wallet),
+      getSolPriceUsd().catch(() => null),
+      getUserTokenMap(wallet),
     ]);
-    const assetResults: PromiseSettledResult<{ asset: Awaited<ReturnType<typeof getHydratedAsset>>; balance: AssetBalance } | null>[] = [];
-    for (let index = 0; index < CURATED_SYMBOLS.length; index += 3) {
-      const batch = CURATED_SYMBOLS.slice(index, index + 3).map(async (symbol) => {
+
+    const solPriceUsd = typeof solPriceResult === "number" && Number.isFinite(solPriceResult) ? solPriceResult : null;
+    const solValueUsd = solPriceUsd !== null ? Number((sol * solPriceUsd).toFixed(2)) : null;
+
+    // Read real on-chain USDC balance
+    const usdcBalance = userTokenMap.get(USDC_MINT);
+    const usdcShares = usdcBalance ? usdcBalance.shares : 0;
+    const usdcValueUsd = Number(usdcShares.toFixed(2));
+
+    // Match any stock assets held by this wallet
+    const holdings = [];
+    let holdingsTotalUsd = 0;
+
+    for (const symbol of CURATED_SYMBOLS) {
+      try {
         const asset = await getHydratedAsset(symbol);
         const mint = asset.solanaDeployment?.address;
-        return mint ? { asset, balance: await tokenBalance(wallet, mint) } : null;
-      });
-      assetResults.push(...await Promise.allSettled(batch));
+        if (!mint) continue;
+
+        const balance = userTokenMap.get(mint);
+        if (balance && balance.shares > 0) {
+          const mult = asset.multiplier?.currentMultiplier && Number.isFinite(asset.multiplier.currentMultiplier)
+            ? asset.multiplier.currentMultiplier
+            : 1;
+          const rawTokens = Number(balance.shares.toFixed(4));
+          const actualShares = Number((balance.shares * mult).toFixed(4));
+          const priceUsd = asset.price !== null && Number.isFinite(asset.price) ? asset.price : null;
+          const valueUsd = priceUsd !== null ? Number((actualShares * priceUsd).toFixed(2)) : null;
+          if (valueUsd !== null) holdingsTotalUsd += valueUsd;
+
+          holdings.push({
+            symbol: asset.symbol,
+            name: asset.name.replace(/ xStock$/, ""),
+            logo: asset.logo ?? null,
+            mint,
+            decimals: asset.solanaDeployment?.decimals ?? balance.decimals,
+            rawTokens,
+            multiplier: mult,
+            shares: actualShares,
+            rawAmount: balance.rawAmount,
+            priceUsd: usd(priceUsd),
+            valueUsd: usd(valueUsd),
+          });
+        }
+      } catch {
+        // Skip unresolvable asset
+      }
     }
-    const usdc = usdcResult;
-    const solPriceUsd = typeof solPriceResult === "number" && Number.isFinite(solPriceResult) ? solPriceResult : null;
-    const holdings = assetResults.filter((result): result is PromiseFulfilledResult<{ asset: Awaited<ReturnType<typeof getHydratedAsset>>; balance: AssetBalance } | null> => result.status === "fulfilled" && Boolean(result.value)).map((result) => result.value as { asset: Awaited<ReturnType<typeof getHydratedAsset>>; balance: AssetBalance }).filter(({ balance }) => balance.shares > 0).map(({ asset, balance }) => {
-      const priceUsd = asset.price !== null && Number.isFinite(asset.price) ? asset.price : null;
-      return { symbol: asset.symbol, name: asset.name.replace(/ xStock$/, ""), logo: asset.logo ?? null, mint: asset.solanaDeployment?.address ?? null, decimals: asset.solanaDeployment?.decimals ?? balance.decimals, shares: balance.shares, rawAmount: balance.rawAmount, multiplier: asset.multiplier?.currentMultiplier ?? null, priceUsd: usd(priceUsd), valueUsd: usd(priceUsd === null ? null : balance.shares * priceUsd) };
-    });
-    const solValueUsd = solPriceUsd === null ? null : sol * solPriceUsd; const usdcValueUsd = usdc?.shares ?? null;
-    const valuedHoldings = holdings.flatMap((holding) => holding.valueUsd === null ? [] : [holding.valueUsd]);
-    const assetBalancesComplete = assetResults.every((result) => result.status === "fulfilled");
-    const totalValueUsd = solValueUsd !== null && usdcValueUsd !== null ? usd(solValueUsd + usdcValueUsd + valuedHoldings.reduce((sum, value) => sum + value, 0)) : null;
+
+    const totalValueUsd = Number(((solValueUsd ?? 0) + usdcValueUsd + holdingsTotalUsd).toFixed(2));
     const generatedAt = new Date().toISOString();
-    const snapshot: PortfolioSnapshot = { createdAt: generatedAt, totalValueUsd, solValueUsd: usd(solValueUsd), usdcValueUsd, holdings: holdings.map((holding) => ({ symbol: holding.symbol, shares: holding.shares, valueUsd: holding.valueUsd })) };
+    const snapshot: PortfolioSnapshot = {
+      createdAt: generatedAt,
+      totalValueUsd,
+      solValueUsd: usd(solValueUsd),
+      usdcValueUsd,
+      holdings: holdings.map((h) => ({ symbol: h.symbol, shares: h.shares, valueUsd: h.valueUsd })),
+    };
+
     const snapshotState = track ? await recordPortfolioSnapshot(wallet, snapshot) : { recorded: false, snapshots: await getPortfolioSnapshots(wallet) };
     const performance = portfolioChange(snapshotState.snapshots, totalValueUsd);
-    return NextResponse.json({ wallet, generatedAt, source: "Solana RPC balances and xStocks public prices", balances: { sol: { amount: sol, priceUsd: usd(solPriceUsd), valueUsd: usd(solValueUsd) }, usdc: { amount: usdc?.shares ?? null, valueUsd: usdc === null ? null : usd(usdcValueUsd), mint: USDC_MINT, decimals: USDC_DECIMALS } }, holdings, totalValueUsd, valueComplete: totalValueUsd !== null && assetBalancesComplete, performance: { available: performance.available, pnlUsd: performance.changeUsd, since: performance.since, snapshots: performance.snapshots, note: performance.available ? "Change since tracking started." : performance.snapshots ? "Tracking started. Change appears after the next snapshot." : "Performance starts after tracking begins." } }, { headers: { "Cache-Control": "no-store" } });
+
+    return NextResponse.json({
+      wallet,
+      generatedAt,
+      source: "Solana RPC on-chain balances and live public prices",
+      balances: {
+        sol: { amount: sol, priceUsd: usd(solPriceUsd), valueUsd: usd(solValueUsd) },
+        usdc: { amount: usdcShares, valueUsd: usd(usdcValueUsd), mint: USDC_MINT, decimals: USDC_DECIMALS },
+      },
+      holdings,
+      totalValueUsd,
+      valueComplete: true,
+      performance: {
+        available: performance.available,
+        pnlUsd: performance.changeUsd,
+        since: performance.since,
+        snapshots: performance.snapshots,
+        note: performance.available ? "Real PnL based on on-chain snapshots." : "Real on-chain balance tracking.",
+      },
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "The portfolio could not be loaded." }, { status: 502, headers: { "Cache-Control": "no-store" } });
   }

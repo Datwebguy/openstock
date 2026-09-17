@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { VersionedTransaction } from "@solana/web3.js";
 import type { CommunityToken } from "@/lib/community-tokens";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
@@ -11,18 +12,34 @@ type CommunitySwapModalProps = {
   onTradeSuccess?: (updatedVolume: number) => void;
 };
 
+const SOL_MINT = "So11111111111111111111111111111111111111112";
+
+function decode(value: string) {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+
+function encode(value: Uint8Array) {
+  let binary = "";
+  for (let i = 0; i < value.length; i += 0x8000) {
+    binary += String.fromCharCode(...value.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
 export function CommunitySwapModal({ token, onClose, onTradeSuccess }: CommunitySwapModalProps) {
-  const { address, ready, connect } = useWallet();
+  const { address, connect, signTransaction } = useWallet();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState<string>("0.5");
   const [slippage, setSlippage] = useState<number>(1.0);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [swapError, setSwapError] = useState<string | null>(null);
+  const [bondingNotice, setBondingNotice] = useState<{ message: string; url: string; label: string } | null>(null);
   const [txSuccess, setTxSuccess] = useState<{ signature: string; received: string } | null>(null);
 
   const parsedAmount = parseFloat(amount) || 0;
   const priceSol = token.priceSol || 0.0001;
 
-  // Bonding curve quote
+  // Real-time bonding curve or AMM quote estimation
   const tokensToReceive = side === "buy" ? (parsedAmount > 0 ? Math.floor(parsedAmount / priceSol) : 0) : parsedAmount;
   const solToReceive = side === "sell" ? +(parsedAmount * priceSol * 0.99).toFixed(4) : parsedAmount;
 
@@ -39,23 +56,103 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
     if (parsedAmount <= 0) return;
 
     setIsSwapping(true);
+    setSwapError(null);
+    setBondingNotice(null);
 
-    // Simulate on-chain DEX execution against ClawPump bonding curve
-    setTimeout(() => {
-      const fakeSig = `swap_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+    try {
+      const slippageBps = Math.round(slippage * 100);
+      const inputMint = side === "buy" ? SOL_MINT : token.mint;
+      const outputMint = side === "buy" ? token.mint : SOL_MINT;
+
+      // SOL has 9 decimals; standard SPL tokens typically 6 decimals
+      const rawAmount = side === "buy"
+        ? Math.max(1, Math.round(parsedAmount * 1e9)).toString()
+        : Math.max(1, Math.round(parsedAmount * 1e6)).toString();
+
+      // Query live Jupiter Lite routing
+      const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(rawAmount)}&slippageBps=${slippageBps}`;
+      const quoteRes = await fetch(quoteUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!quoteRes.ok) {
+        // If AMM routing is not yet available, token is likely trading on internal bonding curve
+        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/SOL-${token.mint}`;
+        const poolLabel = token.meteoraUrl ? "Meteora DLMM Pool" : "Pump.fun Bonding Curve";
+        setBondingNotice({
+          message: `Direct AMM route is pending curve graduation (${token.bondingCurveProgress.toFixed(1)}%). Trade directly on the pool:`,
+          url: poolUrl,
+          label: poolLabel,
+        });
+        setIsSwapping(false);
+        return;
+      }
+
+      const quoteResponse = await quoteRes.json();
+      if (!quoteResponse || quoteResponse.error) {
+        throw new Error(quoteResponse?.error || "Unable to acquire an on-chain DEX quote.");
+      }
+
+      // Build genuine Versioned Transaction
+      const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          quoteResponse,
+          userPublicKey: address,
+          wrapAndUnwrapSol: true,
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (!swapRes.ok) {
+        throw new Error(`Swap builder returned HTTP ${swapRes.status}`);
+      }
+
+      const swapData = (await swapRes.json()) as { swapTransaction?: string; lastValidBlockHeight?: number };
+      if (!swapData.swapTransaction) {
+        throw new Error("Solana swap transaction could not be constructed.");
+      }
+
+      // Sign transaction using connected Solana wallet (Phantom, Solflare, etc.)
+      const deserialized = VersionedTransaction.deserialize(decode(swapData.swapTransaction));
+      const signed = await signTransaction(deserialized);
+
+      // Broadcast authentic transaction to Solana Mainnet RPC
+      const execRes = await fetch("/api/trade/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedTransaction: encode(signed.serialize()),
+          requestId: `comm_${Date.now()}`,
+          lastValidBlockHeight: swapData.lastValidBlockHeight,
+        }),
+      });
+
+      const execution = await execRes.json();
+      if (!execRes.ok || !execution.signature) {
+        throw new Error(execution.error || "The swap was not confirmed by Solana RPC.");
+      }
+
       const formattedReceived =
         side === "buy"
           ? `${tokensToReceive.toLocaleString()} ${token.symbol}`
           : `${solToReceive.toFixed(4)} SOL`;
 
       setTxSuccess({
-        signature: fakeSig,
+        signature: execution.signature,
         received: formattedReceived,
       });
 
+      onTradeSuccess?.(token.volume24hUsd + parsedAmount * 150);
+    } catch (err: unknown) {
+      console.error("Community swap error:", err);
+      const msg = err instanceof Error ? err.message : "Swap failed to execute.";
+      setSwapError(msg);
+    } finally {
       setIsSwapping(false);
-      onTradeSuccess?.(token.volume24hUsd + (parsedAmount * 150));
-    }, 1200);
+    }
   }
 
   return (
@@ -64,7 +161,15 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
         {/* Header */}
         <div className="community-swap-head">
           <div className="community-swap-token-identity">
-            <img src={token.imageUrl} alt={token.name} className="community-swap-avatar" />
+            <img
+              src={token.imageUrl}
+              alt={token.name}
+              className="community-swap-avatar"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231b2333'/><text x='50' y='58' font-size='32' text-anchor='middle' fill='%2364748b' font-family='sans-serif'>OS</text></svg>";
+              }}
+            />
             <div>
               <div className="community-swap-title-row">
                 <h3>{token.name}</h3>
@@ -91,6 +196,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               setSide("buy");
               setAmount("0.5");
               setTxSuccess(null);
+              setSwapError(null);
+              setBondingNotice(null);
             }}
           >
             Buy {token.symbol}
@@ -102,6 +209,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               setSide("sell");
               setAmount("5000");
               setTxSuccess(null);
+              setSwapError(null);
+              setBondingNotice(null);
             }}
           >
             Sell {token.symbol}
@@ -129,7 +238,11 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                 type="button"
                 className="button button--light"
                 style={{ padding: "6px 14px", fontSize: 11 }}
-                onClick={() => setTxSuccess(null)}
+                onClick={() => {
+                  setTxSuccess(null);
+                  setSwapError(null);
+                  setBondingNotice(null);
+                }}
               >
                 New Swap
               </button>
@@ -148,7 +261,11 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                   type="number"
                   step="any"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setSwapError(null);
+                    setBondingNotice(null);
+                  }}
                   placeholder="0.0"
                   className="community-swap-input"
                 />
@@ -160,7 +277,15 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                     </>
                   ) : (
                     <>
-                      <img src={token.imageUrl} alt="" style={{ width: 18, height: 18, borderRadius: "50%" }} />
+                      <img
+                        src={token.imageUrl}
+                        alt=""
+                        style={{ width: 18, height: 18, borderRadius: "50%" }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231b2333'/><text x='50' y='58' font-size='32' text-anchor='middle' fill='%2364748b' font-family='sans-serif'>OS</text></svg>";
+                        }}
+                      />
                       <span>{token.symbol}</span>
                     </>
                   )}
@@ -175,7 +300,11 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                       type="button"
                       key={val}
                       className="community-swap-preset-btn"
-                      onClick={() => setAmount(val.toString())}
+                      onClick={() => {
+                        setAmount(val.toString());
+                        setSwapError(null);
+                        setBondingNotice(null);
+                      }}
                     >
                       {val} SOL
                     </button>
@@ -197,7 +326,15 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                 <div className="community-swap-currency-badge">
                   {side === "buy" ? (
                     <>
-                      <img src={token.imageUrl} alt="" style={{ width: 18, height: 18, borderRadius: "50%" }} />
+                      <img
+                        src={token.imageUrl}
+                        alt=""
+                        style={{ width: 18, height: 18, borderRadius: "50%" }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231b2333'/><text x='50' y='58' font-size='32' text-anchor='middle' fill='%2364748b' font-family='sans-serif'>OS</text></svg>";
+                        }}
+                      />
                       <span>{token.symbol}</span>
                     </>
                   ) : (
@@ -233,6 +370,29 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               </div>
             </div>
 
+            {/* Bonding Curve Route Notice if AMM route pending */}
+            {bondingNotice && (
+              <div className="community-swap-notice-box">
+                <p>{bondingNotice.message}</p>
+                <a
+                  href={bondingNotice.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button button--light"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12 }}
+                >
+                  Open {bondingNotice.label} ↗
+                </a>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {swapError && (
+              <div className="community-swap-error-box" role="alert">
+                <span>⚠️ {swapError}</span>
+              </div>
+            )}
+
             {/* Execute Button */}
             <button
               type="button"
@@ -243,7 +403,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               {!address
                 ? "Connect Wallet to Swap"
                 : isSwapping
-                ? "Confirming on Solana..."
+                ? "Broadcasting to Solana..."
                 : side === "buy"
                 ? `Buy ${token.symbol} with ${amount} SOL`
                 : `Sell ${amount} ${token.symbol} for SOL`}

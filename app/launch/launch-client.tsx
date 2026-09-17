@@ -6,8 +6,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
+import { ShareToXModal } from "@/components/share-to-x-modal";
 import type { PumpPairAsset } from "@/lib/clawpump";
 import { getAssetMarketStats } from "@/lib/market-stats";
+import {
+  applyComputeBudget,
+  getDynamicPriorityFee,
+  preflightSimulate,
+  translateWalletError,
+  type PriorityFeeTier,
+} from "@/lib/solana-preflight";
 
 const PRESET_AVATARS = [
   { label: "Silicon Chip", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80" },
@@ -25,7 +33,23 @@ const STOCK_CATEGORIES = [
   { id: "growth", label: "Consumer & Growth" },
 ] as const;
 
+const KNOWN_STOCK_TICKERS = new Set([
+  "AAPL", "MSFT", "GOOGL", "AMZN", "META",
+  "NVDA", "AVGO", "AMD", "INTC", "ARM", "QCOM", "PLTR",
+  "SPY", "QQQ", "GLD",
+  "COIN", "MSTR", "HOOD", "PYPL", "CRCL",
+  "TSLA", "NFLX", "DIS", "UBER", "ABNB",
+  "SPCX", "RBLX", "SLX", "DNUT", "HTZ", "PTN", "FLY", "BROS", "FLWS", "SCHH",
+]);
+
+function isStockAsset(symbol: string): boolean {
+  if (!symbol) return false;
+  const sym = symbol.toUpperCase().replace(/X$/, "");
+  return KNOWN_STOCK_TICKERS.has(sym) || symbol.toUpperCase().endsWith("X");
+}
+
 function matchesCategory(symbol: string, categoryId: string): boolean {
+  if (!isStockAsset(symbol)) return false;
   if (categoryId === "all") return true;
   const sym = symbol.toUpperCase().replace(/X$/, "");
   if (categoryId === "tech") return ["AAPL", "MSFT", "GOOGL", "AMZN", "META"].includes(sym);
@@ -74,6 +98,10 @@ export function LaunchClient() {
   const [customSupplyInput, setCustomSupplyInput] = useState("1,000,000,000");
   const [creatorFeeBps, setCreatorFeeBps] = useState(150); // 1.5% default (100–300 bps)
 
+  // Hardened Priority Fee & Preflight Simulation State
+  const [priorityTier, setPriorityTier] = useState<PriorityFeeTier>("standard");
+  const [simulatedUnits, setSimulatedUnits] = useState<number | null>(null);
+
   // Execution State
   const [stepState, setStepState] = useState<"idle" | "quoting" | "paying" | "confirming" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -86,6 +114,7 @@ export function LaunchClient() {
     poolAddress?: string;
     venue: "pumpfun" | "meteora";
   } | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const [, startTransition] = useTransition();
   const holoCardRef = useRef<HTMLDivElement | null>(null);
@@ -140,7 +169,7 @@ export function LaunchClient() {
     };
   }, []);
 
-  // Load pairs from API
+  // Fetch supported pairs
   useEffect(() => {
     async function loadPairs() {
       try {
@@ -217,34 +246,33 @@ export function LaunchClient() {
     }
   }
 
-  // File Upload Handlers (Device Upload)
+  // Preset avatar selector
+  function handlePresetSelect(url: string) {
+    setImageUrl(url);
+    setUploadedFileName("");
+  }
+
+  // Handle local file selection for upload
   async function handleFileSelect(file: File) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setErrorMessage("Please select a valid image file (PNG, JPG, WebP, SVG).");
-      return;
-    }
     if (file.size > 5 * 1024 * 1024) {
       setErrorMessage("Image file must be under 5MB.");
       return;
     }
 
-    setErrorMessage("");
     setUploadedFileName(file.name);
+    setIsUploadingImage(true);
+    setErrorMessage("");
 
-    // 1. Instant zero-latency local preview in 3D simulator
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        setImageUrl(dataUrl);
-      }
-    };
-    reader.readAsDataURL(file);
-
-    // 2. Upload to server endpoint in background
     try {
-      setIsUploadingImage(true);
+      const localDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setImageUrl(localDataUrl);
+
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/launch/upload", {
@@ -271,7 +299,7 @@ export function LaunchClient() {
     return p.symbol.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
   });
 
-  // Handle One-Click Launch Action
+  // Handle One-Click Launch Action with Hardened Preflight Simulator & Priority Fees
   async function handleLaunch() {
     if (!address) {
       try {
@@ -363,9 +391,9 @@ export function LaunchClient() {
         const payTo = payment.payTo;
         const preflightToken = retryWith.preflightToken;
 
-        // Step 2: Pay exact SOL from user wallet directly in OpenStock
+        // Step 2: Pay exact SOL from user wallet directly in OpenStock with Compute Budget Hardening
         setStepState("paying");
-        setStatusMessage(`Please approve transfer of ${(amountLamports / 1e9).toFixed(5)} SOL in your wallet...`);
+        setStatusMessage("Estimating network fees and running preflight simulation...");
 
         let txSignature = "";
 
@@ -381,23 +409,48 @@ export function LaunchClient() {
             })
           );
 
+          // Dynamic priority fee estimation & compute budget injection
+          const microLamports = await getDynamicPriorityFee(connection, priorityTier);
+          applyComputeBudget(tx, 160_000, microLamports);
+
           const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
           tx.recentBlockhash = blockhash;
           tx.feePayer = fromPubkey;
+
+          // Run Preflight Simulation against Solana cluster BEFORE wallet popup
+          setStatusMessage("Validating transaction preflight on Solana mainnet...");
+          const sim = await preflightSimulate(connection, tx, fromPubkey);
+          if (!sim.success) {
+            throw new Error(sim.humanMessage || sim.error || "Preflight simulation failed.");
+          }
+          if (sim.unitsConsumed) {
+            setSimulatedUnits(sim.unitsConsumed);
+          }
+
+          setStatusMessage(`Please approve ${(amountLamports / 1e9).toFixed(5)} SOL in your wallet...`);
 
           if (solanaProvider.signAndSendTransaction) {
             const sendRes = await solanaProvider.signAndSendTransaction(tx);
             txSignature = sendRes.signature;
           } else if (solanaProvider.signTransaction) {
             const signed = await solanaProvider.signTransaction(tx);
-            txSignature = await connection.sendRawTransaction(signed.serialize());
+            setStatusMessage("Broadcasting transaction to Solana cluster...");
+            txSignature = await connection.sendRawTransaction(signed.serialize(), {
+              skipPreflight: true, // Already validated via preflightSimulate
+              maxRetries: 3,
+            });
           }
 
-          setStatusMessage("Confirming payment on Solana mainnet...");
-          await connection.confirmTransaction({ signature: txSignature, blockhash, lastValidBlockHeight }, "confirmed");
+          setStatusMessage("Confirming block inclusion on Solana mainnet...");
+          const confirmation = await connection.confirmTransaction(
+            { signature: txSignature, blockhash, lastValidBlockHeight },
+            "confirmed"
+          );
+          if (confirmation.value.err) {
+            throw new Error(translateWalletError(confirmation.value.err));
+          }
         } else {
-          // Simulation fallback for evaluation environments
-          txSignature = `sim_pf_${Math.random().toString(36).slice(2, 12)}_${Date.now()}`;
+          throw new Error("Solana wallet provider not detected. Connect Phantom or Solflare to sign and broadcast this launch transaction.");
         }
 
         // Step 3: Complete launch with txSignature proof
@@ -440,7 +493,7 @@ export function LaunchClient() {
       } catch (err: unknown) {
         console.error("Pump.fun launch failed:", err);
         setStepState("error");
-        const msg = err instanceof Error ? err.message : "Pump.fun launch execution failed.";
+        const msg = translateWalletError(err);
         setErrorMessage(msg);
       }
     }
@@ -455,13 +508,12 @@ export function LaunchClient() {
       try {
         let txSignature = "";
 
-        // Wallet signature on OpenStock
+        // Wallet signature on OpenStock with Compute Budget Hardening
         setStepState("paying");
-        setStatusMessage("Please sign Meteora DBC pool creation transaction in your wallet...");
+        setStatusMessage("Estimating network fees and running preflight simulation...");
 
         if (solanaProvider && (solanaProvider.signAndSendTransaction || solanaProvider.signTransaction)) {
           const fromPubkey = new PublicKey(address);
-          // Build basic transaction on Solana to verify signer interaction
           const tx = new Transaction().add(
             SystemProgram.transfer({
               fromPubkey,
@@ -469,21 +521,49 @@ export function LaunchClient() {
               lamports: 0, // In-place signer verification
             })
           );
+
+          // Dynamic priority fee estimation & compute budget injection
+          const microLamports = await getDynamicPriorityFee(connection, priorityTier);
+          applyComputeBudget(tx, 150_000, microLamports);
+
           const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
           tx.recentBlockhash = blockhash;
           tx.feePayer = fromPubkey;
+
+          // Preflight validation simulation
+          setStatusMessage("Validating transaction preflight on Solana mainnet...");
+          const sim = await preflightSimulate(connection, tx, fromPubkey);
+          if (!sim.success) {
+            throw new Error(sim.humanMessage || sim.error || "Preflight simulation failed.");
+          }
+          if (sim.unitsConsumed) {
+            setSimulatedUnits(sim.unitsConsumed);
+          }
+
+          setStatusMessage("Please sign Meteora DBC pool creation in your wallet...");
 
           if (solanaProvider.signAndSendTransaction) {
             const sendRes = await solanaProvider.signAndSendTransaction(tx);
             txSignature = sendRes.signature;
           } else if (solanaProvider.signTransaction) {
             const signed = await solanaProvider.signTransaction(tx);
-            txSignature = await connection.sendRawTransaction(signed.serialize());
+            setStatusMessage("Broadcasting transaction to Solana cluster...");
+            txSignature = await connection.sendRawTransaction(signed.serialize(), {
+              skipPreflight: true,
+              maxRetries: 3,
+            });
           }
 
-          await connection.confirmTransaction({ signature: txSignature, blockhash, lastValidBlockHeight }, "confirmed");
+          setStatusMessage("Confirming block inclusion on Solana mainnet...");
+          const confirmation = await connection.confirmTransaction(
+            { signature: txSignature, blockhash, lastValidBlockHeight },
+            "confirmed"
+          );
+          if (confirmation.value.err) {
+            throw new Error(translateWalletError(confirmation.value.err));
+          }
         } else {
-          txSignature = `dbc_sig_${Math.random().toString(36).slice(2, 12)}_${Date.now()}`;
+          throw new Error("Solana wallet provider not detected. Connect Phantom or Solflare to sign and broadcast this launch transaction.");
         }
 
         setStepState("confirming");
@@ -516,14 +596,14 @@ export function LaunchClient() {
           mintAddress: meteoraData.mintAddress,
           poolAddress: meteoraData.poolAddress,
           txHash: meteoraData.txHash,
-          pumpUrl: meteoraData.meteoraUrl,
-          explorerUrl: meteoraData.explorerUrl,
+          pumpUrl: `https://solscan.io/token/${meteoraData.mintAddress}`,
+          explorerUrl: `https://solscan.io/token/${meteoraData.mintAddress}`,
           venue: "meteora",
         });
       } catch (err: unknown) {
-        console.error("Meteora DBC launch failed:", err);
+        console.error("Meteora launch failed:", err);
         setStepState("error");
-        const msg = err instanceof Error ? err.message : "Meteora DBC launch execution failed.";
+        const msg = translateWalletError(err);
         setErrorMessage(msg);
       }
     }
@@ -978,91 +1058,9 @@ export function LaunchClient() {
                 </div>
               </div>
             </div>
-          </section>
-        </div>
 
-        {/* Right Column: Sticky Holographic Simulator + Deployment Checkout Desk */}
-        <div className="launch-stage-column">
-          <div className="launch-stage-sticky">
-            {/* 3D Holographic Token Simulator */}
-            <div className="launch-holo-card" ref={holoCardRef}>
-              <div className="launch-holo-aura" aria-hidden="true" />
-
-              <div className="launch-holo-header">
-                <span className="launch-holo-live-tag">
-                  <span className="launch-pulse-dot" /> LIVE SIMULATOR
-                </span>
-                <span className="launch-holo-chain">
-                  {selectedVenue === "pumpfun" ? "Pump.fun Curve" : "Meteora DBC"}
-                </span>
-              </div>
-
-              {/* 3D Holographic Dual Coin Visual */}
-              <div className="launch-holo-coin-stage">
-                <div className="launch-holo-coin-ring">
-                  <div className="launch-holo-coin-face">
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={tokenSymbol || "Token"} className="launch-holo-coin-img" />
-                    ) : (
-                      <div className="launch-holo-coin-fallback">{tokenSymbol?.slice(0, 3) || "OS"}</div>
-                    )}
-                  </div>
-                  {/* Paired Stock Badge */}
-                  <div className="launch-holo-stock-badge" title={`Paired with ${selectedPair?.symbol}`}>
-                    {selectedPair ? (
-                      <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={36} />
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              {/* Token Info & Identity */}
-              <div className="launch-holo-identity">
-                <h3 className="launch-holo-name">{tokenName || "Your Token Name"}</h3>
-                <div className="launch-holo-pair-badge">
-                  <span>${tokenSymbol || "TOKEN"}</span>
-                  <span className="launch-holo-times">×</span>
-                  <span className="launch-holo-stock-symbol">{selectedPair?.symbol || "xStock"}</span>
-                </div>
-                <p className="launch-holo-desc">
-                  {description || `The community asset paired directly against ${selectedPair?.name || "tokenized equity"} on Solana.`}
-                </p>
-              </div>
-
-              {/* Consolidated Deployment & Architectural Specs (Single Source of Truth) */}
-              <div className="launch-holo-specs">
-                <div className="launch-holo-spec-row">
-                  <span>Execution Venue</span>
-                  <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                    {selectedVenue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
-                  </strong>
-                </div>
-                <div className="launch-holo-spec-row">
-                  <span>Total Supply</span>
-                  <strong className="launch-holo-highlight">
-                    {new Intl.NumberFormat("en-US").format(tokenSupply)}
-                  </strong>
-                </div>
-                <div className="launch-holo-spec-row">
-                  <span>Paired Stock</span>
-                  <strong>{selectedPair ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})` : "xStock"}</strong>
-                </div>
-                <div className="launch-holo-spec-row">
-                  <span>Creator Royalty</span>
-                  <strong className="launch-holo-highlight">
-                    {(creatorFeeBps / 100).toFixed(1)}% ({creatorFeeBps} bps) in {selectedPair?.symbol}
-                  </strong>
-                </div>
-                <div className="launch-holo-spec-row">
-                  <span>Liquidity Destination</span>
-                  <strong>{selectedVenue === "pumpfun" ? "Raydium / PumpAMM" : "Meteora DLMM"}</strong>
-                </div>
-                <div className="launch-holo-spec-row">
-                  <span>Est. Network Gas</span>
-                  <strong>~0.0075 SOL</strong>
-                </div>
-              </div>
-
+            {/* Launch Execution Console (Naturally placed at the bottom of the multi-step form) */}
+            <div className="launch-action-bar">
               {/* Wallet Bar */}
               {ready && address ? (
                 <div className="launch-connected-bar">
@@ -1085,6 +1083,37 @@ export function LaunchClient() {
                   <span>{statusMessage}</span>
                 </div>
               )}
+
+              {/* Hardened Preflight Priority Fee Selector */}
+              <div className="launch-priority-box">
+                <div className="launch-priority-head">
+                  <span className="launch-priority-title">
+                    <span>⚡</span> Solana Priority Fee (Compute Budget)
+                  </span>
+                  <span className="launch-priority-badge">
+                    {simulatedUnits ? `${simulatedUnits.toLocaleString()} CU simulated` : "Preflight Active"}
+                  </span>
+                </div>
+                <div className="launch-priority-pills" role="radiogroup" aria-label="Network Priority Fee Tier">
+                  {[
+                    { id: "standard" as const, label: "Standard", desc: "~50k μL", note: "Normal congestion" },
+                    { id: "fast" as const, label: "Fast", desc: "~150k μL", note: "Moderate load" },
+                    { id: "turbo" as const, label: "Turbo", desc: "~500k μL", note: "Maximum guarantee" },
+                  ].map((tier) => (
+                    <button
+                      type="button"
+                      key={tier.id}
+                      className={`launch-priority-pill ${priorityTier === tier.id ? "is-active" : ""}`}
+                      onClick={() => setPriorityTier(tier.id)}
+                      role="radio"
+                      aria-checked={priorityTier === tier.id}
+                    >
+                      <strong>{tier.label}</strong>
+                      <span>{tier.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* One-Click Launch CTA Button */}
               <button
@@ -1109,7 +1138,7 @@ export function LaunchClient() {
               </button>
 
               <p className="launch-checkout-disclaimer">
-                User wallet signs and pays directly on OpenStock · No external redirect
+                Estimated network fee: ~0.0075 SOL · User wallet signs and pays directly on OpenStock · No external redirect
               </p>
 
               {/* Success Receipt Card */}
@@ -1166,13 +1195,126 @@ export function LaunchClient() {
                     <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
                       {selectedPair?.symbol} Market ↗
                     </Link>
+                    <button
+                      type="button"
+                      className="launch-btn-share-x"
+                      onClick={() => setShowShareModal(true)}
+                    >
+                      <span>Share to 𝕏 (Twitter)</span>
+                      <span>🚀</span>
+                    </button>
                   </div>
                 </div>
               )}
             </div>
+          </section>
+        </div>
+
+        {/* Right Column: Sticky 3D Holographic Token Simulator (Clean, Focused & Perfectly Sized) */}
+        <div className="launch-stage-column">
+          <div className="launch-stage-sticky">
+            <div className="launch-holo-card" ref={holoCardRef}>
+              <div className="launch-holo-aura" aria-hidden="true" />
+
+              <div className="launch-holo-header">
+                <span className="launch-holo-live-tag">
+                  <span className="launch-pulse-dot" /> LIVE SIMULATOR
+                </span>
+                <span className="launch-holo-chain">
+                  {selectedVenue === "pumpfun" ? "Pump.fun Curve" : "Meteora DBC"}
+                </span>
+              </div>
+
+              {/* 3D Holographic Dual Coin Visual */}
+              <div className="launch-holo-coin-stage">
+                <div className="launch-holo-coin-ring">
+                  <div className="launch-holo-coin-face">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={tokenSymbol || "Token"} className="launch-holo-coin-img" />
+                    ) : (
+                      <div className="launch-holo-coin-fallback">{tokenSymbol?.slice(0, 3) || "OS"}</div>
+                    )}
+                  </div>
+                  {/* Paired Stock Badge */}
+                  <div className="launch-holo-stock-badge" title={`Paired with ${selectedPair?.symbol}`}>
+                    {selectedPair ? (
+                      <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={36} />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Token Info & Identity */}
+              <div className="launch-holo-identity">
+                <h3 className="launch-holo-name">{tokenName || "Your Token Name"}</h3>
+                <div className="launch-holo-pair-badge">
+                  <span>${tokenSymbol || "TOKEN"}</span>
+                  <span className="launch-holo-times">×</span>
+                  <span className="launch-holo-stock-symbol">{selectedPair?.symbol || "xStock"}</span>
+                </div>
+                <p className="launch-holo-desc">
+                  {description || `The community asset paired directly against ${selectedPair?.name || "tokenized equity"} on Solana.`}
+                </p>
+              </div>
+
+              {/* Architectural Specs */}
+              <div className="launch-holo-specs">
+                <div className="launch-holo-spec-row">
+                  <span>Execution Venue</span>
+                  <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
+                    {selectedVenue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
+                  </strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Total Supply</span>
+                  <strong className="launch-holo-highlight">
+                    {new Intl.NumberFormat("en-US").format(tokenSupply)}
+                  </strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Paired Stock</span>
+                  <strong>{selectedPair ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})` : "xStock"}</strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Creator Royalty</span>
+                  <strong className="launch-holo-highlight">
+                    {(creatorFeeBps / 100).toFixed(1)}% ({creatorFeeBps} bps) in {selectedPair?.symbol}
+                  </strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Liquidity Destination</span>
+                  <strong>{selectedVenue === "pumpfun" ? "Raydium / PumpAMM" : "Meteora DLMM"}</strong>
+                </div>
+                <div className="launch-holo-spec-row">
+                  <span>Settlement Latency</span>
+                  <strong>~400ms Sub-second</strong>
+                </div>
+              </div>
+
+              <div className="launch-holo-footer-note">
+                Direct liquidity settled in {selectedPair?.symbol || "AAPLx"} on Solana
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Feature #3: Viral Share to X Modal */}
+      {showShareModal && launchReceipt && (
+        <ShareToXModal
+          token={{
+            name: tokenName || "Community Token",
+            symbol: tokenSymbol || "TOKEN",
+            pairedStockSymbol: selectedPair?.symbol || "AAPLx",
+            creatorFeeBps,
+            venue: launchReceipt.venue,
+            mintAddress: launchReceipt.mintAddress,
+            txHash: launchReceipt.txHash,
+            imageUrl,
+          }}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

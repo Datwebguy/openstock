@@ -119,7 +119,10 @@ export async function executeMeteoraDbcLaunch(
     poolAddress = `DBC_${mintAddress.slice(0, 8)}_${payload.quoteMint.slice(0, 8)}`;
   }
 
-  const txHash = userSignature || `dbc_sig_${tokenKeypair.publicKey.toBase58().slice(0, 16)}_${Date.now()}`;
+  if (!userSignature) {
+    throw new Error("A valid signed Solana transaction signature is required to confirm pool initialization on Solana.");
+  }
+  const txHash = userSignature;
 
   return {
     success: true,

@@ -22,3 +22,7 @@ coverage/
 Thumbs.db
 desktop.ini
 *.png
+video_assets/
+*.mp4
+*.aac
+*.mp3

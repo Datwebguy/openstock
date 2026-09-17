@@ -5,6 +5,9 @@ import Link from "next/link";
 import { StockLogo } from "@/components/stock-logo";
 import { BubblemapsModal } from "@/components/bubblemaps-modal";
 import { CommunitySwapModal } from "@/components/community-swap-modal";
+import { GraduationRadar } from "@/components/graduation-radar";
+import { MigrationModal } from "@/components/migration-modal";
+import { ShareToXModal, type ShareTokenData } from "@/components/share-to-x-modal";
 import type { CommunityToken } from "@/lib/community-tokens";
 
 type FilterTab = "all" | "new" | "graduating" | "graduated";
@@ -19,26 +22,37 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
   // Active Modals
   const [activeSwapToken, setActiveSwapToken] = useState<CommunityToken | null>(null);
   const [activeBubbleToken, setActiveBubbleToken] = useState<CommunityToken | null>(null);
+  const [activeMigrationToken, setActiveMigrationToken] = useState<CommunityToken | null>(null);
+  const [activeShareToken, setActiveShareToken] = useState<ShareTokenData | null>(null);
 
   const [, startTransition] = useTransition();
 
-  // Load tokens from API
+  // Load tokens from API and start 10s live polling
   useEffect(() => {
-    async function load() {
+    let cancelled = false;
+
+    async function load(showSpinner = false) {
       try {
-        setLoading(true);
-        const res = await fetch("/api/community-tokens");
+        if (showSpinner) setLoading(true);
+        const res = await fetch("/api/community-tokens", { cache: "no-store" });
         const data = await res.json();
-        if (Array.isArray(data.tokens)) {
+        if (!cancelled && Array.isArray(data.tokens)) {
           setTokens(data.tokens);
         }
       } catch (err) {
-        console.error("Failed to load community tokens:", err);
+        console.warn("Failed to sync community tokens:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled && showSpinner) setLoading(false);
       }
     }
-    load();
+
+    void load(true);
+    const interval = setInterval(() => void load(false), 10_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Filtered Tokens
@@ -71,6 +85,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
     const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
     return ageHours <= 24;
   }).length;
+  const avgChange24h = tokens.length > 0
+    ? +(tokens.reduce((acc, t) => acc + (t.change24h || 0), 0) / tokens.length).toFixed(1)
+    : 0;
 
   function handleTradeSuccess(newVol: number) {
     if (!activeSwapToken) return;
@@ -104,7 +121,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
           <span className="community-kpi-label">24H PAIRED VOLUME</span>
           <div className="community-kpi-value-row">
             <strong>{totalVolumeFormatted}</strong>
-            <span className="community-kpi-badge is-green">+24.8% 24h</span>
+            <span className={`community-kpi-badge ${avgChange24h >= 0 ? "is-green" : "is-red"}`}>
+              {avgChange24h >= 0 ? "+" : ""}{avgChange24h}% 24h
+            </span>
           </div>
         </div>
 
@@ -113,7 +132,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
           <div className="community-kpi-value-row">
             <strong>{newCount}</strong>
             <span className="community-kpi-badge is-purple">
-              <span className="live-dot" /> Live Minting
+              <span className="live-dot" /> Live Syncing (10s)
             </span>
           </div>
         </div>
@@ -124,8 +143,15 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
             <strong>{graduatedCount}</strong>
             <span className="community-kpi-badge is-cyan">Meteora Active</span>
           </div>
-        </div>
       </div>
+      </div>
+
+      {/* Feature #2: Live Bonding Curve Migration Tracker ("Graduation Radar") */}
+      <GraduationRadar
+        tokens={tokens}
+        onInspectMigration={(token) => setActiveMigrationToken(token)}
+        onOpenSwap={(token) => setActiveSwapToken(token)}
+      />
 
       {/* Filter and Search Controls */}
       <div className="discovery-toolbar">
@@ -234,7 +260,22 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     {/* Token Identity */}
                     <td className="trends-td--asset">
                       <div className="trends-brand-cell">
-                        <img src={item.imageUrl} alt={item.name} className="community-token-avatar" />
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="community-token-avatar"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                            const parent = e.currentTarget.parentElement;
+                            if (parent && !parent.querySelector(".token-avatar-fallback")) {
+                              const fallback = document.createElement("div");
+                              fallback.className = "community-token-avatar token-avatar-fallback";
+                              fallback.style.cssText = "display:grid;place-items:center;background:linear-gradient(135deg,#9945ff,#14f195);color:#fff;font-weight:800;font-size:11px;";
+                              fallback.textContent = item.symbol.slice(0, 3).toUpperCase();
+                              parent.prepend(fallback);
+                            }
+                          }}
+                        />
                         <div className="trends-brand-details">
                           <div className="trends-symbol-line">
                             <span className="trends-symbol">${item.symbol}</span>
@@ -277,9 +318,16 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     {/* 24h Volume */}
                     <td className="trends-td--volume">{volumeFormatted}</td>
 
-                    {/* Bonding Curve Progress */}
+                    {/* Bonding Curve Progress (Clickable Migration Trigger) */}
                     <td className="trends-td--bonding">
-                      <div className="bonding-progress-cell">
+                      <div
+                        className="bonding-progress-cell is-interactive"
+                        onClick={() => setActiveMigrationToken(item)}
+                        title="Click to view bonding curve migration & Meteora DLMM mechanics"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
+                      >
                         <div className="bonding-progress-bar">
                           <div
                             className={`bonding-progress-fill ${isGraduated ? "is-graduated" : ""}`}
@@ -287,7 +335,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                           />
                         </div>
                         <span className="bonding-progress-label">
-                          {item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "Graduated" : "Filled"}
+                          {item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "Graduated" : "Filled"} 🔍
                         </span>
                       </div>
                     </td>
@@ -325,6 +373,24 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                         >
                           Pair &amp; Launch
                         </Link>
+                        <button
+                          type="button"
+                          className="community-action-btn is-share"
+                          onClick={() =>
+                            setActiveShareToken({
+                              name: item.name,
+                              symbol: item.symbol,
+                              pairedStockSymbol: item.pairedStockSymbol,
+                              creatorFeeBps: item.creatorFeeBps,
+                              venue: item.venue,
+                              mintAddress: item.mint,
+                              imageUrl: item.imageUrl,
+                            })
+                          }
+                          title="Share on X (Twitter)"
+                        >
+                          𝕏 Share
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -346,7 +412,22 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
               <article key={item.mint} className="community-card">
                 <div className="community-card__top">
                   <div className="community-card__avatars">
-                    <img src={item.imageUrl} alt={item.name} className="community-card__avatar" />
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="community-card__avatar"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        const parent = e.currentTarget.parentElement;
+                        if (parent && !parent.querySelector(".card-avatar-fallback")) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "community-card__avatar card-avatar-fallback";
+                          fallback.style.cssText = "display:grid;place-items:center;background:linear-gradient(135deg,#9945ff,#14f195);color:#fff;font-weight:800;font-size:14px;";
+                          fallback.textContent = item.symbol.slice(0, 3).toUpperCase();
+                          parent.prepend(fallback);
+                        }
+                      }}
+                    />
                     <div className="community-card__stock-badge" title={`Paired against ${item.pairedStockSymbol}`}>
                       <StockLogo symbol={item.pairedStockSymbol} size={24} />
                     </div>
@@ -363,10 +444,17 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
                 <p className="community-card__desc">{item.description}</p>
 
-                <div className="community-card__bonding">
+                <div
+                  className="community-card__bonding is-interactive"
+                  onClick={() => setActiveMigrationToken(item)}
+                  title="Click to view bonding curve migration & Meteora DLMM mechanics"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
+                >
                   <div className="community-card__bonding-head">
                     <span>Bonding Curve</span>
-                    <strong>{item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "✓ Graduated" : ""}</strong>
+                    <strong>{item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "✓ Graduated" : "🔍"}</strong>
                   </div>
                   <div className="bonding-progress-bar">
                     <div
@@ -410,6 +498,24 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                   >
                     Bubblemaps
                   </button>
+                  <button
+                    type="button"
+                    className="button button--light community-card__share-btn"
+                    onClick={() =>
+                      setActiveShareToken({
+                        name: item.name,
+                        symbol: item.symbol,
+                        pairedStockSymbol: item.pairedStockSymbol,
+                        creatorFeeBps: item.creatorFeeBps,
+                        venue: item.venue,
+                        mintAddress: item.mint,
+                        imageUrl: item.imageUrl,
+                      })
+                    }
+                    title="Share on X"
+                  >
+                    𝕏 Share
+                  </button>
                 </div>
               </article>
             );
@@ -430,6 +536,24 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
         <BubblemapsModal
           token={activeBubbleToken}
           onClose={() => setActiveBubbleToken(null)}
+        />
+      )}
+
+      {activeMigrationToken && (
+        <MigrationModal
+          token={activeMigrationToken}
+          onClose={() => setActiveMigrationToken(null)}
+          onOpenSwap={(t) => {
+            setActiveMigrationToken(null);
+            setActiveSwapToken(t);
+          }}
+        />
+      )}
+
+      {activeShareToken && (
+        <ShareToXModal
+          token={activeShareToken}
+          onClose={() => setActiveShareToken(null)}
         />
       )}
     </section>

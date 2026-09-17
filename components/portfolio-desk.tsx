@@ -11,6 +11,8 @@ interface HoldingItem {
   name: string;
   logo: string | null;
   shares: number;
+  rawTokens?: number;
+  multiplier?: number | null;
   priceUsd: number | null;
   valueUsd: number | null;
   change24h?: number;
@@ -23,6 +25,13 @@ interface PortfolioData {
     usdc: { amount: number | null; valueUsd: number | null };
   };
   holdings: HoldingItem[];
+  performance?: {
+    available: boolean;
+    pnlUsd: number | null;
+    since: string | null;
+    snapshots: number;
+    note: string;
+  };
 }
 
 interface RoyaltiesData {
@@ -36,62 +45,82 @@ interface RoyaltiesData {
   };
 }
 
+const EMPTY_PORTFOLIO: PortfolioData = {
+  totalValueUsd: 0,
+  balances: {
+    sol: { amount: 0, valueUsd: 0 },
+    usdc: { amount: 0, valueUsd: 0 },
+  },
+  holdings: [],
+};
+
+const EMPTY_ROYALTIES: RoyaltiesData = {
+  vaults: [],
+  claims: [],
+  summary: {
+    totalUnclaimedUsd: 0,
+    totalClaimedUsd: 0,
+    vaultCount: 0,
+    activeQuotes: [],
+  },
+};
+
 export function PortfolioDesk() {
   const { address, connect, connecting } = useWallet();
   const [activeTab, setActiveTab] = useState<"royalties" | "holdings" | "history">("royalties");
-  const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
-  const [royalties, setRoyalties] = useState<RoyaltiesData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [portfolio, setPortfolio] = useState<PortfolioData>(EMPTY_PORTFOLIO);
+  const [royalties, setRoyalties] = useState<RoyaltiesData>(EMPTY_ROYALTIES);
+  const [loading, setLoading] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [claimSuccessMsg, setClaimSuccessMsg] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  // Load portfolio and royalty data
+  // Load real on-chain portfolio and real creator royalties for the connected wallet
   useEffect(() => {
     let cancelled = false;
 
+    if (!address) {
+      setPortfolio(EMPTY_PORTFOLIO);
+      setRoyalties(EMPTY_ROYALTIES);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
     async function loadData() {
-      setLoading(true);
       try {
-        const walletParam = address || "demo-wallet";
         const [portRes, royRes] = await Promise.all([
-          fetch(`/api/portfolio?wallet=${walletParam}`).catch(() => null),
-          fetch(`/api/portfolio/royalties?wallet=${walletParam}`).catch(() => null),
+          fetch(`/api/portfolio?wallet=${encodeURIComponent(address!)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch(`/api/portfolio/royalties?wallet=${encodeURIComponent(address!)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         ]);
 
-        if (!cancelled && portRes && portRes.ok) {
-          const portJson = await portRes.json();
-          // Provide realistic fallback holdings if fresh empty wallet
-          const fallbackHoldings: HoldingItem[] = [
-            { symbol: "NVDAx", name: "NVIDIA", logo: null, shares: 12.5, priceUsd: 128.50, valueUsd: 1606.25, change24h: 3.14 },
-            { symbol: "AAPLx", name: "Apple", logo: null, shares: 8.0, priceUsd: 232.80, valueUsd: 1862.40, change24h: -0.84 },
-            { symbol: "TSLAx", name: "Tesla", logo: null, shares: 5.5, priceUsd: 251.20, valueUsd: 1381.60, change24h: -2.45 },
-            { symbol: "COINx", name: "Coinbase", logo: null, shares: 4.2, priceUsd: 312.40, valueUsd: 1312.08, change24h: 5.34 },
-            { symbol: "SPYx", name: "S&P 500 ETF", logo: null, shares: 3.0, priceUsd: 588.60, valueUsd: 1765.80, change24h: 0.45 },
-          ];
+        if (cancelled) return;
 
+        if (portRes && portRes.balances) {
           setPortfolio({
-            totalValueUsd: portJson.totalValueUsd || 8420.50,
+            totalValueUsd: portRes.totalValueUsd ?? 0,
             balances: {
-              sol: portJson.balances?.sol || { amount: 2.85, valueUsd: 436.05 },
-              usdc: portJson.balances?.usdc || { amount: 550, valueUsd: 550 },
+              sol: portRes.balances.sol ?? { amount: 0, valueUsd: 0 },
+              usdc: portRes.balances.usdc ?? { amount: 0, valueUsd: 0 },
             },
-            holdings: portJson.holdings && portJson.holdings.length > 0 ? portJson.holdings : fallbackHoldings,
+            holdings: portRes.holdings ?? [],
+            performance: portRes.performance,
           });
         }
 
-        if (!cancelled && royRes && royRes.ok) {
-          const royJson = await royRes.json();
-          setRoyalties(royJson);
+        if (royRes && royRes.vaults) {
+          setRoyalties(royRes);
         }
       } catch (err) {
-        console.error("Failed to load portfolio/royalties desk:", err);
+        console.warn("Could not load on-chain wallet data:", err);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     void loadData();
+
     return () => {
       cancelled = true;
     };
@@ -99,6 +128,7 @@ export function PortfolioDesk() {
 
   // Handle claiming royalties for a single vault or all
   async function handleClaim(vaultId?: string) {
+    if (!address) return;
     setClaimingId(vaultId || "all");
     setClaimSuccessMsg(null);
 
@@ -107,7 +137,7 @@ export function PortfolioDesk() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          wallet: address || "demo-wallet",
+          wallet: address,
           vaultId,
           claimAll: !vaultId,
         }),
@@ -116,8 +146,8 @@ export function PortfolioDesk() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Claim failed");
 
-      // Optimistically refresh royalties data
-      const refreshRes = await fetch(`/api/portfolio/royalties?wallet=${address || "demo-wallet"}`);
+      // Refresh royalties data after claim
+      const refreshRes = await fetch(`/api/portfolio/royalties?wallet=${encodeURIComponent(address)}`);
       if (refreshRes.ok) {
         const updated = await refreshRes.json();
         setRoyalties(updated);
@@ -137,7 +167,9 @@ export function PortfolioDesk() {
   }
 
   const unclaimedTotal = royalties?.summary.totalUnclaimedUsd ?? 0;
-  const netWorthUsd = (portfolio?.totalValueUsd ?? 8420) + unclaimedTotal;
+  const netWorthUsd = address ? (portfolio.totalValueUsd + unclaimedTotal) : 0;
+  const pnlUsd = portfolio.performance?.pnlUsd ?? 0;
+  const hasPnl = portfolio.performance?.available && pnlUsd !== 0;
 
   return (
     <div className="portfolio-container">
@@ -176,19 +208,29 @@ export function PortfolioDesk() {
             <h1 id="portfolio-title" className="portfolio-main-val">
               ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(netWorthUsd)}
             </h1>
-            <span className="portfolio-delta-badge is-up">
-              ▲ +$284.50 (+3.48%) 24h PnL
-            </span>
+            {hasPnl ? (
+              <span className={`portfolio-delta-badge ${pnlUsd >= 0 ? "is-up" : "is-down"}`}>
+                {pnlUsd >= 0 ? "▲ +" : "▼ -"}${Math.abs(pnlUsd).toFixed(2)} 24h PnL
+              </span>
+            ) : (
+              <span className="portfolio-delta-badge" style={{ background: "rgba(255,255,255,0.06)", color: "var(--os-muted)" }}>
+                ● Live Solana On-Chain Balances
+              </span>
+            )}
           </div>
 
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
             <div style={{ padding: "10px 16px", borderRadius: 14, background: "rgba(153, 69, 255, 0.05)", border: "1px solid rgba(153, 69, 255, 0.15)" }}>
               <span style={{ fontSize: 11, color: "var(--os-muted)", display: "block" }}>Liquid SOL</span>
-              <strong style={{ fontSize: 14, fontFamily: "ui-monospace, monospace" }}>{portfolio?.balances.sol.amount.toFixed(3) || "2.850"} SOL</strong>
+              <strong style={{ fontSize: 14, fontFamily: "ui-monospace, monospace" }}>
+                {address ? `${portfolio.balances.sol.amount.toFixed(4)} SOL` : "— SOL"}
+              </strong>
             </div>
             <div style={{ padding: "10px 16px", borderRadius: 14, background: "rgba(3, 225, 255, 0.05)", border: "1px solid rgba(3, 225, 255, 0.15)" }}>
               <span style={{ fontSize: 11, color: "var(--os-muted)", display: "block" }}>Liquid USDC</span>
-              <strong style={{ fontSize: 14, fontFamily: "ui-monospace, monospace" }}>${portfolio?.balances.usdc.amount?.toFixed(2) || "550.00"}</strong>
+              <strong style={{ fontSize: 14, fontFamily: "ui-monospace, monospace" }}>
+                {address ? `$${(portfolio.balances.usdc.amount ?? 0).toFixed(2)}` : "—"}
+              </strong>
             </div>
           </div>
         </div>
@@ -202,18 +244,31 @@ export function PortfolioDesk() {
                 ${unclaimedTotal.toFixed(2)} in Unclaimed Creator Royalties
               </strong>
               <span>
-                Earned in real stock assets (1.0%–3.0% fee) from trading volume on your launched pairs
+                {address
+                  ? "Earned in real stock assets (1.0%–3.0% fee) from trading volume on your launched pairs"
+                  : "Connect your Solana wallet to read on-chain balances and creator royalty vaults"}
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            className="portfolio-claim-all-btn"
-            disabled={unclaimedTotal <= 0 || claimingId !== null}
-            onClick={() => handleClaim()}
-          >
-            {claimingId === "all" ? "Claiming on Solana..." : `Claim All Royalties ($${unclaimedTotal.toFixed(2)})`}
-          </button>
+          {address ? (
+            <button
+              type="button"
+              className="portfolio-claim-all-btn"
+              disabled={unclaimedTotal <= 0 || claimingId !== null}
+              onClick={() => handleClaim()}
+            >
+              {claimingId === "all" ? "Claiming on Solana..." : `Claim All Royalties ($${unclaimedTotal.toFixed(2)})`}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="portfolio-claim-all-btn"
+              onClick={() => void connect()}
+              disabled={connecting}
+            >
+              {connecting ? "Connecting..." : "Connect Wallet to Claim"}
+            </button>
+          )}
         </div>
 
         {claimSuccessMsg && (
@@ -233,7 +288,7 @@ export function PortfolioDesk() {
             className={`portfolio-tab ${activeTab === "royalties" ? "is-active" : ""}`}
             onClick={() => startTransition(() => setActiveTab("royalties"))}
           >
-            Creator Royalty Vaults ({royalties?.vaults.length || 3})
+            Creator Royalty Vaults ({royalties.vaults.length})
           </button>
           <button
             type="button"
@@ -242,7 +297,7 @@ export function PortfolioDesk() {
             className={`portfolio-tab ${activeTab === "holdings" ? "is-active" : ""}`}
             onClick={() => startTransition(() => setActiveTab("holdings"))}
           >
-            Asset Holdings ({portfolio?.holdings.length || 5})
+            Asset Holdings ({portfolio.holdings.length})
           </button>
           <button
             type="button"
@@ -251,7 +306,7 @@ export function PortfolioDesk() {
             className={`portfolio-tab ${activeTab === "history" ? "is-active" : ""}`}
             onClick={() => startTransition(() => setActiveTab("history"))}
           >
-            Distribution History ({royalties?.claims.length || 0})
+            Distribution History ({royalties.claims.length})
           </button>
         </div>
       </div>
@@ -261,10 +316,10 @@ export function PortfolioDesk() {
         <section aria-label="Creator Royalty Vaults">
           <div className="royalty-vaults-grid">
             {loading ? (
-              <div style={{ gridColumn: "1 / -1", padding: 40, textAlign: "center", color: "var(--os-muted)" }}>
-                Loading creator royalty vaults...
+              <div style={{ gridColumn: "1 / -1", padding: 48, textAlign: "center", color: "var(--os-muted)", background: "#fff", borderRadius: 20, border: "1px solid var(--os-border)" }}>
+                Reading on-chain creator vaults...
               </div>
-            ) : royalties?.vaults && royalties.vaults.length > 0 ? (
+            ) : royalties.vaults.length > 0 ? (
               royalties.vaults.map((vault) => {
                 const isClaiming = claimingId === vault.id;
                 return (
@@ -328,13 +383,16 @@ export function PortfolioDesk() {
                 );
               })
             ) : (
-              <div style={{ gridColumn: "1 / -1", padding: 32, textAlign: "center", background: "#fff", borderRadius: 16 }}>
-                <h3>No Launched Token Pairs Yet</h3>
-                <p style={{ color: "var(--os-muted)", marginBottom: 16 }}>
-                  Launch a token paired against an xStock to automatically earn 1%–3% royalties in that equity on every swap!
+              <div style={{ gridColumn: "1 / -1", padding: 48, textAlign: "center", background: "#fff", borderRadius: 20, border: "1px solid var(--os-border)" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>💎</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--os-foreground)" }}>No Creator Vaults Found</h3>
+                <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto 20px", fontSize: 13, lineHeight: 1.6 }}>
+                  {address
+                    ? "This wallet has not launched any synthetic stock pairs yet. Launch a community pair on Pump.fun or Meteora DBC paired against $NVDAx, $AAPLx, or $TSLAx to earn a permanent 1.0%–3.0% creator royalty paid directly in real stock shares."
+                    : "Connect your Solana wallet to view your active creator vaults and claim accrued stock royalties."}
                 </p>
-                <Link href="/launch" className="button button--gradient">
-                  Launch Your First Token Pair
+                <Link href="/launch" className="button button--gradient" style={{ padding: "10px 24px", fontSize: 13 }}>
+                  + Launch Your First Stock Pair
                 </Link>
               </div>
             )}
@@ -346,63 +404,100 @@ export function PortfolioDesk() {
       {activeTab === "holdings" && (
         <section aria-label="Asset Holdings">
           <div className="holdings-table-wrap">
-            <table className="holdings-table">
-              <thead>
-                <tr>
-                  <th>Asset</th>
-                  <th>Price</th>
-                  <th>24h Change</th>
-                  <th>Holdings</th>
-                  <th>Total Value</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {portfolio?.holdings.map((h) => {
-                  const isUp = (h.change24h ?? 0) >= 0;
-                  return (
-                    <tr key={h.symbol}>
-                      <td>
-                        <div className="holding-asset-cell">
-                          <StockLogo symbol={h.symbol} logo={h.logo ?? undefined} size={36} />
-                          <div className="holding-asset-name">
-                            <strong>{h.name}</strong>
-                            <span>{h.symbol}</span>
+            {portfolio.holdings.length > 0 ? (
+              <table className="holdings-table">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Price</th>
+                    <th>24h Change</th>
+                    <th>Raw Tokens</th>
+                    <th>Multiplier</th>
+                    <th>Actual Shares</th>
+                    <th>Total Value</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portfolio.holdings.map((h) => {
+                    const isUp = (h.change24h ?? 0) >= 0;
+                    const multVal = h.multiplier && Number.isFinite(h.multiplier) ? h.multiplier : 1;
+                    return (
+                      <tr key={h.symbol}>
+                        <td>
+                          <div className="holding-asset-cell">
+                            <StockLogo symbol={h.symbol} logo={h.logo ?? undefined} size={36} />
+                            <div className="holding-asset-name">
+                              <strong>{h.name}</strong>
+                              <span>{h.symbol}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <strong style={{ fontFamily: "ui-monospace, monospace" }}>
-                          ${h.priceUsd ? h.priceUsd.toFixed(2) : "—"}
-                        </strong>
-                      </td>
-                      <td>
-                        {h.change24h !== undefined ? (
-                          <span className={`launch-pair-stat-tag ${isUp ? "is-up" : "is-down"}`}>
-                            {isUp ? "+" : ""}{h.change24h.toFixed(2)}%
+                        </td>
+                        <td>
+                          <strong style={{ fontFamily: "ui-monospace, monospace" }}>
+                            ${h.priceUsd ? h.priceUsd.toFixed(2) : "—"}
+                          </strong>
+                        </td>
+                        <td>
+                          {h.change24h !== undefined ? (
+                            <span className={`launch-pair-stat-tag ${isUp ? "is-up" : "is-down"}`}>
+                              {isUp ? "+" : ""}{h.change24h.toFixed(2)}%
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--os-muted, #666)" }}>
+                            {(h.rawTokens ?? h.shares).toLocaleString()}
                           </span>
-                        ) : "—"}
-                      </td>
-                      <td>
-                        <strong style={{ fontFamily: "ui-monospace, monospace" }}>
-                          {h.shares.toLocaleString()} shares
-                        </strong>
-                      </td>
-                      <td>
-                        <strong style={{ fontFamily: "ui-monospace, monospace", color: "var(--solana-purple, #9945ff)" }}>
-                          ${h.valueUsd ? h.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
-                        </strong>
-                      </td>
-                      <td>
-                        <Link href={`/app/asset/${h.symbol}`} className="button button--light" style={{ padding: "4px 10px", fontSize: 11 }}>
-                          Trade ↗
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              padding: "2px 7px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: multVal !== 1 ? "rgba(153, 69, 255, 0.15)" : "rgba(0,0,0,0.06)",
+                              color: multVal !== 1 ? "var(--solana-purple, #9945ff)" : "var(--os-muted, #666)",
+                            }}
+                          >
+                            {multVal.toFixed(4)}×
+                          </span>
+                        </td>
+                        <td>
+                          <strong style={{ fontFamily: "ui-monospace, monospace" }}>
+                            {h.shares.toLocaleString()} shares
+                          </strong>
+                        </td>
+                        <td>
+                          <strong style={{ fontFamily: "ui-monospace, monospace", color: "var(--solana-purple, #9945ff)" }}>
+                            ${h.valueUsd ? h.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                          </strong>
+                        </td>
+                        <td>
+                          <Link href={`/app/asset/${h.symbol}`} className="button button--light" style={{ padding: "4px 10px", fontSize: 11 }}>
+                            Trade ↗
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: 48, textAlign: "center", background: "#fff", borderRadius: 20, border: "1px solid var(--os-border)" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>📈</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--os-foreground)" }}>No Tokenized Stock Assets</h3>
+                <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto 20px", fontSize: 13, lineHeight: 1.6 }}>
+                  {address
+                    ? "No SPL Token-2022 US equity tokens ($NVDAx, $TSLAx, $AAPLx, etc.) were found in this wallet."
+                    : "Connect your wallet to inspect your on-chain synthetic stock portfolio."}
+                </p>
+                <Link href="/app/community" className="button button--light" style={{ padding: "10px 24px", fontSize: 13 }}>
+                  Explore Community Market
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -410,30 +505,30 @@ export function PortfolioDesk() {
       {/* Tab 3: Claim History */}
       {activeTab === "history" && (
         <section aria-label="Distribution History">
-          <div className="claim-history-table-wrap">
-            <table className="holdings-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Token Pair</th>
-                  <th>Quote Stock Claimed</th>
-                  <th>Value (USD)</th>
-                  <th>Solana Transaction</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {royalties?.claims && royalties.claims.length > 0 ? (
-                  royalties.claims.map((claim) => (
+          <div className="holdings-table-wrap">
+            {royalties.claims.length > 0 ? (
+              <table className="holdings-table">
+                <thead>
+                  <tr>
+                    <th>Claim ID</th>
+                    <th>Token Pair</th>
+                    <th>Equity Received</th>
+                    <th>USD Value</th>
+                    <th>Date / Time</th>
+                    <th>Solana Proof</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {royalties.claims.map((claim) => (
                     <tr key={claim.id}>
-                      <td style={{ color: "var(--os-muted)", fontSize: 12 }}>
-                        {new Date(claim.timestamp).toLocaleString()}
+                      <td>
+                        <strong style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{claim.id}</strong>
                       </td>
                       <td>
                         <strong>${claim.tokenSymbol} × ${claim.stockSymbol}</strong>
                       </td>
                       <td>
-                        <strong style={{ color: "var(--solana-green, #14f195)", fontFamily: "ui-monospace, monospace" }}>
+                        <strong style={{ color: "var(--solana-green, #14f195)" }}>
                           +{claim.claimedShares.toFixed(2)} {claim.stockSymbol}
                         </strong>
                       </td>
@@ -442,32 +537,33 @@ export function PortfolioDesk() {
                           ${claim.valueUsd.toFixed(2)}
                         </strong>
                       </td>
+                      <td style={{ color: "var(--os-muted)", fontSize: 12 }}>
+                        {new Date(claim.timestamp).toLocaleString()}
+                      </td>
                       <td>
                         <a
                           href={`https://solscan.io/tx/${claim.txHash}`}
                           target="_blank"
-                          rel="noreferrer"
-                          style={{ fontFamily: "ui-monospace, monospace", color: "var(--solana-purple, #9945ff)", textDecoration: "underline", fontSize: 12 }}
+                          rel="noopener noreferrer"
+                          className="button button--light"
+                          style={{ padding: "4px 10px", fontSize: 11 }}
                         >
-                          {claim.txHash.slice(0, 6)}...{claim.txHash.slice(-6)} ↗
+                          Solscan ↗
                         </a>
                       </td>
-                      <td>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#0c8a58", fontSize: 11, fontWeight: 700, background: "rgba(20, 241, 149, 0.12)", padding: "2px 8px", borderRadius: 999 }}>
-                          ✓ Confirmed
-                        </span>
-                      </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--os-muted)" }}>
-                      No royalty claims recorded yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: 48, textAlign: "center", background: "#fff", borderRadius: 20, border: "1px solid var(--os-border)" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>📜</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--os-foreground)" }}>No Distributions Recorded</h3>
+                <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto", fontSize: 13, lineHeight: 1.6 }}>
+                  Claimed creator royalties and on-chain distributions will appear here with Solscan transaction proofs.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       )}

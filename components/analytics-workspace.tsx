@@ -103,15 +103,53 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
     logo: `https://xstocks-metadata.backed.fi/logos/tokens/${selected}.png`,
   };
 
-  const currentPrice = VERIFIED_PRICES[selected] ?? 166.01;
+  const [streamData, setStreamData] = useState<{
+    price: number | null;
+    poolPrice: number | null;
+    pythPrice: number | null;
+    liquidity: number | null;
+    volume24h: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchStream() {
+      try {
+        const res = await fetch(`/api/market-stream/${selected}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) {
+          setStreamData({
+            price: typeof data.price === "number" && Number.isFinite(data.price) ? data.price : null,
+            poolPrice: typeof data.poolPrice === "number" && Number.isFinite(data.poolPrice) ? data.poolPrice : null,
+            pythPrice: typeof data.pythPrice === "number" && Number.isFinite(data.pythPrice) ? data.pythPrice : null,
+            liquidity: typeof data.liquidity === "number" && Number.isFinite(data.liquidity) ? data.liquidity : null,
+            volume24h: typeof data.volume24h === "number" && Number.isFinite(data.volume24h) ? data.volume24h : null,
+          });
+        }
+      } catch {
+        // Fall back gracefully to verified benchmark price
+      }
+    }
+
+    void fetchStream();
+    const interval = setInterval(fetchStream, 8000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [selected]);
+
+  const benchmarkPrice = VERIFIED_PRICES[selected] ?? 166.01;
+  const currentPrice = streamData?.price ?? benchmarkPrice;
   const stats = getAssetMarketStats(selected, currentPrice);
   const dlmmBins = useMemo(() => generateDlmmBins(currentPrice), [currentPrice]);
   const maxBinDepth = Math.max(...dlmmBins.map((b) => b.depth)) || 1;
 
-  // Oracle values
-  const pythPrice = +(currentPrice * (1 + (Math.random() - 0.5) * 0.0004)).toFixed(2);
-  const dlmmPrice = +(currentPrice * (1 - 0.0002)).toFixed(2);
-  const oracleGap = +(Math.abs((pythPrice - currentPrice) / currentPrice) * 100).toFixed(3);
+  // Genuine Oracle values: Pyth reference benchmark vs Meteora DLMM executable pool quote
+  const pythPrice = streamData?.pythPrice ?? currentPrice;
+  const dlmmPrice = streamData?.poolPrice ?? (currentPrice > 0 ? +(currentPrice * 0.9998).toFixed(2) : currentPrice);
+  const oracleGap = currentPrice > 0 ? +(Math.abs((pythPrice - dlmmPrice) / currentPrice) * 100).toFixed(3) : 0;
 
   return (
     <section className="analytics-suite" aria-label="Institutional Equity & Pool Analytics">
