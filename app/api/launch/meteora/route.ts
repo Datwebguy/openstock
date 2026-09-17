@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { addCommunityToken } from "@/lib/community-tokens";
-import { executeMeteoraDbcLaunch, prepareMeteoraDbcPoolTx } from "@/lib/meteora-dbc";
+import {
+  checkMeteoraDbcBadgeSupport,
+  executeMeteoraDbcLaunch,
+  prepareMeteoraDbcPoolTx,
+  type DbcCurvePresetKey,
+} from "@/lib/meteora-dbc";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +21,7 @@ export async function POST(req: NextRequest) {
       creatorWallet,
       creatorFeeBps,
       supply,
+      curvePreset = "linear",
       txSignature,
       mintAddress,
       poolAddress,
@@ -29,6 +35,18 @@ export async function POST(req: NextRequest) {
     }
     if (!name || !symbol) {
       return NextResponse.json({ error: "Missing token name or symbol." }, { status: 400 });
+    }
+
+    // Never let user sign or create a DBC pool that will fail on-chain with InvalidTokenBadge
+    const isBadgeSupported = await checkMeteoraDbcBadgeSupport(quoteMint);
+    if (!isBadgeSupported) {
+      return NextResponse.json(
+        {
+          error: `Quote token ${quoteMint} is not badged on Meteora DBC. Token-2022 assets require an on-chain token_badge created by Meteora. Please switch to SOL or USDC permissionless pairing.`,
+          unbadged: true,
+        },
+        { status: 400 }
+      );
     }
 
     let resolvedImageUrl = imageUrl;
@@ -47,6 +65,7 @@ export async function POST(req: NextRequest) {
       creatorWallet,
       creatorFeeBps: Number(creatorFeeBps) || 150,
       supply: tokenSupply,
+      curvePreset: (curvePreset as DbcCurvePresetKey) || "linear",
     };
 
     // Mode 1: Prepare the authentic on-chain Meteora DBC transaction

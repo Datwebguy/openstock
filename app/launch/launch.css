@@ -1767,3 +1767,365 @@ html[data-theme="dark"] .launch-priority-pill strong {
   }
 }
 
+/* ==========================================================================
+   Token-2022 Badge Verification Pill & Permissionless Fallback
+   ========================================================================== */
+.launch-badge-section {
+  margin: 12px 0 16px 0;
+}
+
+.launch-badge-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(153, 69, 255, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  transition: all 0.2s ease;
+}
+
+html[data-theme="dark"] .launch-badge-card {
+  background: rgba(24, 18, 40, 0.55);
+  border-color: rgba(153, 69, 255, 0.25);
+}
+
+.launch-badge-card.is-verified {
+  border-color: rgba(20, 241, 149, 0.35);
+  background: rgba(20, 241, 149, 0.05);
+}
+
+html[data-theme="dark"] .launch-badge-card.is-verified {
+  background: rgba(20, 241, 149, 0.08);
+}
+
+.launch-badge-card.is-unbadged {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+html[data-theme="dark"] .launch-badge-card.is-unbadged {
+  background: rgba(245, 158, 11, 0.09);
+}
+
+.launch-badge-card.is-fallback {
+  border-color: rgba(3, 225, 255, 0.35);
+  background: rgba(3, 225, 255, 0.06);
+}
+
+html[data-theme="dark"] .launch-badge-card.is-fallback {
+  background: rgba(3, 225, 255, 0.09);
+}
+
+.launch-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.launch-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.launch-badge-pill.is-verified {
+  color: #0c8a58;
+  background: rgba(20, 241, 149, 0.16);
+  border: 1px solid rgba(20, 241, 149, 0.35);
+}
+
+html[data-theme="dark"] .launch-badge-pill.is-verified {
+  color: var(--solana-green, #14f195);
+  background: rgba(20, 241, 149, 0.2);
+}
+
+.launch-badge-pill.is-unbadged {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+html[data-theme="dark"] .launch-badge-pill.is-unbadged {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.launch-badge-sub {
+  font-size: 11px;
+  color: var(--os-muted, #7c7689);
+}
+
+.launch-badge-index-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--solana-cyan, #03e1ff);
+  background: rgba(3, 225, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(3, 225, 255, 0.2);
+}
+
+.launch-badge-note {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--os-muted, #7c7689);
+  margin: 6px 0 0 0;
+}
+
+.launch-badge-note code {
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(153, 69, 255, 0.12);
+  color: var(--solana-purple, #9945ff);
+}
+
+html[data-theme="dark"] .launch-badge-note code {
+  color: var(--solana-green, #14f195);
+}
+
+.launch-badge-checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--os-muted, #7c7689);
+  padding: 8px 12px;
+}
+
+.launch-badge-reset-btn {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--os-muted, #7c7689);
+  background: transparent;
+  border: 1px solid rgba(153, 69, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.launch-badge-reset-btn:hover {
+  color: var(--os-ink, #161321);
+  border-color: var(--solana-cyan, #03e1ff);
+}
+
+html[data-theme="dark"] .launch-badge-reset-btn:hover {
+  color: #ffffff;
+}
+
+.launch-fallback-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 520px) {
+  .launch-fallback-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.launch-fallback-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(245, 158, 11, 0.3);
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-theme="dark"] .launch-fallback-btn {
+  background: rgba(28, 22, 45, 0.8);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.launch-fallback-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--solana-cyan, #03e1ff);
+  box-shadow: 0 4px 14px rgba(3, 225, 255, 0.15);
+}
+
+.launch-fallback-btn-icon {
+  font-size: 18px;
+}
+
+.launch-fallback-btn-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.launch-fallback-btn-copy strong {
+  font-size: 12.5px;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .launch-fallback-btn-copy strong {
+  color: #ffffff;
+}
+
+.launch-fallback-btn-copy small {
+  font-size: 10px;
+  color: var(--os-muted, #7c7689);
+}
+
+/* ==========================================================================
+   Meteora DBC Curve Preset Selector in Step 03
+   ========================================================================== */
+.launch-curve-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(3, 225, 255, 0.2);
+  background: rgba(3, 225, 255, 0.03);
+}
+
+html[data-theme="dark"] .launch-curve-box {
+  background: rgba(3, 225, 255, 0.05);
+  border-color: rgba(3, 225, 255, 0.25);
+}
+
+.launch-curve-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.launch-curve-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--os-muted, #7c7689);
+}
+
+.launch-curve-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(3, 225, 255, 0.12);
+  color: var(--solana-cyan, #03e1ff);
+  border: 1px solid rgba(3, 225, 255, 0.25);
+}
+
+.launch-curve-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.launch-curve-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(153, 69, 255, 0.15);
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+html[data-theme="dark"] .launch-curve-card {
+  background: rgba(22, 17, 36, 0.7);
+  border-color: rgba(153, 69, 255, 0.2);
+}
+
+.launch-curve-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(3, 225, 255, 0.4);
+}
+
+.launch-curve-card.is-selected {
+  border-color: var(--solana-cyan, #03e1ff);
+  background: rgba(3, 225, 255, 0.08);
+  box-shadow: 0 0 0 1px var(--solana-cyan, #03e1ff);
+}
+
+html[data-theme="dark"] .launch-curve-card.is-selected {
+  background: rgba(3, 225, 255, 0.12);
+}
+
+.launch-curve-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.launch-curve-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .launch-curve-name {
+  color: #ffffff;
+}
+
+.launch-curve-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(153, 69, 255, 0.12);
+  color: var(--solana-purple, #9945ff);
+}
+
+html[data-theme="dark"] .launch-curve-pill {
+  color: var(--solana-green, #14f195);
+  background: rgba(20, 241, 149, 0.12);
+}
+
+.launch-curve-subtitle {
+  font-size: 10.5px;
+  color: var(--os-muted, #7c7689);
+}
+
+.launch-curve-desc {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--os-muted, #7c7689);
+  margin: 0;
+}
+
+.launch-curve-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #0c8a58;
+  margin-top: 2px;
+}
+
+html[data-theme="dark"] .launch-curve-meta {
+  color: var(--solana-green, #14f195);
+}
+
+.launch-curve-config-id {
+  font-size: 9.5px;
+  color: var(--os-muted, #7c7689);
+  margin-top: 1px;
+}
+
+.launch-curve-config-id code {
+  font-family: var(--font-mono, monospace);
+}
+

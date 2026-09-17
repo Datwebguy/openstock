@@ -16,6 +16,12 @@ import {
   translateWalletError,
   type PriorityFeeTier,
 } from "@/lib/solana-preflight";
+import {
+  SOL_MINT,
+  USDC_MINT,
+  METEORA_DBC_CURVE_PRESETS,
+  type DbcCurvePresetKey,
+} from "@/lib/meteora-dbc";
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = window.atob(base64);
@@ -89,6 +95,16 @@ export function LaunchClient() {
     meteora: boolean;
   }>({ pumpfun: true, meteora: true });
   const [loadingVenues, setLoadingVenues] = useState(false);
+
+  // Meteora DBC Curve Presets (Linear Standard, Exponential Growth, Flat Deep Liquidity)
+  const [selectedCurvePreset, setSelectedCurvePreset] = useState<DbcCurvePresetKey>("linear");
+
+  // Token-2022 Badge State & Fallback
+  const [stockBadgeStatus, setStockBadgeStatus] = useState<"checking" | "badged" | "unbadged">("checking");
+  const [activeQuoteOverride, setActiveQuoteOverride] = useState<{ mint: string; symbol: string; label: string } | null>(null);
+  const quoteBadgeStatus = activeQuoteOverride ? "badged" : stockBadgeStatus;
+  const effectiveQuoteMint = activeQuoteOverride ? activeQuoteOverride.mint : selectedPair?.mint;
+  const effectiveQuoteSymbol = activeQuoteOverride ? activeQuoteOverride.symbol : selectedPair?.symbol;
 
   // Form State: Token Identity
   const [tokenName, setTokenName] = useState("");
@@ -213,6 +229,11 @@ export function LaunchClient() {
     if (!selectedPair) return;
     const pairSymbol = selectedPair.symbol;
     const pairMint = selectedPair.mint;
+
+    // Reset quote override whenever a new xStock is selected
+    setActiveQuoteOverride(null);
+    setStockBadgeStatus("checking");
+
     async function evaluateVenues() {
       try {
         setLoadingVenues(true);
@@ -221,7 +242,9 @@ export function LaunchClient() {
           const data = await res.json();
           const pSupported = Boolean(data.venues?.pumpfun?.supported);
           const mSupported = Boolean(data.venues?.meteora?.supported);
+          const isBadged = Boolean(data.isBadged ?? data.venues?.meteora?.isBadged);
 
+          setStockBadgeStatus(isBadged ? "badged" : "unbadged");
           setVenueSupport({ pumpfun: pSupported, meteora: mSupported });
 
           // If current selection is unsupported, automatically flip to the supported one
@@ -233,6 +256,7 @@ export function LaunchClient() {
         }
       } catch (err) {
         console.warn("Could not evaluate venue support:", err);
+        setStockBadgeStatus("unbadged");
       } finally {
         setLoadingVenues(false);
       }
@@ -320,8 +344,14 @@ export function LaunchClient() {
       return;
     }
 
-    if (!selectedPair) {
+    if (!selectedPair || !effectiveQuoteMint) {
       setErrorMessage("Please select a supported xStock market pair.");
+      return;
+    }
+
+    // Prevent submitting a DBC transaction that would revert with InvalidTokenBadge
+    if (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride) {
+      setErrorMessage(`This xStock (${selectedPair.symbol}) is not badged on Meteora DBC. Tap "Pair with SOL" or "Pair with USDC" below to launch permissionlessly.`);
       return;
     }
 
@@ -529,10 +559,11 @@ export function LaunchClient() {
             symbol: tokenSymbol.trim().toUpperCase(),
             description: description.trim(),
             imageUrl: imageUrl.trim(),
-            quoteMint: selectedPair.mint,
+            quoteMint: effectiveQuoteMint,
             creatorWallet: address,
             creatorFeeBps,
             supply: tokenSupply,
+            curvePreset: selectedCurvePreset,
           }),
         });
 
@@ -585,7 +616,7 @@ export function LaunchClient() {
 
         // Step 3: Confirm launch on OpenStock registry
         setStepState("confirming");
-        setStatusMessage(`Finalizing Meteora DBC pool against ${selectedPair.symbol}...`);
+        setStatusMessage(`Finalizing Meteora DBC pool against ${effectiveQuoteSymbol}...`);
 
         const confirmRes = await fetch("/api/launch/meteora", {
           method: "POST",
@@ -596,10 +627,11 @@ export function LaunchClient() {
             symbol: tokenSymbol.trim().toUpperCase(),
             description: description.trim(),
             imageUrl: imageUrl.trim(),
-            quoteMint: selectedPair.mint,
+            quoteMint: effectiveQuoteMint,
             creatorWallet: address,
             creatorFeeBps,
             supply: tokenSupply,
+            curvePreset: selectedCurvePreset,
             txSignature,
             mintAddress,
             poolAddress,
@@ -843,6 +875,103 @@ export function LaunchClient() {
               );
             })()}
 
+            {/* Token-2022 Badge Verification Pill & Fallback */}
+            {selectedPair && (
+              <div className="launch-badge-section">
+                {activeQuoteOverride ? (
+                  <div className="launch-badge-card is-fallback">
+                    <div className="launch-badge-row">
+                      <span className="launch-badge-pill is-verified">
+                        ✓ Verified Meteora DBC badged quote ({activeQuoteOverride.symbol})
+                      </span>
+                      <span className="launch-badge-index-tag">
+                        Stock Anchor: {selectedPair.symbol} (Pyth Index)
+                      </span>
+                    </div>
+                    <p className="launch-badge-note">
+                      Pairing on-chain against <strong>{activeQuoteOverride.label}</strong> to avoid Token-2022 badge reverts. <strong>{selectedPair.symbol}</strong> remains your thematic stock index and reference price.
+                    </p>
+                    <button
+                      type="button"
+                      className="launch-badge-reset-btn"
+                      onClick={() => {
+                        setActiveQuoteOverride(null);
+                        fetch(`/api/launch/venues?symbol=${selectedPair.symbol}&mint=${selectedPair.mint}`)
+                          .then((r) => r.json())
+                          .then((d) => setStockBadgeStatus(d.isBadged ? "badged" : "unbadged"))
+                          .catch(() => setStockBadgeStatus("unbadged"));
+                      }}
+                    >
+                      ↺ Reset to {selectedPair.symbol} Quote
+                    </button>
+                  </div>
+                ) : quoteBadgeStatus === "checking" ? (
+                  <div className="launch-badge-checking">
+                    <span className="launch-pulse-dot" /> Checking on-chain Meteora DBC token badge...
+                  </div>
+                ) : quoteBadgeStatus === "badged" ? (
+                  <div className="launch-badge-card is-verified">
+                    <span className="launch-badge-pill is-verified">
+                      ✓ Verified Meteora DBC badged quote
+                    </span>
+                    <span className="launch-badge-note">
+                      {selectedPair.symbol} has an active on-chain token_badge PDA. Native bonding curve pool creation enabled.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="launch-badge-card is-unbadged">
+                    <div className="launch-badge-row">
+                      <span className="launch-badge-pill is-unbadged">
+                        ⚠️ This xStock is not badged on DBC
+                      </span>
+                      <span className="launch-badge-sub">Token-2022 requires an on-chain token_badge PDA</span>
+                    </div>
+                    <p className="launch-badge-note">
+                      Token-2022 equity mints without an on-chain Meteora badge will revert with <code>InvalidTokenBadge</code>. Tap below to pair permissionlessly with SOL or USDC while preserving {selectedPair.symbol} as your stock index &amp; Pyth oracle.
+                    </p>
+                    <div className="launch-fallback-actions">
+                      <button
+                        type="button"
+                        className="launch-fallback-btn"
+                        onClick={() => {
+                          setActiveQuoteOverride({
+                            mint: SOL_MINT,
+                            symbol: "SOL",
+                            label: "Wrapped SOL",
+                          });
+                          setStockBadgeStatus("badged");
+                        }}
+                      >
+                        <span className="launch-fallback-btn-icon">⚡</span>
+                        <div className="launch-fallback-btn-copy">
+                          <strong>Pair with SOL</strong>
+                          <small>Permissionless SPL · Instant liquidity</small>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="launch-fallback-btn"
+                        onClick={() => {
+                          setActiveQuoteOverride({
+                            mint: USDC_MINT,
+                            symbol: "USDC",
+                            label: "Circle USDC",
+                          });
+                          setStockBadgeStatus("badged");
+                        }}
+                      >
+                        <span className="launch-fallback-btn-icon">💵</span>
+                        <div className="launch-fallback-btn-copy">
+                          <strong>Pair with USDC</strong>
+                          <small>Permissionless SPL · Dollar stable</small>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Category Filter Tabs & Search Toolbar */}
             <div className="launch-stock-toolbar">
               <div className="launch-category-tabs" role="tablist" aria-label="Stock categories">
@@ -1010,6 +1139,50 @@ export function LaunchClient() {
                   ) : null}
                 </div>
 
+                {/* Meteora DBC Curve Preset Selector - Visible ONLY when selectedVenue === "meteora" */}
+                {selectedVenue === "meteora" && (
+                  <div className="launch-curve-box">
+                    <div className="launch-curve-head">
+                      <label className="launch-curve-label">
+                        DBC Curve Preset
+                      </label>
+                      <span className="launch-curve-badge">
+                        Meteora SDK
+                      </span>
+                    </div>
+                    <div className="launch-curve-cards" role="radiogroup" aria-label="DBC Curve Preset">
+                      {(Object.keys(METEORA_DBC_CURVE_PRESETS) as DbcCurvePresetKey[]).map((presetKey) => {
+                        const preset = METEORA_DBC_CURVE_PRESETS[presetKey];
+                        const isChosen = selectedCurvePreset === presetKey;
+                        return (
+                          <button
+                            type="button"
+                            key={presetKey}
+                            className={`launch-curve-card ${isChosen ? "is-selected" : ""}`}
+                            onClick={() => setSelectedCurvePreset(presetKey)}
+                            role="radio"
+                            aria-checked={isChosen}
+                          >
+                            <div className="launch-curve-card-top">
+                              <span className="launch-curve-name">{preset.name}</span>
+                              <span className="launch-curve-pill">{preset.curveType}</span>
+                            </div>
+                            <span className="launch-curve-subtitle">{preset.subtitle}</span>
+                            <p className="launch-curve-desc">{preset.description}</p>
+                            <div className="launch-curve-meta">
+                              <span>Fee: {(preset.baseFeeBps / 100).toFixed(1)}%</span>
+                              <span>Target: {preset.targetMarketCap}</span>
+                            </div>
+                            <div className="launch-curve-config-id">
+                              <code>Config: {preset.configAddress.slice(0, 4)}...{preset.configAddress.slice(-4)}</code>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {!venueSupport.pumpfun && !venueSupport.meteora && (
                   <p style={{ color: "#f87171", fontSize: 12, marginTop: 8 }}>
                     Neither Pump.fun nor Meteora DBC currently supports {selectedPair?.symbol} as a quote asset. Please select another stock.
@@ -1140,7 +1313,12 @@ export function LaunchClient() {
               <button
                 type="button"
                 className="launch-execute-btn"
-                disabled={stepState === "quoting" || stepState === "paying" || stepState === "confirming"}
+                disabled={
+                  stepState === "quoting" ||
+                  stepState === "paying" ||
+                  stepState === "confirming" ||
+                  (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride)
+                }
                 onClick={handleLaunch}
               >
                 {!address ? (
@@ -1151,9 +1329,11 @@ export function LaunchClient() {
                   "Approve in Wallet..."
                 ) : stepState === "confirming" ? (
                   "Creating Market on Solana..."
+                ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride ? (
+                  `Cannot Launch: ${selectedPair?.symbol || "xStock"} Unbadged on DBC (Pair with SOL / USDC)`
                 ) : (
                   <>
-                    Launch on {selectedVenue === "pumpfun" ? "Pump.fun" : "Meteora DBC"}: {tokenSymbol || "TOKEN"} × {selectedPair?.symbol || "xStock"}
+                    Launch on {selectedVenue === "pumpfun" ? "Pump.fun" : "Meteora DBC"}: {tokenSymbol || "TOKEN"} × {effectiveQuoteSymbol || "xStock"}
                   </>
                 )}
               </button>
@@ -1277,7 +1457,7 @@ export function LaunchClient() {
                 <div className="launch-holo-pair-badge">
                   <span>${tokenSymbol || "TOKEN"}</span>
                   <span className="launch-holo-times">×</span>
-                  <span className="launch-holo-stock-symbol">{selectedPair?.symbol || "xStock"}</span>
+                  <span className="launch-holo-stock-symbol">{effectiveQuoteSymbol || selectedPair?.symbol || "xStock"}</span>
                 </div>
                 <p className="launch-holo-desc">
                   {description || `The community asset paired directly against ${selectedPair?.name || "tokenized equity"} on Solana.`}
@@ -1292,6 +1472,14 @@ export function LaunchClient() {
                     {selectedVenue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
                   </strong>
                 </div>
+                {selectedVenue === "meteora" && (
+                  <div className="launch-holo-spec-row">
+                    <span>Curve Preset</span>
+                    <strong style={{ color: "var(--solana-green, #14f195)" }}>
+                      {METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Linear Standard"}
+                    </strong>
+                  </div>
+                )}
                 <div className="launch-holo-spec-row">
                   <span>Total Supply</span>
                   <strong className="launch-holo-highlight">
@@ -1299,13 +1487,19 @@ export function LaunchClient() {
                   </strong>
                 </div>
                 <div className="launch-holo-spec-row">
-                  <span>Paired Stock</span>
-                  <strong>{selectedPair ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})` : "xStock"}</strong>
+                  <span>Quote Asset</span>
+                  <strong>
+                    {activeQuoteOverride
+                      ? `${activeQuoteOverride.symbol} (${selectedPair?.symbol} context)`
+                      : selectedPair
+                      ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})`
+                      : "xStock"}
+                  </strong>
                 </div>
                 <div className="launch-holo-spec-row">
                   <span>Creator Royalty</span>
                   <strong className="launch-holo-highlight">
-                    {(creatorFeeBps / 100).toFixed(1)}% ({creatorFeeBps} bps) in {selectedPair?.symbol}
+                    {(creatorFeeBps / 100).toFixed(1)}% ({creatorFeeBps} bps) in {effectiveQuoteSymbol || selectedPair?.symbol}
                   </strong>
                 </div>
                 <div className="launch-holo-spec-row">
@@ -1319,7 +1513,7 @@ export function LaunchClient() {
               </div>
 
               <div className="launch-holo-footer-note">
-                Direct liquidity settled in {selectedPair?.symbol || "AAPLx"} on Solana
+                Direct liquidity settled in {effectiveQuoteSymbol || selectedPair?.symbol || "AAPLx"} on Solana
               </div>
             </div>
           </div>

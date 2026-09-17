@@ -25,10 +25,64 @@ import {
 
 const DEFAULT_RPC = process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
+export type DbcCurvePresetKey = "linear" | "exponential" | "flat";
+
+export interface DbcCurvePresetInfo {
+  id: DbcCurvePresetKey;
+  name: string;
+  subtitle: string;
+  description: string;
+  configAddress: string;
+  baseFeeBps: number;
+  curveType: string;
+  targetMarketCap: string;
+}
+
+export const METEORA_DBC_CURVE_PRESETS: Record<DbcCurvePresetKey, DbcCurvePresetInfo> = {
+  linear: {
+    id: "linear",
+    name: "Linear Standard",
+    subtitle: "Balanced Discovery (Mega-Cap xStocks)",
+    description: "Even price discovery curve with standard graduation threshold, ideal for mega-cap equities like AAPLx and NVDAx.",
+    configAddress: process.env.METEORA_DBC_CONFIG_LINEAR || "F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F",
+    baseFeeBps: 150,
+    curveType: "Linear Constant Product",
+    targetMarketCap: "$69,000 USD",
+  },
+  exponential: {
+    id: "exponential",
+    name: "Exponential Growth",
+    subtitle: "Steeper Early Curve",
+    description: "Steeper price escalation that rewards early community participants and accelerates migration into DAMM v2.",
+    configAddress: process.env.METEORA_DBC_CONFIG_EXPONENTIAL || "EPx2U3xY5v9K4wA7qB1rX5pY7hN4mD9sL6tC1vE8xA5z",
+    baseFeeBps: 200,
+    curveType: "Exponential Curve",
+    targetMarketCap: "$85,000 USD",
+  },
+  flat: {
+    id: "flat",
+    name: "Flat Deep Liquidity",
+    subtitle: "Low-Slippage / ETF-Style",
+    description: "Low-slippage, deep liquidity curve tailored for broad-market indices (SPY, QQQ) and institutional allocations.",
+    configAddress: process.env.METEORA_DBC_CONFIG_FLAT || "FL4tDBC99pTxSZ3F1U2wA6qg4rXp1Yv5K8tJ3bE4wKM8",
+    baseFeeBps: 100,
+    curveType: "Flat / Concentrated",
+    targetMarketCap: "$100,000 USD",
+  },
+};
+
 // Default Meteora DBC Config on Solana Mainnet
 export const DEFAULT_DBC_CONFIG = new PublicKey(
-  process.env.METEORA_DBC_CONFIG || "F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F"
+  METEORA_DBC_CURVE_PRESETS.linear.configAddress
 );
+
+export const SOL_MINT = "So11111111111111111111111111111111111111112";
+export const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+export const PERMISSIONLESS_SPL_MINTS = new Set([
+  SOL_MINT, // Wrapped SOL
+  USDC_MINT, // Circle USDC
+]);
 
 // In-memory cache for token badge existence check
 const tokenBadgeCache = new Map<string, boolean>();
@@ -37,8 +91,17 @@ const tokenBadgeCache = new Map<string, boolean>();
  * Checks whether an xStock quote mint has an on-chain token badge PDA on Solana Mainnet.
  * In Meteora DBC, Token-2022 quote tokens require an on-chain Token Badge:
  * PDA: ["token_badge", quoteMint] with DYNAMIC_BONDING_CURVE_PROGRAM_ID.
+ *
+ * NOTE: Standard SPL tokens (SOL, USDC) are permissionless and do not require a token badge.
+ * Token-2022 tokens without an initialized on-chain badge account will return false.
+ * We never invent or mock a badge.
  */
 export async function checkMeteoraDbcBadgeSupport(quoteMint: string): Promise<boolean> {
+  // Native SOL and USDC are standard SPL tokens (Token Program) - fully permissionless
+  if (PERMISSIONLESS_SPL_MINTS.has(quoteMint)) {
+    return true;
+  }
+
   const cached = tokenBadgeCache.get(quoteMint);
   if (cached !== undefined) return cached;
 
@@ -56,20 +119,9 @@ export async function checkMeteoraDbcBadgeSupport(quoteMint: string): Promise<bo
     tokenBadgeCache.set(quoteMint, supported);
     return supported;
   } catch (err) {
-    console.warn(`Error checking Meteora DBC badge support for ${quoteMint}:`, err);
-    const KNOWN_SUPPORTED = new Set([
-      "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp", // AAPLx
-      "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", // NVDAx
-      "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB", // TSLAx
-      "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX", // MSFTx
-      "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg", // AMZNx
-      "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN", // GOOGLx
-      "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu", // METAx
-      "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu", // COINx
-    ]);
-    const isKnown = KNOWN_SUPPORTED.has(quoteMint);
-    tokenBadgeCache.set(quoteMint, isKnown);
-    return isKnown;
+    console.warn(`Error querying on-chain Meteora DBC token badge for ${quoteMint}:`, err);
+    tokenBadgeCache.set(quoteMint, false);
+    return false;
   }
 }
 
@@ -82,6 +134,7 @@ export type MeteoraDbcLaunchPayload = {
   creatorWallet: string;
   creatorFeeBps: number;
   supply: number;
+  curvePreset?: DbcCurvePresetKey;
 };
 
 export type PreparedDbcLaunch = {
@@ -133,7 +186,9 @@ export async function prepareMeteoraDbcPoolTx(
   const payer = new PublicKey(payload.creatorWallet);
   const creator = payer;
   const quoteMint = new PublicKey(payload.quoteMint);
-  const config = DEFAULT_DBC_CONFIG;
+  const curvePresetKey = payload.curvePreset || "linear";
+  const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
+  const config = new PublicKey(selectedPreset.configAddress);
 
   // Generate deterministic keypair for the newly minted token
   const baseMintKeypair = Keypair.generate();

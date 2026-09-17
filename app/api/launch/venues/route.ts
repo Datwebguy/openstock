@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS, getClawPumpPairs } from "@/lib/clawpump";
-import { checkMeteoraDbcBadgeSupport } from "@/lib/meteora-dbc";
+import { checkMeteoraDbcBadgeSupport, METEORA_DBC_CURVE_PRESETS } from "@/lib/meteora-dbc";
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       symbol,
       quoteMint: mint,
+      isBadged: meteoraSupported,
+      curvePresets: METEORA_DBC_CURVE_PRESETS,
       venues: {
         pumpfun: {
           id: "pumpfun",
@@ -51,7 +53,8 @@ export async function GET(req: NextRequest) {
           name: "Meteora DBC",
           badge: "Dynamic Bonding Curve",
           description: "Dynamic Bonding Curve with concentrated liquidity migration directly into Meteora DLMM pool.",
-          supported: meteoraSupported,
+          supported: true,
+          isBadged: meteoraSupported,
           creatorFeeRange: { min: 100, max: 300, default: 150 },
         },
       },
