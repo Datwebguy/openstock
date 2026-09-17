@@ -1173,9 +1173,11 @@ export function LaunchClient() {
                               <span>Fee: {(preset.baseFeeBps / 100).toFixed(1)}%</span>
                               <span>Target: {preset.targetMarketCap}</span>
                             </div>
-                            <div className="launch-curve-config-id">
-                              <code>Config: {preset.configAddress.slice(0, 4)}...{preset.configAddress.slice(-4)}</code>
-                            </div>
+                            {preset.configAddress ? (
+                              <div className="launch-curve-config-id">
+                                <code>Config: {preset.configAddress.slice(0, 4)}...{preset.configAddress.slice(-4)}</code>
+                              </div>
+                            ) : null}
                           </button>
                         );
                       })}

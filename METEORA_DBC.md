@@ -82,14 +82,14 @@ If a Token-2022 quote token does not have an initialized `token_badge` account c
 
 OpenStock exposes 3 distinct curve presets mapped to Meteora mainnet bonding curve configurations from `@meteora-ag/dynamic-bonding-curve-sdk`:
 
-| Preset | Curve Type | Target Cap | Creator Fee | Description | Config Address |
-|---|---|---|---|---|---|
-| **Linear Standard** *(Default)* | Linear Constant Product | $69,000 | 1.5% | Balanced price discovery curve with standard graduation threshold, ideal for mega-cap equities like AAPLx and NVDAx. | `F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F` |
-| **Exponential Growth** | Exponential Curve | $85,000 | 2.0% | Steeper price escalation that rewards early community participants and accelerates migration into DAMM v2. | `EPx2U3xY5v9K4wA7qB1rX5pY7hN4mD9sL6tC1vE8xA5z` |
-| **Flat Deep Liquidity** | Flat / Concentrated | $100,000 | 1.0% | Low-slippage, deep liquidity curve tailored for broad-market indices (SPY, QQQ) and institutional allocations. | `FL4tDBC99pTxSZ3F1U2wA6qg4rXp1Yv5K8tJ3bE4wKM8` |
+| Preset | Curve Type | Target Cap | Creator Fee | Description |
+|---|---|---|---|---|
+| **Linear Standard** *(Default)* | Linear Constant Product | $69,000 | 1.5% | Balanced price discovery curve with standard graduation threshold, ideal for mega-cap equities like AAPLx and NVDAx. |
+| **Exponential Growth** | Exponential Curve | $85,000 | 2.0% | Steeper price escalation that rewards early community participants and accelerates migration into DAMM v2. |
+| **Flat Deep Liquidity** | Flat / Concentrated | $100,000 | 1.0% | Low-slippage, deep liquidity curve tailored for broad-market indices (SPY, QQQ) and institutional allocations. |
 
 > [!NOTE]
-> Curve preset selection is **strictly displayed only when Meteora DBC is selected** (`selectedVenue === "meteora"`). It is never displayed on Pump.fun / ClawPump.
+> Curve preset selection is **strictly displayed only when Meteora DBC is selected** (`selectedVenue === "meteora"`). It is never displayed on Pump.fun / ClawPump. PoolConfig accounts are resolved from on-chain configurations initialized via `@meteora-ag/dynamic-bonding-curve-sdk`.
 
 ---
 
@@ -113,7 +113,7 @@ OpenStock exposes 3 distinct curve presets mapped to Meteora mainnet bonding cur
 5. Connect your Phantom or Solflare wallet.
 6. Click **Launch on Meteora DBC**. Inspect the transaction in your wallet:
    - Notice the program invoked is `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN`.
-   - Notice the `config` account matches the chosen preset config address.
+   - Notice the `config` account is an authentic on-chain Meteora DBC PoolConfig.
    - Notice there are **no mock transfers or 0-lamport transfers**.
 
 ### Option B: Via HTTP API Inspection
@@ -140,7 +140,7 @@ The response contains:
 - `transactionBase64`: Serialized transaction containing the authentic `createPool` instruction.
 - `mintAddress`: Generated base token mint Keypair public key.
 - `poolAddress`: Derived DBC Pool PDA.
-- `configAddress`: Selected curve preset config address (`F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F`).
+- `configAddress`: Selected curve preset config address.
 
 ---
 

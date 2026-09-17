@@ -32,7 +32,7 @@ export interface DbcCurvePresetInfo {
   name: string;
   subtitle: string;
   description: string;
-  configAddress: string;
+  configAddress?: string;
   baseFeeBps: number;
   curveType: string;
   targetMarketCap: string;
@@ -44,7 +44,7 @@ export const METEORA_DBC_CURVE_PRESETS: Record<DbcCurvePresetKey, DbcCurvePreset
     name: "Linear Standard",
     subtitle: "Balanced Discovery (Mega-Cap xStocks)",
     description: "Even price discovery curve with standard graduation threshold, ideal for mega-cap equities like AAPLx and NVDAx.",
-    configAddress: process.env.METEORA_DBC_CONFIG_LINEAR || "F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F",
+    configAddress: process.env.METEORA_DBC_CONFIG_LINEAR || process.env.METEORA_DBC_CONFIG || undefined,
     baseFeeBps: 150,
     curveType: "Linear Constant Product",
     targetMarketCap: "$69,000 USD",
@@ -54,7 +54,7 @@ export const METEORA_DBC_CURVE_PRESETS: Record<DbcCurvePresetKey, DbcCurvePreset
     name: "Exponential Growth",
     subtitle: "Steeper Early Curve",
     description: "Steeper price escalation that rewards early community participants and accelerates migration into DAMM v2.",
-    configAddress: process.env.METEORA_DBC_CONFIG_EXPONENTIAL || "EPx2U3xY5v9K4wA7qB1rX5pY7hN4mD9sL6tC1vE8xA5z",
+    configAddress: process.env.METEORA_DBC_CONFIG_EXPONENTIAL || undefined,
     baseFeeBps: 200,
     curveType: "Exponential Curve",
     targetMarketCap: "$85,000 USD",
@@ -64,17 +64,17 @@ export const METEORA_DBC_CURVE_PRESETS: Record<DbcCurvePresetKey, DbcCurvePreset
     name: "Flat Deep Liquidity",
     subtitle: "Low-Slippage / ETF-Style",
     description: "Low-slippage, deep liquidity curve tailored for broad-market indices (SPY, QQQ) and institutional allocations.",
-    configAddress: process.env.METEORA_DBC_CONFIG_FLAT || "FL4tDBC99pTxSZ3F1U2wA6qg4rXp1Yv5K8tJ3bE4wKM8",
+    configAddress: process.env.METEORA_DBC_CONFIG_FLAT || undefined,
     baseFeeBps: 100,
     curveType: "Flat / Concentrated",
     targetMarketCap: "$100,000 USD",
   },
 };
 
-// Default Meteora DBC Config on Solana Mainnet
-export const DEFAULT_DBC_CONFIG = new PublicKey(
-  METEORA_DBC_CURVE_PRESETS.linear.configAddress
-);
+// Default Meteora DBC Config on Solana Mainnet (if configured via environment)
+export const DEFAULT_DBC_CONFIG: PublicKey | null = process.env.METEORA_DBC_CONFIG
+  ? new PublicKey(process.env.METEORA_DBC_CONFIG)
+  : null;
 
 export const SOL_MINT = "So11111111111111111111111111111111111111112";
 export const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -161,6 +161,7 @@ export type MeteoraDbcLaunchResult = {
 export function getMeteoraDbcPoolAddress(quoteMint: string, baseMint: string, config?: string): string {
   try {
     const poolConfig = config ? new PublicKey(config) : DEFAULT_DBC_CONFIG;
+    if (!poolConfig) return "";
     const poolPubkey = deriveDbcPoolAddress(
       new PublicKey(quoteMint),
       new PublicKey(baseMint),
@@ -188,7 +189,13 @@ export async function prepareMeteoraDbcPoolTx(
   const quoteMint = new PublicKey(payload.quoteMint);
   const curvePresetKey = payload.curvePreset || "linear";
   const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
-  const config = new PublicKey(selectedPreset.configAddress);
+  const configAddress = selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG;
+  if (!configAddress) {
+    throw new Error(
+      `No valid Meteora DBC PoolConfig address is configured for preset '${curvePresetKey}'. A real on-chain config account owned by dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN is required.`
+    );
+  }
+  const config = new PublicKey(configAddress);
 
   // Generate deterministic keypair for the newly minted token
   const baseMintKeypair = Keypair.generate();
@@ -399,13 +406,19 @@ export async function executeMeteoraDbcLaunch(
 
   const mintAddress = providedMintAddress || Keypair.generate().publicKey.toBase58();
 
+  const curvePresetKey = payload.curvePreset || "linear";
+  const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
+  const configAddress = selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG;
+
   const poolAddress =
     providedPoolAddress ||
-    deriveDbcPoolAddress(
-      new PublicKey(payload.quoteMint),
-      new PublicKey(mintAddress),
-      DEFAULT_DBC_CONFIG
-    ).toBase58();
+    (configAddress
+      ? deriveDbcPoolAddress(
+          new PublicKey(payload.quoteMint),
+          new PublicKey(mintAddress),
+          new PublicKey(configAddress)
+        ).toBase58()
+      : "");
 
   if (!userSignature) {
     throw new Error("A valid signed Solana transaction signature is required to confirm pool initialization on Solana.");
