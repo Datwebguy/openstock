@@ -299,7 +299,8 @@ export async function prepareMeteoraDbcPoolTx(
  */
 export async function prepareMeteoraDammMigrationTx(
   poolAddress: string,
-  payerWallet: string
+  payerWallet: string,
+  targetDammConfig?: string
 ): Promise<{ transactionBase64: string; dammPoolAddress: string }> {
   const connection = new Connection(DEFAULT_RPC, "confirmed");
   const { program } = createDbcProgram(connection);
@@ -321,7 +322,11 @@ export async function prepareMeteoraDammMigrationTx(
   const baseVault = deriveDbcTokenVaultAddress(pool, baseMint);
   const quoteVault = deriveDbcTokenVaultAddress(pool, quoteMint);
 
-  const dammConfig = new PublicKey("F5g2K41f1U2wA6qg4rXp1Yv5K8tJ3bE4wKM89pTxsZ3F");
+  const dammConfigKey = targetDammConfig || process.env.METEORA_DAMM_V2_CONFIG;
+  if (!dammConfigKey) {
+    throw new Error("A valid on-chain Meteora DAMM v2 config address is required for migration.");
+  }
+  const dammConfig = new PublicKey(dammConfigKey);
   const dammPool = deriveDammV2PoolAddress(dammConfig, baseMint, quoteMint);
   const dammPoolAuthority = deriveDammV2PoolAuthority();
   const dammTokenAVault = deriveDammV2TokenVaultAddress(dammPool, baseMint);
