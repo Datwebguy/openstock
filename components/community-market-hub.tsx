@@ -9,6 +9,7 @@ import { GraduationRadar } from "@/components/graduation-radar";
 import { MigrationModal } from "@/components/migration-modal";
 import { ShareToXModal, type ShareTokenData } from "@/components/share-to-x-modal";
 import type { CommunityToken } from "@/lib/community-tokens";
+import { formatTokenPrice, formatTokenVolume } from "@/lib/community-token-utils";
 
 type FilterTab = "all" | "new" | "graduating" | "graduated";
 
@@ -27,7 +28,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
   const [, startTransition] = useTransition();
 
-  // Load tokens from API and start 10s live polling
+  // Load tokens from API and start 5s live polling
   useEffect(() => {
     let cancelled = false;
 
@@ -47,7 +48,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
     }
 
     void load(true);
-    const interval = setInterval(() => void load(false), 10_000);
+    const interval = setInterval(() => void load(false), 5_000);
 
     return () => {
       cancelled = true;
@@ -79,7 +80,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
   // KPI Calculations
   const totalLaunches = tokens.length;
   const totalVolumeUsd = tokens.reduce((acc, t) => acc + t.volume24hUsd, 0);
-  const totalVolumeFormatted = `$${(totalVolumeUsd / 1_000_000).toFixed(2)}M`;
+  const totalVolumeFormatted = formatTokenVolume(totalVolumeUsd);
   const graduatedCount = tokens.filter((t) => t.status === "graduated" || t.bondingCurveProgress >= 100).length;
   const newCount = tokens.filter((t) => {
     const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
@@ -132,7 +133,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
           <div className="community-kpi-value-row">
             <strong>{newCount}</strong>
             <span className="community-kpi-badge is-purple">
-              <span className="live-dot" /> Live Syncing (10s)
+              <span className="live-dot" /> Live Solana Feed
             </span>
           </div>
         </div>
@@ -248,10 +249,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
               {filteredTokens.map((item, index) => {
                 const isPositive = item.change24h >= 0;
                 const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
-                const volumeFormatted =
-                  item.volume24hUsd >= 1_000_000
-                    ? `$${(item.volume24hUsd / 1_000_000).toFixed(2)}M`
-                    : `$${(item.volume24hUsd / 1000).toFixed(1)}K`;
+                const volumeFormatted = formatTokenVolume(item.volume24hUsd);
 
                 return (
                   <tr key={item.mint} className="trends-tr">
@@ -302,7 +300,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     {/* Price */}
                     <td className="trends-td--price">
                       <div className="trends-price-cell">
-                        <strong>${item.priceUsd.toFixed(4)}</strong>
+                        <strong>{formatTokenPrice(item.priceUsd)}</strong>
                         <small>{item.priceSol.toFixed(6)} SOL</small>
                       </div>
                     </td>
@@ -467,11 +465,11 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                 <div className="community-card__meta">
                   <div>
                     <span>Price</span>
-                    <strong>${item.priceUsd.toFixed(4)}</strong>
+                    <strong>{formatTokenPrice(item.priceUsd)}</strong>
                   </div>
                   <div>
                     <span>24h Vol</span>
-                    <strong>${(item.volume24hUsd / 1000).toFixed(1)}K</strong>
+                    <strong>{formatTokenVolume(item.volume24hUsd)}</strong>
                   </div>
                   <div>
                     <span>Market Cap</span>

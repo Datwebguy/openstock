@@ -29,6 +29,8 @@ export type CommunityToken = {
   venue?: "pumpfun" | "meteora";
 };
 
+export { formatTokenPrice, formatTokenVolume } from "./community-token-utils";
+
 // 100% Real on-chain Solana tokens paired against xStocks on Meteora DLMM and Pump.fun
 export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
   {
@@ -288,9 +290,141 @@ async function writeStore(store: CommunityTokenStore) {
   await fs.rename(tmp, STORE_PATH);
 }
 
+// In-memory cache for live DexScreener & market enrichment
+interface EnrichedTokenData {
+  priceUsd: number;
+  priceSol: number;
+  volume24hUsd: number;
+  change24h: number;
+  marketCapUsd: number;
+}
+
+let enrichmentCache: {
+  timestamp: number;
+  data: Map<string, EnrichedTokenData>;
+} | null = null;
+
+const CACHE_TTL_MS = 6_000; // 6 seconds
+
+// Mapping proxy mints to active live Solana tokens for bonding curve simulation
+const PROXY_MINTS: Record<string, string> = {
+  // Trump Bucks -> OFFICIAL TRUMP on Solana
+  "BgCeigJo2iY3dJhqS2z9w4pjjufFd4F9oKS3FrkMbmbJ": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+  // Macavity -> POPCAT on Solana
+  "ByCds9p6tXfF5HEg6aJDdrEypCWTi7Jui5nLs7QbyYuw": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+  // Wolfgang -> BONK on Solana
+  "3JUj6ZdRreqNH5gkdL2dZWn477kB97NxdkqSv2GeXWG9": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+};
+
+export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): Promise<CommunityToken[]> {
+  const now = Date.now();
+  let liveMap: Map<string, EnrichedTokenData>;
+
+  if (enrichmentCache && now - enrichmentCache.timestamp < CACHE_TTL_MS) {
+    liveMap = enrichmentCache.data;
+  } else {
+    liveMap = new Map();
+    const mintsSet = new Set<string>();
+    for (const t of tokens) {
+      mintsSet.add(t.mint);
+      if (PROXY_MINTS[t.mint]) {
+        mintsSet.add(PROXY_MINTS[t.mint]);
+      }
+    }
+    const mintsArray = Array.from(mintsSet);
+
+    try {
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mintsArray.join(",")}`, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(3500),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const pairs: any[] = Array.isArray(json?.pairs) ? json.pairs : [];
+
+        for (const pair of pairs) {
+          const address = pair.baseToken?.address;
+          if (!address) continue;
+
+          const pUsd = parseFloat(pair.priceUsd) || 0;
+          const pSol = parseFloat(pair.priceNative) || 0;
+          const vol = typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
+          const chg = typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0;
+          const mcap = pair.marketCap || pair.fdv || 0;
+
+          const existing = liveMap.get(address);
+          if (!existing || vol > existing.volume24hUsd) {
+            liveMap.set(address, {
+              priceUsd: pUsd,
+              priceSol: pSol,
+              volume24hUsd: vol,
+              change24h: chg,
+              marketCapUsd: mcap,
+            });
+          }
+        }
+
+        enrichmentCache = { timestamp: now, data: liveMap };
+      }
+    } catch (err) {
+      console.warn("DexScreener live sync warning:", err);
+      if (enrichmentCache) {
+        liveMap = enrichmentCache.data;
+      }
+    }
+  }
+
+  return tokens.map((t) => {
+    const proxy = PROXY_MINTS[t.mint];
+    const live = liveMap.get(t.mint) || (proxy ? liveMap.get(proxy) : undefined);
+
+    if (!live) {
+      return t;
+    }
+
+    const isGraduated = t.status === "graduated" || t.bondingCurveProgress >= 100;
+
+    // Direct match on DexScreener (e.g. TOAD, ORE, HYPE, SPCX)
+    if (liveMap.has(t.mint)) {
+      const progress = isGraduated
+        ? 100
+        : Math.min(99.5, Math.max(10, +((live.marketCapUsd / 69_000) * 100).toFixed(1)));
+
+      return {
+        ...t,
+        priceUsd: live.priceUsd > 0 ? live.priceUsd : t.priceUsd,
+        priceSol: live.priceSol > 0 ? live.priceSol : t.priceSol,
+        volume24hUsd: live.volume24hUsd > 0 ? live.volume24hUsd : t.volume24hUsd,
+        change24h: live.change24h !== 0 ? live.change24h : t.change24h,
+        marketCapUsd: live.marketCapUsd > 0 ? live.marketCapUsd : t.marketCapUsd,
+        bondingCurveProgress: progress,
+        status: progress >= 100 ? "graduated" : t.status,
+      };
+    }
+
+    // Proxy-linked tokens (bonding curve simulation driven by live market DEX volatility)
+    const vol = Math.max(t.volume24hUsd, Math.round(live.volume24hUsd * 0.05));
+    const livePriceUsd = t.priceUsd * (1 + (live.change24h || 0) / 100);
+    const dynamicProgress = Math.min(
+      99.2,
+      Math.max(15, +(t.bondingCurveProgress + (live.change24h > 0 ? 0.3 : -0.1)).toFixed(1))
+    );
+
+    return {
+      ...t,
+      priceUsd: livePriceUsd > 0 ? livePriceUsd : t.priceUsd,
+      volume24hUsd: vol,
+      change24h: live.change24h,
+      bondingCurveProgress: dynamicProgress,
+    };
+  });
+}
+
 export async function getCommunityTokens(): Promise<CommunityToken[]> {
   const store = await readStore();
-  return store.tokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sorted = store.tokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return enrichTokensWithLiveMarketData(sorted);
 }
 
 export async function addCommunityToken(token: CommunityToken): Promise<CommunityToken> {
@@ -306,6 +440,25 @@ export async function addCommunityToken(token: CommunityToken): Promise<Communit
   return token;
 }
 
+export async function updateCommunityTokenStatus(
+  mint: string,
+  status: "new" | "graduating" | "graduated",
+  poolAddress?: string,
+  meteoraUrl?: string
+): Promise<CommunityToken | null> {
+  const store = await readStore();
+  const token = store.tokens.find((t) => t.mint === mint);
+  if (!token) return null;
+  token.status = status;
+  if (status === "graduated") {
+    token.bondingCurveProgress = 100;
+  }
+  if (poolAddress) token.poolAddress = poolAddress;
+  if (meteoraUrl) token.meteoraUrl = meteoraUrl;
+  await writeStore(store);
+  return token;
+}
+
 export async function getCommunityMarketKPIs() {
   const tokens = await getCommunityTokens();
   const totalLaunches = tokens.length;
@@ -316,13 +469,20 @@ export async function getCommunityMarketKPIs() {
     return ageHours <= 24;
   }).length;
   const avgBondingCurve = Math.round(tokens.reduce((acc, t) => acc + t.bondingCurveProgress, 0) / (tokens.length || 1));
+  const avgChange24h = tokens.length > 0
+    ? +(tokens.reduce((acc, t) => acc + (t.change24h || 0), 0) / tokens.length).toFixed(1)
+    : 0;
 
   return {
     totalLaunches,
     totalVolumeUsd,
-    totalVolumeFormatted: `$${(totalVolumeUsd / 1_000_000).toFixed(2)}M`,
+    totalVolumeFormatted: totalVolumeUsd >= 1_000_000
+      ? `$${(totalVolumeUsd / 1_000_000).toFixed(2)}M`
+      : `$${(totalVolumeUsd / 1_000).toFixed(1)}K`,
     graduatedCount,
     newCount,
     avgBondingCurve,
+    avgChange24h,
+    lastUpdated: new Date().toISOString(),
   };
 }

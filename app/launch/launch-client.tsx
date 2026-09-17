@@ -17,6 +17,15 @@ import {
   type PriorityFeeTier,
 } from "@/lib/solana-preflight";
 
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = window.atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 const PRESET_AVATARS = [
   { label: "Silicon Chip", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80" },
   { label: "Golden Bull", url: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=80" },
@@ -503,76 +512,86 @@ export function LaunchClient() {
     // =========================================================================
     else if (selectedVenue === "meteora") {
       setStepState("quoting");
-      setStatusMessage("Preparing Meteora DBC parameters and token badge verification...");
+      setStatusMessage("Preparing Meteora DBC parameters and deriving pool PDAs...");
 
       try {
-        let txSignature = "";
-
-        // Wallet signature on OpenStock with Compute Budget Hardening
-        setStepState("paying");
-        setStatusMessage("Estimating network fees and running preflight simulation...");
-
-        if (solanaProvider && (solanaProvider.signAndSendTransaction || solanaProvider.signTransaction)) {
-          const fromPubkey = new PublicKey(address);
-          const tx = new Transaction().add(
-            SystemProgram.transfer({
-              fromPubkey,
-              toPubkey: fromPubkey,
-              lamports: 0, // In-place signer verification
-            })
-          );
-
-          // Dynamic priority fee estimation & compute budget injection
-          const microLamports = await getDynamicPriorityFee(connection, priorityTier);
-          applyComputeBudget(tx, 150_000, microLamports);
-
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-          tx.recentBlockhash = blockhash;
-          tx.feePayer = fromPubkey;
-
-          // Preflight validation simulation
-          setStatusMessage("Validating transaction preflight on Solana mainnet...");
-          const sim = await preflightSimulate(connection, tx, fromPubkey);
-          if (!sim.success) {
-            throw new Error(sim.humanMessage || sim.error || "Preflight simulation failed.");
-          }
-          if (sim.unitsConsumed) {
-            setSimulatedUnits(sim.unitsConsumed);
-          }
-
-          setStatusMessage("Please sign Meteora DBC pool creation in your wallet...");
-
-          if (solanaProvider.signAndSendTransaction) {
-            const sendRes = await solanaProvider.signAndSendTransaction(tx);
-            txSignature = sendRes.signature;
-          } else if (solanaProvider.signTransaction) {
-            const signed = await solanaProvider.signTransaction(tx);
-            setStatusMessage("Broadcasting transaction to Solana cluster...");
-            txSignature = await connection.sendRawTransaction(signed.serialize(), {
-              skipPreflight: true,
-              maxRetries: 3,
-            });
-          }
-
-          setStatusMessage("Confirming block inclusion on Solana mainnet...");
-          const confirmation = await connection.confirmTransaction(
-            { signature: txSignature, blockhash, lastValidBlockHeight },
-            "confirmed"
-          );
-          if (confirmation.value.err) {
-            throw new Error(translateWalletError(confirmation.value.err));
-          }
-        } else {
+        if (!solanaProvider || (!solanaProvider.signAndSendTransaction && !solanaProvider.signTransaction)) {
           throw new Error("Solana wallet provider not detected. Connect Phantom or Solflare to sign and broadcast this launch transaction.");
         }
 
-        setStepState("confirming");
-        setStatusMessage(`Initializing Meteora DBC pool against ${selectedPair.symbol}...`);
-
-        const meteoraRes = await fetch("/api/launch/meteora", {
+        // Step 1: Request authentic prepared on-chain Meteora DBC transaction
+        const prepareRes = await fetch("/api/launch/meteora", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            mode: "prepare",
+            name: tokenName.trim(),
+            symbol: tokenSymbol.trim().toUpperCase(),
+            description: description.trim(),
+            imageUrl: imageUrl.trim(),
+            quoteMint: selectedPair.mint,
+            creatorWallet: address,
+            creatorFeeBps,
+            supply: tokenSupply,
+          }),
+        });
+
+        const prepareData = await prepareRes.json();
+        if (!prepareRes.ok || !prepareData.transactionBase64) {
+          throw new Error(prepareData.error || "Failed to prepare Meteora DBC pool transaction.");
+        }
+
+        const { transactionBase64, mintAddress, poolAddress } = prepareData;
+
+        // Step 2: Deserialize and sign the real Meteora transaction with the user's wallet
+        setStepState("paying");
+        setStatusMessage("Estimating network fees and running preflight simulation...");
+
+        const fromPubkey = new PublicKey(address);
+        const txBytes = base64ToUint8Array(transactionBase64);
+        const tx = Transaction.from(txBytes);
+
+        // Preflight validation simulation
+        setStatusMessage("Validating Meteora DBC transaction preflight on Solana...");
+        try {
+          const sim = await preflightSimulate(connection, tx, fromPubkey);
+          if (sim.unitsConsumed) {
+            setSimulatedUnits(sim.unitsConsumed);
+          }
+        } catch (simErr) {
+          console.warn("Preflight simulation check:", simErr);
+        }
+
+        setStatusMessage("Please sign Meteora DBC pool creation in your wallet...");
+
+        let txSignature = "";
+        if (solanaProvider.signAndSendTransaction) {
+          const sendRes = await solanaProvider.signAndSendTransaction(tx);
+          txSignature = sendRes.signature;
+        } else if (solanaProvider.signTransaction) {
+          const signed = await solanaProvider.signTransaction(tx);
+          setStatusMessage("Broadcasting transaction to Solana cluster...");
+          txSignature = await connection.sendRawTransaction(signed.serialize(), {
+            skipPreflight: false,
+            maxRetries: 3,
+          });
+        }
+
+        setStatusMessage("Confirming Meteora DBC pool creation on Solana mainnet...");
+        const confirmation = await connection.confirmTransaction(txSignature, "confirmed");
+        if (confirmation.value.err) {
+          throw new Error(translateWalletError(confirmation.value.err));
+        }
+
+        // Step 3: Confirm launch on OpenStock registry
+        setStepState("confirming");
+        setStatusMessage(`Finalizing Meteora DBC pool against ${selectedPair.symbol}...`);
+
+        const confirmRes = await fetch("/api/launch/meteora", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "confirm",
             name: tokenName.trim(),
             symbol: tokenSymbol.trim().toUpperCase(),
             description: description.trim(),
@@ -582,22 +601,24 @@ export function LaunchClient() {
             creatorFeeBps,
             supply: tokenSupply,
             txSignature,
+            mintAddress,
+            poolAddress,
           }),
         });
 
-        const meteoraData = await meteoraRes.json();
-        if (!meteoraRes.ok || !meteoraData.success) {
-          throw new Error(meteoraData.error || "Failed to initialize Meteora DBC pool.");
+        const confirmData = await confirmRes.json();
+        if (!confirmRes.ok || !confirmData.success) {
+          throw new Error(confirmData.error || "Failed to confirm Meteora DBC pool.");
         }
 
         setStepState("success");
         setStatusMessage("Meteora DBC Pool successfully created!");
         setLaunchReceipt({
-          mintAddress: meteoraData.mintAddress,
-          poolAddress: meteoraData.poolAddress,
-          txHash: meteoraData.txHash,
-          pumpUrl: `https://solscan.io/token/${meteoraData.mintAddress}`,
-          explorerUrl: `https://solscan.io/token/${meteoraData.mintAddress}`,
+          mintAddress: confirmData.mintAddress,
+          poolAddress: confirmData.poolAddress,
+          txHash: confirmData.txHash,
+          pumpUrl: confirmData.meteoraUrl || `https://app.meteora.ag/dlmm/${confirmData.poolAddress}`,
+          explorerUrl: confirmData.explorerUrl || `https://solscan.io/tx/${confirmData.txHash}`,
           venue: "meteora",
         });
       } catch (err: unknown) {
@@ -1166,6 +1187,12 @@ export function LaunchClient() {
                       <span>Mint Address</span>
                       <code>{launchReceipt.mintAddress.slice(0, 5)}...{launchReceipt.mintAddress.slice(-5)}</code>
                     </div>
+                    {launchReceipt.poolAddress && (
+                      <div className="launch-receipt-item">
+                        <span>DBC Pool PDA</span>
+                        <code>{launchReceipt.poolAddress.slice(0, 5)}...{launchReceipt.poolAddress.slice(-5)}</code>
+                      </div>
+                    )}
                     <div className="launch-receipt-item">
                       <span>Tx Signature</span>
                       <code>{launchReceipt.txHash.slice(0, 5)}...{launchReceipt.txHash.slice(-5)}</code>

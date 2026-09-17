@@ -2,6 +2,7 @@
 
 import { StockLogo } from "@/components/stock-logo";
 import type { CommunityToken } from "@/lib/community-tokens";
+import { formatTokenPrice, formatTokenVolume } from "@/lib/community-token-utils";
 
 interface GraduationRadarProps {
   tokens: CommunityToken[];
@@ -29,30 +30,28 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
       <div className="graduation-radar-banner">
         <div className="graduation-radar-glow-layer" aria-hidden="true" />
 
-        {/* Radar Header */}
+        {/* Clean, institutional header */}
         <div className="graduation-radar-header">
-          <div className="graduation-radar-title-group">
-            <div className="graduation-radar-ping">
-              <span className="radar-pulse-core" />
-              <span className="radar-pulse-ring" />
-            </div>
-            <div>
-              <div className="graduation-radar-eyebrow">
-                <span>LIVE GRADUATION RADAR</span>
-                <span className="graduation-radar-chip">Meteora DLMM Queue</span>
-              </div>
+          <div className="graduation-radar-header-left">
+            <div className="graduation-radar-title-row">
+              <span className="radar-pulse-core" aria-hidden="true" />
               <h2 className="graduation-radar-title">Bonding Curves Near 100% Migration</h2>
+              <span className="graduation-radar-chip">Meteora DLMM Queue</span>
             </div>
+            <p className="graduation-radar-subtitle">
+              Live curve capacity tracking. Pairs automatically seed concentrated Meteora DLMM pools on Solana upon reaching 100%.
+            </p>
           </div>
-          <p className="graduation-radar-desc">
-            When a pair reaches 100% capacity, liquidity automatically migrates into concentrated{" "}
-            <strong>Meteora DLMM Dynamic AMM</strong> pools on Solana with permanently burned LP tokens.
-          </p>
+          <div className="graduation-radar-header-right">
+            <span className="radar-live-indicator">
+              <span className="radar-live-pulse-dot" /> Live Solana Sync
+            </span>
+          </div>
         </div>
 
-        {/* Radar Cards Carousel / Grid */}
+        {/* Spotlight Cards Grid */}
         <div className="graduation-radar-grid">
-          {radarSpotlight.map((item, idx) => {
+          {radarSpotlight.map((item) => {
             const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
             const progress = Math.min(100, Math.max(0, item.bondingCurveProgress));
             const remainingPercentage = Math.max(0, 100 - progress);
@@ -60,6 +59,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
 
             return (
               <article key={item.mint} className={`radar-card ${isGraduated ? "is-graduated" : ""}`}>
+                {/* Identity Row */}
                 <div className="radar-card-top">
                   <div className="radar-card-identity">
                     <div className="radar-avatar-stage">
@@ -68,29 +68,27 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                         alt={item.name}
                         className="radar-avatar-main"
                         onError={(e) => {
-                          // Clean gradient fallback if CDN or external link fails
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                          const parent = e.currentTarget.parentElement;
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = "none";
+                          const parent = target.parentElement;
                           if (parent && !parent.querySelector(".radar-fallback-avatar")) {
                             const fallback = document.createElement("div");
                             fallback.className = "radar-avatar-main radar-fallback-avatar";
-                            fallback.style.cssText = "display:grid;place-items:center;background:linear-gradient(135deg,#9945ff,#14f195);color:#fff;font-weight:800;font-size:12px;";
+                            fallback.style.cssText =
+                              "display:grid;place-items:center;background:linear-gradient(135deg,#9945ff,#14f195);color:#fff;font-weight:800;font-size:12px;border-radius:12px;";
                             fallback.textContent = item.symbol.slice(0, 3).toUpperCase();
                             parent.prepend(fallback);
                           }
                         }}
                       />
                       <div className="radar-avatar-stock" title={`Paired with ${item.pairedStockSymbol}`}>
-                        <StockLogo symbol={item.pairedStockSymbol} size={22} />
+                        <StockLogo symbol={item.pairedStockSymbol} size={18} />
                       </div>
                     </div>
-                    <div>
-                      <div className="radar-name-line">
-                        <strong className="radar-name">{item.name}</strong>
-                        <span className="radar-rank-badge">#{idx + 1}</span>
-                      </div>
+                    <div className="radar-identity-text">
+                      <strong className="radar-name">{item.name}</strong>
                       <div className="radar-pair-line">
-                        <span>${item.symbol}</span>
+                        <span className="radar-token-symbol">${item.symbol}</span>
                         <span className="radar-times">×</span>
                         <span className="radar-stock-symbol">{item.pairedStockSymbol}</span>
                       </div>
@@ -105,8 +103,8 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                 {/* Progress Visualizer */}
                 <div className="radar-progress-container">
                   <div className="radar-progress-labels">
-                    <span>Curve Capacity</span>
-                    <strong>{progress.toFixed(1)}% / 100%</strong>
+                    <span className="radar-progress-title">Migration Capacity</span>
+                    <strong className="radar-progress-percent">{progress.toFixed(1)}%</strong>
                   </div>
                   <div className="radar-progress-track">
                     <div
@@ -115,26 +113,27 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                     />
                   </div>
                   <div className="radar-progress-sub">
+                    <span className="radar-target-label">Target: $69,000 Pool</span>
                     {isGraduated ? (
-                      <span className="radar-sub-success">Active on Meteora DLMM</span>
+                      <span className="radar-sub-success">Active on DLMM</span>
                     ) : (
-                      <span>${remainingUsd.toLocaleString()} USD needed to graduate</span>
+                      <span className="radar-sub-needed">${remainingUsd.toLocaleString()} USD needed</span>
                     )}
                   </div>
                 </div>
 
-                {/* Quick Stats */}
+                {/* Quick Stats Row: Perfectly aligned 3 columns */}
                 <div className="radar-stats-row">
-                  <div>
+                  <div className="radar-stat-col">
                     <span className="radar-stat-lbl">Price</span>
-                    <strong className="radar-stat-val">${item.priceUsd.toFixed(4)}</strong>
+                    <strong className="radar-stat-val">{formatTokenPrice(item.priceUsd)}</strong>
                   </div>
-                  <div>
+                  <div className="radar-stat-col">
                     <span className="radar-stat-lbl">24h Vol</span>
-                    <strong className="radar-stat-val">${(item.volume24hUsd / 1000).toFixed(1)}K</strong>
+                    <strong className="radar-stat-val">{formatTokenVolume(item.volume24hUsd)}</strong>
                   </div>
-                  <div>
-                    <span className="radar-stat-lbl">Creator Royalty</span>
+                  <div className="radar-stat-col">
+                    <span className="radar-stat-lbl">Royalty</span>
                     <strong className="radar-stat-val is-green">
                       {(item.creatorFeeBps / 100).toFixed(1)}% {item.pairedStockSymbol}
                     </strong>
@@ -146,28 +145,36 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                   {!isGraduated ? (
                     <button
                       type="button"
-                      className="radar-btn-ape"
+                      className="radar-btn-trade"
                       onClick={() => onOpenSwap(item)}
-                      title={`Buy $${item.symbol} to push the bonding curve`}
+                      title={`Buy or Swap $${item.symbol}`}
                     >
-                      Ape ${item.symbol} ⚡
+                      Trade ${item.symbol} ⚡
                     </button>
                   ) : item.meteoraUrl ? (
                     <a
                       href={item.meteoraUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="radar-btn-ape is-meteora"
+                      className="radar-btn-trade is-meteora"
                     >
                       Meteora Pool ↗
                     </a>
-                  ) : null}
+                  ) : (
+                    <button
+                      type="button"
+                      className="radar-btn-trade"
+                      onClick={() => onOpenSwap(item)}
+                    >
+                      Trade ${item.symbol} ⚡
+                    </button>
+                  )}
 
                   <button
                     type="button"
-                    className="radar-btn-mechanics"
+                    className="radar-btn-details"
                     onClick={() => onInspectMigration(item)}
-                    title="View bonding curve mechanics and DLMM details"
+                    title="View bonding curve migration mechanics"
                   >
                     Migration Details
                   </button>

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { addCommunityToken } from "@/lib/community-tokens";
-import { executeMeteoraDbcLaunch } from "@/lib/meteora-dbc";
+import { executeMeteoraDbcLaunch, prepareMeteoraDbcPoolTx } from "@/lib/meteora-dbc";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
+      mode = "confirm",
       name,
       symbol,
       description,
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
       creatorFeeBps,
       supply,
       txSignature,
+      mintAddress,
+      poolAddress,
     } = body;
 
     if (!creatorWallet) {
@@ -34,20 +37,41 @@ export async function POST(req: NextRequest) {
       resolvedImageUrl = `${origin}${resolvedImageUrl}`;
     }
 
-    const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
+    const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1_000_000_000;
+    const launchPayload = {
+      name: name.trim(),
+      symbol: symbol.trim().toUpperCase(),
+      description: description?.trim() || "",
+      imageUrl: resolvedImageUrl || "",
+      quoteMint,
+      creatorWallet,
+      creatorFeeBps: Number(creatorFeeBps) || 150,
+      supply: tokenSupply,
+    };
+
+    // Mode 1: Prepare the authentic on-chain Meteora DBC transaction
+    if (mode === "prepare") {
+      const prepared = await prepareMeteoraDbcPoolTx(launchPayload);
+      return NextResponse.json({
+        success: true,
+        mode: "prepare",
+        ...prepared,
+      });
+    }
+
+    // Mode 2: Confirm launch with the signed transaction signature
+    if (!txSignature) {
+      return NextResponse.json(
+        { error: "A valid signed Solana transaction signature is required to confirm pool initialization." },
+        { status: 400 }
+      );
+    }
 
     const launchResult = await executeMeteoraDbcLaunch(
-      {
-        name,
-        symbol,
-        description: description?.trim() || "",
-        imageUrl: resolvedImageUrl || "",
-        quoteMint,
-        creatorWallet,
-        creatorFeeBps: Number(creatorFeeBps) || 150,
-        supply: tokenSupply,
-      },
-      txSignature
+      launchPayload,
+      txSignature,
+      mintAddress,
+      poolAddress
     );
 
     // Record the newly created community stock-pair token in the live registry
@@ -59,9 +83,9 @@ export async function POST(req: NextRequest) {
     try {
       await addCommunityToken({
         mint: launchResult.mintAddress,
-        name: name.trim(),
-        symbol: symbol.trim().toUpperCase(),
-        description: description?.trim() || `Community token paired with ${pairedAsset.symbol} on Meteora DBC`,
+        name: launchPayload.name,
+        symbol: launchPayload.symbol,
+        description: launchPayload.description || `Community token paired with ${pairedAsset.symbol} on Meteora DBC`,
         imageUrl: resolvedImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80",
         pairedStockSymbol: pairedAsset.symbol,
         pairedStockName: pairedAsset.name.replace(/ xStock$/, ""),
@@ -88,7 +112,10 @@ export async function POST(req: NextRequest) {
       console.warn("Could not record token into community store:", storeErr);
     }
 
-    return NextResponse.json(launchResult);
+    return NextResponse.json({
+      mode: "confirm",
+      ...launchResult,
+    });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Meteora DBC launch failed";
     console.error("Meteora DBC launch error:", error);

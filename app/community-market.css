@@ -1182,104 +1182,58 @@ html[data-theme="dark"] .community-action-btn.is-bubble {
 
 .graduation-radar-banner {
   position: relative;
-  border-radius: 24px;
-  background: radial-gradient(110% 90% at 50% 0%, rgba(153, 69, 255, 0.08) 0%, rgba(20, 241, 149, 0.04) 50%, #ffffff 100%);
-  border: 1.5px solid rgba(153, 69, 255, 0.22);
-  padding: 24px 28px;
+  border-radius: 20px;
+  background: var(--os-surface, #ffffff);
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  padding: 22px 24px;
   overflow: hidden;
-  box-shadow: 0 12px 36px rgba(153, 69, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(15, 7, 34, 0.04);
 }
 
 html[data-theme="dark"] .graduation-radar-banner {
-  background: radial-gradient(110% 90% at 50% 0%, rgba(153, 69, 255, 0.16) 0%, rgba(3, 225, 255, 0.06) 50%, #0d091e 100%);
-  border-color: rgba(153, 69, 255, 0.35);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  background: rgba(18, 14, 34, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 .graduation-radar-header {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 22px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.graduation-radar-title-group {
+.graduation-radar-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graduation-radar-title-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.graduation-radar-ping {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .radar-pulse-core {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--solana-green, #14f195);
-  box-shadow: 0 0 12px var(--solana-green, #14f195);
-}
-
-.radar-pulse-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 2px solid var(--solana-green, #14f195);
-  animation: radar-pulse-anim 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-}
-
-@keyframes radar-pulse-anim {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-
-.graduation-radar-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--solana-purple, #9945ff);
-  text-transform: uppercase;
-}
-
-html[data-theme="dark"] .graduation-radar-eyebrow {
-  color: var(--solana-green, #14f195);
-}
-
-.graduation-radar-chip {
-  font-size: 10px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(3, 225, 255, 0.1);
-  color: #0284c7;
-  border: 1px solid rgba(3, 225, 255, 0.25);
-}
-
-html[data-theme="dark"] .graduation-radar-chip {
-  color: var(--solana-cyan, #03e1ff);
+  box-shadow: 0 0 10px var(--solana-green, #14f195);
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .graduation-radar-title {
   font-family: var(--font-display, "Space Grotesk"), sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--os-ink, #161321);
 }
 
@@ -1287,12 +1241,67 @@ html[data-theme="dark"] .graduation-radar-title {
   color: #ffffff;
 }
 
-.graduation-radar-desc {
-  font-size: 12.5px;
-  line-height: 1.5;
+.graduation-radar-chip {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(3, 225, 255, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(3, 225, 255, 0.25);
+  letter-spacing: 0.02em;
+}
+
+html[data-theme="dark"] .graduation-radar-chip {
+  color: var(--solana-cyan, #03e1ff);
+}
+
+.graduation-radar-subtitle {
+  font-size: 12px;
   color: var(--os-muted, #6e6782);
   margin: 0;
-  max-width: 820px;
+  max-width: 680px;
+  line-height: 1.45;
+}
+
+.graduation-radar-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.radar-live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 241, 149, 0.08);
+  color: #0c8a58;
+  border: 1px solid rgba(20, 241, 149, 0.22);
+}
+
+html[data-theme="dark"] .radar-live-indicator {
+  color: var(--solana-green, #14f195);
+  background: rgba(20, 241, 149, 0.12);
+  border-color: rgba(20, 241, 149, 0.3);
+}
+
+.radar-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--solana-green, #14f195);
+  box-shadow: 0 0 6px var(--solana-green, #14f195);
+  animation: radar-dot-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes radar-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 .graduation-radar-grid {
@@ -1302,26 +1311,26 @@ html[data-theme="dark"] .graduation-radar-title {
 }
 
 .radar-card {
-  border-radius: 18px;
+  border-radius: 16px;
   background: #ffffff;
   border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
-  padding: 18px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 4px 16px rgba(15, 7, 34, 0.04);
+  gap: 12px;
+  box-shadow: 0 2px 10px rgba(15, 7, 34, 0.03);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 html[data-theme="dark"] .radar-card {
-  background: rgba(23, 17, 43, 0.7);
+  background: rgba(23, 17, 43, 0.65);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
 .radar-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(153, 69, 255, 0.4);
-  box-shadow: 0 10px 28px rgba(153, 69, 255, 0.12);
+  transform: translateY(-2px);
+  border-color: rgba(153, 69, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(153, 69, 255, 0.08);
 }
 
 .radar-card-top {
@@ -1334,68 +1343,62 @@ html[data-theme="dark"] .radar-card {
 .radar-card-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .radar-avatar-stage {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  overflow: visible;
+  flex-shrink: 0;
 }
 
 .radar-avatar-main {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   object-fit: cover;
-  border: 1px solid rgba(153, 69, 255, 0.2);
+  border: 1px solid rgba(153, 69, 255, 0.18);
 }
 
 .radar-avatar-stock {
   position: absolute;
-  right: -5px;
-  bottom: -5px;
-  width: 24px;
-  height: 24px;
+  right: -4px;
+  bottom: -4px;
+  width: 20px;
+  height: 20px;
   border-radius: 6px;
   background: #ffffff;
-  border: 1.5px solid var(--solana-green, #14f195);
+  box-shadow: 0 0 0 2px var(--os-surface, #ffffff);
   display: grid;
   place-items: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.radar-name-line {
+html[data-theme="dark"] .radar-avatar-stock {
+  box-shadow: 0 0 0 2px #17112b;
+}
+
+.radar-identity-text {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .radar-name {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--os-ink, #161321);
+  line-height: 1.2;
 }
 
 html[data-theme="dark"] .radar-name {
   color: #ffffff;
 }
 
-.radar-rank-badge {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(153, 69, 255, 0.1);
-  color: var(--solana-purple, #9945ff);
-}
-
 .radar-pair-line {
   font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--os-muted, #6e6782);
   display: flex;
@@ -1403,8 +1406,17 @@ html[data-theme="dark"] .radar-name {
   align-items: center;
 }
 
+.radar-token-symbol {
+  color: var(--os-ink, #161321);
+}
+
+html[data-theme="dark"] .radar-token-symbol {
+  color: #e2daf0;
+}
+
 .radar-times {
-  color: var(--solana-green, #14f195);
+  color: var(--os-muted, #8b83a0);
+  font-weight: 400;
 }
 
 .radar-stock-symbol {
@@ -1413,24 +1425,25 @@ html[data-theme="dark"] .radar-name {
 
 .radar-status-tag {
   font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 3px 8px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .radar-status-tag.is-filling {
-  background: rgba(20, 241, 149, 0.12);
-  color: #0c8a58;
-  border: 1px solid rgba(20, 241, 149, 0.25);
+  background: rgba(153, 69, 255, 0.09);
+  color: var(--solana-purple, #9945ff);
+  border: 1px solid rgba(153, 69, 255, 0.2);
 }
 
 html[data-theme="dark"] .radar-status-tag.is-filling {
-  color: var(--solana-green, #14f195);
+  color: #bb86fc;
 }
 
 .radar-status-tag.is-graduated {
-  background: rgba(3, 225, 255, 0.12);
+  background: rgba(3, 225, 255, 0.1);
   color: #0284c7;
   border: 1px solid rgba(3, 225, 255, 0.25);
 }
@@ -1443,28 +1456,35 @@ html[data-theme="dark"] .radar-status-tag.is-graduated {
 .radar-progress-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .radar-progress-labels {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+}
+
+.radar-progress-title {
   font-size: 11px;
+  font-weight: 600;
   color: var(--os-muted, #6e6782);
 }
 
-.radar-progress-labels strong {
-  font-family: ui-monospace, SFMono-Regular, monospace;
+.radar-progress-percent {
+  font-family: var(--font-display, "Space Grotesk"), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--os-ink, #161321);
 }
 
-html[data-theme="dark"] .radar-progress-labels strong {
-  color: #ffffff;
+html[data-theme="dark"] .radar-progress-percent {
+  color: #f5f2fc;
 }
 
 .radar-progress-track {
   width: 100%;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: rgba(22, 19, 33, 0.08);
   overflow: hidden;
@@ -1477,7 +1497,7 @@ html[data-theme="dark"] .radar-progress-track {
 .radar-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--solana-purple, #9945ff), var(--solana-green, #14f195));
+  background: linear-gradient(90deg, #9945ff, #14f195);
   transition: width 0.4s ease;
 }
 
@@ -1486,22 +1506,37 @@ html[data-theme="dark"] .radar-progress-track {
 }
 
 .radar-progress-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 10.5px;
   color: var(--os-muted, #6e6782);
 }
 
-.radar-sub-success {
-  color: var(--solana-green, #14f195);
+.radar-target-label {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.radar-sub-needed {
+  font-family: ui-monospace, SFMono-Regular, monospace;
   font-weight: 600;
 }
 
+.radar-sub-success {
+  color: var(--solana-green, #14f195);
+  font-weight: 700;
+}
+
+/* Quick Stats Row: Perfectly aligned 3 columns */
 .radar-stats-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   padding: 8px 10px;
   background: var(--os-porcelain, #f7f5fc);
   border-radius: 10px;
   border: 1px solid var(--os-line, rgba(22, 19, 33, 0.06));
+  text-align: left;
 }
 
 html[data-theme="dark"] .radar-stats-row {
@@ -1509,55 +1544,84 @@ html[data-theme="dark"] .radar-stats-row {
   border-color: rgba(255, 255, 255, 0.06);
 }
 
+.radar-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .radar-stat-lbl {
-  display: block;
   font-size: 10px;
+  font-weight: 600;
   color: var(--os-muted, #6e6782);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .radar-stat-val {
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 11.5px;
   font-weight: 700;
+  color: var(--os-ink, #161321);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-theme="dark"] .radar-stat-val {
+  color: #f5f2fc;
 }
 
 .radar-stat-val.is-green {
+  color: #0c8a58;
+}
+
+html[data-theme="dark"] .radar-stat-val.is-green {
   color: var(--solana-green, #14f195);
 }
 
+/* Action Buttons */
 .radar-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 8px;
+  margin-top: 2px;
 }
 
-.radar-btn-ape {
+.radar-btn-trade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--solana-purple, #9945ff), var(--solana-green, #14f195));
+  background: linear-gradient(135deg, #9945ff 0%, #14f195 100%);
   color: #ffffff;
   text-align: center;
   text-decoration: none;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
-.radar-btn-ape:hover {
+.radar-btn-trade:hover {
   transform: translateY(-1px);
-  opacity: 0.92;
+  opacity: 0.94;
+  box-shadow: 0 4px 14px rgba(153, 69, 255, 0.22);
 }
 
-.radar-btn-ape.is-meteora {
+.radar-btn-trade.is-meteora {
   background: linear-gradient(135deg, #03e1ff 0%, #14f195 100%);
-  color: #000;
+  color: #0d091e;
 }
 
-.radar-btn-mechanics {
+.radar-btn-details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 11.5px;
   font-weight: 600;
   border: 1px solid var(--os-line, rgba(22, 19, 33, 0.14));
@@ -1567,14 +1631,26 @@ html[data-theme="dark"] .radar-stats-row {
   transition: all 0.15s ease;
 }
 
-html[data-theme="dark"] .radar-btn-mechanics {
+html[data-theme="dark"] .radar-btn-details {
   border-color: rgba(255, 255, 255, 0.14);
   color: #f5f2fc;
 }
 
-.radar-btn-mechanics:hover {
+.radar-btn-details:hover {
   border-color: var(--solana-purple, #9945ff);
   color: var(--solana-purple, #9945ff);
+  background: rgba(153, 69, 255, 0.04);
+}
+
+@media (max-width: 768px) {
+  .graduation-radar-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .graduation-radar-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Clickable table cell & card indicator */

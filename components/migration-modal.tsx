@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Connection, Transaction } from "@solana/web3.js";
 import { StockLogo } from "@/components/stock-logo";
+import { useWallet } from "@/components/wallet-session";
+import { translateWalletError } from "@/lib/solana-preflight";
 import type { CommunityToken } from "@/lib/community-tokens";
 
 interface MigrationModalProps {
@@ -10,9 +13,28 @@ interface MigrationModalProps {
   onOpenSwap?: (token: CommunityToken) => void;
 }
 
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = window.atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalProps) {
-  const isGraduated = token.bondingCurveProgress >= 100 || token.status === "graduated";
-  const progress = Math.min(100, Math.max(0, token.bondingCurveProgress));
+  const { address, connect } = useWallet();
+  const [isGraduated, setIsGraduated] = useState(
+    token.bondingCurveProgress >= 100 || token.status === "graduated"
+  );
+  const [meteoraPoolUrl, setMeteoraPoolUrl] = useState(token.meteoraUrl || "");
+  const [migrationTxHash, setMigrationTxHash] = useState("");
+
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationStep, setMigrationStep] = useState("");
+  const [migrationError, setMigrationError] = useState("");
+
+  const progress = Math.min(100, Math.max(0, isGraduated ? 100 : token.bondingCurveProgress));
   const remainingPercent = (100 - progress).toFixed(1);
 
   // Accurate remaining USD needed to graduate based on bonding curve progress
@@ -26,6 +48,110 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  async function handleExecuteMigration() {
+    if (!address) {
+      try {
+        await connect();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Please connect your wallet";
+        setMigrationError(msg);
+      }
+      return;
+    }
+
+    setIsMigrating(true);
+    setMigrationError("");
+    setMigrationStep("Preparing Meteora DAMM v2 migration transaction...");
+
+    type WindowSolana = {
+      signTransaction?: (tx: Transaction) => Promise<Transaction>;
+      signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>;
+    };
+    const win = window as unknown as {
+      solana?: WindowSolana;
+      phantom?: { solana?: WindowSolana };
+    };
+    const solanaProvider: WindowSolana | null = win.solana ?? win.phantom?.solana ?? null;
+
+    if (!solanaProvider || (!solanaProvider.signAndSendTransaction && !solanaProvider.signTransaction)) {
+      setMigrationError("Solana wallet provider not detected. Connect Phantom or Solflare to sign.");
+      setIsMigrating(false);
+      return;
+    }
+
+    try {
+      const poolAddress = token.poolAddress || token.mint;
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const connection = new Connection(rpcUrl, "confirmed");
+
+      // Step 1: Prepare migration transaction from API
+      const prepRes = await fetch("/api/migration/meteora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "prepare",
+          poolAddress,
+          payerWallet: address,
+          mint: token.mint,
+        }),
+      });
+
+      const prepData = await prepRes.json();
+      if (!prepRes.ok || !prepData.transactionBase64) {
+        throw new Error(prepData.error || "Failed to prepare DAMM v2 migration.");
+      }
+
+      // Step 2: Prompt user wallet to sign
+      setMigrationStep("Please approve DAMM v2 migration in your wallet...");
+      const tx = Transaction.from(base64ToUint8Array(prepData.transactionBase64));
+
+      let txSignature = "";
+      if (solanaProvider.signAndSendTransaction) {
+        const sendRes = await solanaProvider.signAndSendTransaction(tx);
+        txSignature = sendRes.signature;
+      } else if (solanaProvider.signTransaction) {
+        const signed = await solanaProvider.signTransaction(tx);
+        setMigrationStep("Broadcasting migration transaction to Solana...");
+        txSignature = await connection.sendRawTransaction(signed.serialize(), {
+          skipPreflight: false,
+          maxRetries: 3,
+        });
+      }
+
+      setMigrationStep("Confirming pool migration and permanent LP lock on Solana...");
+      await connection.confirmTransaction(txSignature, "confirmed");
+
+      // Step 3: Confirm migration on registry
+      const confirmRes = await fetch("/api/migration/meteora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "confirm",
+          poolAddress,
+          txSignature,
+          mint: token.mint,
+          dammPoolAddress: prepData.dammPoolAddress,
+        }),
+      });
+
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok || !confirmData.success) {
+        throw new Error(confirmData.error || "Failed to finalize migration status.");
+      }
+
+      setIsGraduated(true);
+      setMeteoraPoolUrl(confirmData.meteoraUrl || `https://app.meteora.ag/dlmm/${prepData.dammPoolAddress}`);
+      setMigrationTxHash(txSignature);
+      setMigrationStep("Migration successfully completed!");
+    } catch (err: unknown) {
+      console.error("Migration error:", err);
+      const msg = translateWalletError(err);
+      setMigrationError(msg);
+    } finally {
+      setIsMigrating(false);
+    }
+  }
 
   return (
     <div className="migration-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="migration-modal-title">
@@ -87,7 +213,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
             <div className="migration-gauge-meta">
               {isGraduated ? (
                 <span className="migration-meta-notice is-success">
-                  🎉 Migration Complete: Liquidity permanently locked in Meteora DLMM pool.
+                  🎉 Migration Complete: Liquidity permanently seeded and locked in Meteora DLMM / DAMM v2 pool.
                 </span>
               ) : (
                 <span className="migration-meta-notice">
@@ -97,9 +223,23 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
             </div>
           </div>
 
+          {/* Migration Error Banner */}
+          {migrationError && (
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#f87171", fontSize: 13, marginBottom: 16 }}>
+              ⚠️ {migrationError}
+            </div>
+          )}
+
+          {/* Migration In-Progress Status */}
+          {isMigrating && (
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(3, 225, 255, 0.1)", border: "1px solid rgba(3, 225, 255, 0.3)", color: "var(--solana-cyan, #03e1ff)", fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="launch-pulse-dot" /> {migrationStep}
+            </div>
+          )}
+
           {/* 3-Step Automated Migration Pipeline */}
           <div className="migration-steps-box">
-            <h3 className="migration-steps-title">Automated Solana Migration Pipeline</h3>
+            <h3 className="migration-steps-title">Meteora DBC → DAMM v2 Migration Pipeline</h3>
             <div className="migration-steps-grid">
               {/* Step 1 */}
               <div className={`migration-step-card ${progress > 0 ? "is-active" : ""}`}>
@@ -120,13 +260,13 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
               <div className={`migration-step-card ${isGraduated ? "is-active" : ""}`}>
                 <div className="migration-step-badge">02</div>
                 <div className="migration-step-content">
-                  <h4>Meteora DLMM Pool Seeding</h4>
+                  <h4>Meteora DLMM / DAMM v2 Seeding</h4>
                   <p>
                     Upon hitting 100%, accumulated liquidity is automatically deposited into a concentrated{" "}
-                    <strong>Meteora DLMM Dynamic AMM</strong> pool on Solana.
+                    <strong>Meteora DAMM v2</strong> pool on Solana.
                   </p>
                   <span className="migration-step-stat">
-                    {isGraduated ? "✓ Pool Initialized" : "Triggers at 100%"}
+                    {isGraduated ? "✓ Pool Initialized" : "Ready at 100%"}
                   </span>
                 </div>
               </div>
@@ -168,7 +308,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
             <div className="migration-telemetry-item">
               <span>Execution AMM</span>
               <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                {isGraduated ? "Meteora DLMM" : "Pump.fun Curve"}
+                {isGraduated ? "Meteora DLMM" : token.venue === "meteora" ? "Meteora DBC" : "Pump.fun Curve"}
               </strong>
             </div>
             <div className="migration-telemetry-item">
@@ -186,9 +326,14 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
             <a href={token.explorerUrl} target="_blank" rel="noreferrer" className="migration-link-btn">
               Solscan ↗
             </a>
-            {token.meteoraUrl ? (
-              <a href={token.meteoraUrl} target="_blank" rel="noreferrer" className="migration-link-btn is-meteora">
+            {meteoraPoolUrl ? (
+              <a href={meteoraPoolUrl} target="_blank" rel="noreferrer" className="migration-link-btn is-meteora">
                 Meteora DLMM Pool ↗
+              </a>
+            ) : null}
+            {migrationTxHash ? (
+              <a href={`https://solscan.io/tx/${migrationTxHash}`} target="_blank" rel="noreferrer" className="migration-link-btn">
+                Migration Tx ↗
               </a>
             ) : null}
             <a
@@ -202,7 +347,17 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
           </div>
 
           <div className="migration-footer-actions">
-            {!isGraduated && onOpenSwap ? (
+            {!isGraduated && progress >= 100 ? (
+              <button
+                type="button"
+                className="migration-primary-btn"
+                disabled={isMigrating}
+                onClick={handleExecuteMigration}
+                style={{ background: "linear-gradient(135deg, #03e1ff 0%, #14f195 100%)", color: "#000" }}
+              >
+                {isMigrating ? "Migrating on Solana..." : "Execute Meteora DAMM v2 Migration 🚀"}
+              </button>
+            ) : !isGraduated && onOpenSwap ? (
               <button
                 type="button"
                 className="migration-primary-btn"
@@ -211,10 +366,10 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                   onOpenSwap(token);
                 }}
               >
-                Ape ${token.symbol} to Fast-Track Migration ⚡
+                Trade ${token.symbol} to Fast-Track Migration ⚡
               </button>
-            ) : isGraduated && token.meteoraUrl ? (
-              <a href={token.meteoraUrl} target="_blank" rel="noreferrer" className="migration-primary-btn">
+            ) : isGraduated && meteoraPoolUrl ? (
+              <a href={meteoraPoolUrl} target="_blank" rel="noreferrer" className="migration-primary-btn">
                 Trade on Meteora DLMM ↗
               </a>
             ) : (
