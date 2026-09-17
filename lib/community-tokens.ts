@@ -403,21 +403,8 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
       };
     }
 
-    // Proxy-linked tokens (bonding curve simulation driven by live market DEX volatility)
-    const vol = Math.max(t.volume24hUsd, Math.round(live.volume24hUsd * 0.05));
-    const livePriceUsd = t.priceUsd * (1 + (live.change24h || 0) / 100);
-    const dynamicProgress = Math.min(
-      99.2,
-      Math.max(15, +(t.bondingCurveProgress + (live.change24h > 0 ? 0.3 : -0.1)).toFixed(1))
-    );
-
-    return {
-      ...t,
-      priceUsd: livePriceUsd > 0 ? livePriceUsd : t.priceUsd,
-      volume24hUsd: vol,
-      change24h: live.change24h,
-      bondingCurveProgress: dynamicProgress,
-    };
+    // For tokens without a live DEX market pair yet, preserve genuine recorded metrics
+    return t;
   });
 }
 

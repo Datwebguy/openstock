@@ -161,39 +161,56 @@ export async function prepareMeteoraDbcPoolTx(
     // Standard SPL Token quotes do not need token badge
   }
 
-  // Construct genuine on-chain instruction: initializeVirtualPoolWithSplToken
-  const initVirtualPoolIx = await program.methods
-    .initializeVirtualPoolWithSplToken({
+  // Attempt creating the pool transaction via official Meteora DBC SDK client.creator.createPool
+  let tx: Transaction;
+  try {
+    const client = DynamicBondingCurveClient.create(connection, "confirmed");
+    tx = await client.creator.createPool({
       name: payload.name.slice(0, 32),
       symbol: payload.symbol.slice(0, 10),
       uri: payload.imageUrl.slice(0, 200),
-    })
-    .accountsPartial({
-      pool,
-      config,
       payer,
-      creator,
-      mintMetadata,
+      poolCreator: creator,
+      config,
       baseMint,
-      poolAuthority,
-      baseVault,
-      quoteVault,
-      quoteMint,
-      tokenQuoteProgram: TOKEN_PROGRAM_ID,
-      metadataProgram: METAPLEX_PROGRAM_ID,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    })
-    .remainingAccounts(tokenBadgeRemainingAccounts)
-    .instruction();
+      tokenBadge: tokenBadgeRemainingAccounts[0]?.pubkey,
+    });
+    tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }));
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
+  } catch (sdkErr) {
+    console.warn("Meteora SDK client.creator.createPool fallback to Anchor instruction builder:", sdkErr);
+    // Direct Anchor instruction builder for initializeVirtualPoolWithSplToken
+    const initVirtualPoolIx = await program.methods
+      .initializeVirtualPoolWithSplToken({
+        name: payload.name.slice(0, 32),
+        symbol: payload.symbol.slice(0, 10),
+        uri: payload.imageUrl.slice(0, 200),
+      })
+      .accountsPartial({
+        pool,
+        config,
+        payer,
+        creator,
+        mintMetadata,
+        baseMint,
+        poolAuthority,
+        baseVault,
+        quoteVault,
+        quoteMint,
+        tokenQuoteProgram: TOKEN_PROGRAM_ID,
+        metadataProgram: METAPLEX_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .remainingAccounts(tokenBadgeRemainingAccounts)
+      .instruction();
+
+    tx = new Transaction();
+    tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }));
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
+    tx.add(initVirtualPoolIx);
+  }
 
   const { blockhash } = await connection.getLatestBlockhash("confirmed");
-
-  const tx = new Transaction();
-  // Set compute unit limit & priority fees for Meteora DBC
-  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }));
-  tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
-  tx.add(initVirtualPoolIx);
-
   tx.recentBlockhash = blockhash;
   tx.feePayer = payer;
 
