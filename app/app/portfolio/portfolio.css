@@ -526,3 +526,87 @@ html[data-theme="dark"] .claim-history-table-wrap {
   background: #0e0a1c;
   border-color: rgba(255, 255, 255, 0.08);
 }
+
+/* ==========================================================================
+   Mobile & Tablet Responsive Adjustments (320px - 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .portfolio-container {
+    padding-top: 88px;
+  }
+
+  .portfolio-hero-card {
+    padding: 18px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  .portfolio-balance-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .portfolio-main-val {
+    font-size: clamp(26px, 8vw, 36px);
+  }
+
+  .portfolio-royalty-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .portfolio-claim-all-btn {
+    width: 100%;
+    min-height: 44px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .portfolio-tabs-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 20px;
+  }
+
+  .portfolio-tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .portfolio-tabs {
+    display: flex;
+    min-width: max-content;
+    gap: 6px;
+  }
+
+  .portfolio-tab {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .royalty-vaults-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .royalty-vault-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .holdings-table-wrap,
+  .claim-history-table-wrap {
+    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .holdings-table th,
+  .holdings-table td {
+    padding: 11px 12px;
+    font-size: 12px;
+  }
+}
+

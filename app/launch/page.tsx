@@ -1,8 +1,5 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import { AppNav } from "@/components/app-nav";
-import { LaunchClient } from "./launch-client";
-import "./launch.css";
+import { LaunchDesk } from "@/components/launch-desk";
 
 export const metadata: Metadata = {
   title: "Launch Token Pair — OpenStock × ClawPump",
@@ -10,18 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function LaunchPage() {
-  return (
-    <main className="launch-page">
-      <AppNav ctaHref="/app" ctaLabel="Browse market" />
-      <Suspense
-        fallback={
-          <div className="launch-container" style={{ padding: "64px 0", textAlign: "center", color: "var(--os-muted)" }}>
-            Loading launch desk...
-          </div>
-        }
-      >
-        <LaunchClient />
-      </Suspense>
-    </main>
-  );
+  return <LaunchDesk />;
 }

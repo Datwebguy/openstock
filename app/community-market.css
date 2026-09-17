@@ -2257,3 +2257,202 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
   font-size: 16px;
 }
 
+/* ==========================================================================
+   Mobile & Tablet Responsive Adjustments (320px - 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .community-kpi-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .community-kpi-card {
+    padding: 14px 16px;
+    border-radius: 16px;
+    gap: 6px;
+  }
+
+  .community-kpi-value-row strong {
+    font-size: 22px;
+  }
+
+  .community-kpi-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* Graduation Radar Banner & Grid */
+  .graduation-radar-banner {
+    padding: 18px 16px;
+    border-radius: 20px;
+    margin-bottom: 22px;
+  }
+
+  .graduation-radar-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .radar-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  /* Community Grid Cards */
+  .community-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .community-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  /* Modals Touch & Viewport Fit */
+  .os-modal-backdrop {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .os-modal-card {
+    max-width: 100%;
+    width: 100%;
+    max-height: min(88vh, calc(100dvh - 24px));
+    padding: 18px 16px;
+    border-radius: 20px;
+    margin: 0;
+  }
+
+  .migration-modal-overlay {
+    padding: 10px;
+  }
+
+  .migration-modal-container {
+    max-width: 100%;
+    width: 100%;
+    max-height: min(88vh, calc(100dvh - 24px));
+    border-radius: 20px;
+  }
+
+  .migration-modal-header {
+    padding: 16px;
+  }
+
+  .migration-modal-body {
+    padding: 16px;
+  }
+
+  .migration-modal-footer {
+    padding: 14px 16px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .migration-claim-all-btn,
+  .migration-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Bubblemaps Modal */
+  .bubblemaps-modal-card {
+    padding: 16px;
+  }
+
+  .bubblemaps-metrics-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .bubblemaps-actions {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .bubblemaps-actions a,
+  .bubblemaps-actions button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* Share Modal */
+  .share-modal-overlay {
+    padding: 10px;
+  }
+
+  .share-modal-container {
+    max-width: 100%;
+    width: 100%;
+    max-height: min(88vh, calc(100dvh - 24px));
+    border-radius: 20px;
+  }
+
+  .share-modal-header {
+    padding: 16px;
+  }
+
+  .share-modal-body {
+    padding: 16px;
+  }
+
+  .share-modal-footer {
+    padding: 14px 16px;
+    flex-direction: column-reverse;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .share-secondary-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .share-btn-primary {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Trends Table Mobile Ergonomics */
+  .trends-table-wrapper {
+    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .trends-table thead th {
+    padding: 11px 12px;
+    font-size: 9.5px;
+  }
+
+  .trends-table tbody td {
+    padding: 11px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .community-kpi-ribbon {
+    grid-template-columns: 1fr;
+  }
+
+  .community-kpi-value-row strong {
+    font-size: 20px;
+  }
+
+  .share-secondary-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .share-btn-secondary {
+    text-align: center;
+  }
+}
+
+
