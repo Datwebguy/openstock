@@ -1,1 +1,5 @@
-export { default, metadata } from "@/app/launch/page";
+import { redirect } from "next/navigation";
+
+export default function AppLaunchRedirect() {
+  redirect("/launch");
+}
