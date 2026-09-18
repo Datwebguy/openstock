@@ -27,6 +27,8 @@ export type CommunityToken = {
   poolAddress?: string;
   meteoraUrl?: string;
   venue?: "pumpfun" | "meteora";
+  isStale?: boolean;
+  marketStatus?: "live" | "stale" | "unlisted";
 };
 
 export { formatTokenPrice, formatTokenVolume } from "./community-token-utils";
@@ -155,8 +157,8 @@ export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
     priceSol: 0.00000143,
     priceUsd: 0.000193,
     marketCapUsd: 193_826,
-    volume24hUsd: 28_400,
-    change24h: 31.4,
+    volume24hUsd: 0,
+    change24h: 0,
     bondingCurveProgress: 82.5,
     status: "graduating",
     holdersCount: 555,
@@ -182,8 +184,8 @@ export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
     priceSol: 0.0000248,
     priceUsd: 0.003352,
     marketCapUsd: 43_578,
-    volume24hUsd: 14_800,
-    change24h: 18.2,
+    volume24hUsd: 0,
+    change24h: 0,
     bondingCurveProgress: 68.4,
     status: "new",
     holdersCount: 203,
@@ -209,8 +211,8 @@ export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
     priceSol: 0.000000052,
     priceUsd: 0.00000706,
     marketCapUsd: 6_765,
-    volume24hUsd: 1_250,
-    change24h: -1.2,
+    volume24hUsd: 0,
+    change24h: 0,
     bondingCurveProgress: 35.8,
     status: "new",
     holdersCount: 36,
@@ -236,8 +238,8 @@ export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
     priceSol: 0.000000146,
     priceUsd: 0.0000198,
     marketCapUsd: 1_605,
-    volume24hUsd: 3_900,
-    change24h: 4.8,
+    volume24hUsd: 0,
+    change24h: 0,
     bondingCurveProgress: 41.2,
     status: "new",
     holdersCount: 112,
@@ -297,96 +299,81 @@ interface EnrichedTokenData {
   volume24hUsd: number;
   change24h: number;
   marketCapUsd: number;
+  fetchedAt: number;
 }
 
-let enrichmentCache: {
-  timestamp: number;
-  data: Map<string, EnrichedTokenData>;
-} | null = null;
+// Persistent in-memory cache storing the last good verified live data per mint
+const lastGoodLiveCache = new Map<string, EnrichedTokenData>();
 
-const CACHE_TTL_MS = 6_000; // 6 seconds
-
-// Mapping proxy mints to active live Solana tokens for bonding curve simulation
-const PROXY_MINTS: Record<string, string> = {
-  // Trump Bucks -> OFFICIAL TRUMP on Solana
-  "BgCeigJo2iY3dJhqS2z9w4pjjufFd4F9oKS3FrkMbmbJ": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
-  // Macavity -> POPCAT on Solana
-  "ByCds9p6tXfF5HEg6aJDdrEypCWTi7Jui5nLs7QbyYuw": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
-  // Wolfgang -> BONK on Solana
-  "3JUj6ZdRreqNH5gkdL2dZWn477kB97NxdkqSv2GeXWG9": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-};
+let lastFetchTimestamp = 0;
+const CACHE_TTL_MS = 10_000; // 10 seconds between upstream DexScreener API calls
 
 export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): Promise<CommunityToken[]> {
   const now = Date.now();
-  let liveMap: Map<string, EnrichedTokenData>;
+  const shouldFetch = now - lastFetchTimestamp > CACHE_TTL_MS;
 
-  if (enrichmentCache && now - enrichmentCache.timestamp < CACHE_TTL_MS) {
-    liveMap = enrichmentCache.data;
-  } else {
-    liveMap = new Map();
+  if (shouldFetch) {
     const mintsSet = new Set<string>();
     for (const t of tokens) {
-      mintsSet.add(t.mint);
-      if (PROXY_MINTS[t.mint]) {
-        mintsSet.add(PROXY_MINTS[t.mint]);
+      if (t.mint && t.mint.length > 20) {
+        mintsSet.add(t.mint);
       }
     }
     const mintsArray = Array.from(mintsSet);
 
-    try {
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mintsArray.join(",")}`, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(3500),
-      });
+    if (mintsArray.length > 0) {
+      try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mintsArray.join(",")}`, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(5000), // 5000ms timeout
+        });
 
-      if (res.ok) {
-        const json = await res.json();
-        const pairs: any[] = Array.isArray(json?.pairs) ? json.pairs : [];
+        if (res.ok) {
+          const json = await res.json();
+          const pairs: any[] = Array.isArray(json?.pairs) ? json.pairs : [];
 
-        for (const pair of pairs) {
-          const address = pair.baseToken?.address;
-          if (!address) continue;
+          for (const pair of pairs) {
+            const address = pair.baseToken?.address;
+            if (!address) continue;
 
-          const pUsd = parseFloat(pair.priceUsd) || 0;
-          const pSol = parseFloat(pair.priceNative) || 0;
-          const vol = typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
-          const chg = typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0;
-          const mcap = pair.marketCap || pair.fdv || 0;
+            const pUsd = parseFloat(pair.priceUsd) || 0;
+            const pSol = parseFloat(pair.priceNative) || 0;
+            const vol = typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
+            const chg = typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0;
+            const mcap = pair.marketCap || pair.fdv || 0;
 
-          const existing = liveMap.get(address);
-          if (!existing || vol > existing.volume24hUsd) {
-            liveMap.set(address, {
-              priceUsd: pUsd,
-              priceSol: pSol,
-              volume24hUsd: vol,
-              change24h: chg,
-              marketCapUsd: mcap,
-            });
+            const existing = lastGoodLiveCache.get(address);
+            if (!existing || vol >= existing.volume24hUsd) {
+              lastGoodLiveCache.set(address, {
+                priceUsd: pUsd,
+                priceSol: pSol,
+                volume24hUsd: vol,
+                change24h: chg,
+                marketCapUsd: mcap,
+                fetchedAt: now,
+              });
+            }
           }
-        }
 
-        enrichmentCache = { timestamp: now, data: liveMap };
-      }
-    } catch (err) {
-      console.warn("DexScreener live sync warning:", err);
-      if (enrichmentCache) {
-        liveMap = enrichmentCache.data;
+          lastFetchTimestamp = now;
+        }
+      } catch (err) {
+        // Fall back gracefully to last good live data in memory without inventing volume
+        console.warn(
+          "DexScreener live sync notice: using cached/stale data (",
+          err instanceof Error ? err.message : err,
+          ")"
+        );
       }
     }
   }
 
   return tokens.map((t) => {
-    const proxy = PROXY_MINTS[t.mint];
-    const live = liveMap.get(t.mint) || (proxy ? liveMap.get(proxy) : undefined);
+    const live = lastGoodLiveCache.get(t.mint);
 
-    if (!live) {
-      return t;
-    }
-
-    const isGraduated = t.status === "graduated" || t.bondingCurveProgress >= 100;
-
-    // Direct match on DexScreener (e.g. TOAD, ORE, HYPE, SPCX)
-    if (liveMap.has(t.mint)) {
+    if (live) {
+      const isStale = now - live.fetchedAt > 60_000;
+      const isGraduated = t.status === "graduated" || t.bondingCurveProgress >= 100;
       const progress = isGraduated
         ? 100
         : Math.min(99.5, Math.max(10, +((live.marketCapUsd / 69_000) * 100).toFixed(1)));
@@ -395,16 +382,24 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
         ...t,
         priceUsd: live.priceUsd > 0 ? live.priceUsd : t.priceUsd,
         priceSol: live.priceSol > 0 ? live.priceSol : t.priceSol,
-        volume24hUsd: live.volume24hUsd > 0 ? live.volume24hUsd : t.volume24hUsd,
-        change24h: live.change24h !== 0 ? live.change24h : t.change24h,
+        volume24hUsd: live.volume24hUsd,
+        change24h: live.change24h,
         marketCapUsd: live.marketCapUsd > 0 ? live.marketCapUsd : t.marketCapUsd,
         bondingCurveProgress: progress,
         status: progress >= 100 ? "graduated" : t.status,
+        isStale,
+        marketStatus: isStale ? "stale" : "live",
       };
     }
 
-    // For tokens without a live DEX market pair yet, preserve genuine recorded metrics
-    return t;
+    // Token has no verified DexScreener pair (e.g. unlisted / pre-graduated curve)
+    // NEVER invent volume: set volume24hUsd to 0, mark unlisted
+    return {
+      ...t,
+      volume24hUsd: 0,
+      isStale: false,
+      marketStatus: "unlisted",
+    };
   });
 }
 

@@ -25,7 +25,83 @@ export async function getSolanaTokenDecimals(mint: string): Promise<number> { co
 async function getJupiter(asset: OpenStockAsset, decimals: number, price: number | null): Promise<JupiterEvidence> { const mint = solanaMint(asset); const stablecoin = solanaUsdc(asset); if (!mint || !stablecoin || price === null || !Number.isFinite(price)) throw new Error("Jupiter inputs unavailable"); const stableDecimals = stablecoin.decimals ?? 6; const inputRaw = String(Math.max(1, Math.round(price * (10 ** stableDecimals)))); const params = new URLSearchParams({ inputMint: stablecoin.address ?? USDC_MINT, outputMint: mint, amount: inputRaw, slippageBps: "50" }); const quote = await fetchJson<{ inputMint: string; outputMint: string; inAmount: string; outAmount: string; priceImpactPct?: string; routePlan?: Array<{ swapInfo?: { label?: string } }>; contextSlot?: number }>(`${JUPITER_QUOTE_URL}?${params}`); const outputUi = rawToUi(quote.outAmount, asset.multiplier?.currentMultiplier, decimals); const cost = Number(quote.inAmount) / (10 ** stableDecimals); return { inputMint: quote.inputMint, outputMint: quote.outputMint, inputRaw: quote.inAmount, outputRaw: quote.outAmount, outputUi, executablePrice: outputUi && outputUi > 0 ? cost / outputUi : null, priceImpactPct: quote.priceImpactPct ? Number(quote.priceImpactPct) * 100 : null, route: (quote.routePlan ?? []).map((step) => step.swapInfo?.label).filter((label): label is string => Boolean(label)), fetchedAt: new Date().toISOString(), contextSlot: quote.contextSlot }; }
 export async function getMeteoraPools(asset: OpenStockAsset): Promise<MeteoraPool[]> { const mint = solanaMint(asset); if (!mint) throw new Error("Meteora mint unavailable"); const response = await fetchJson<{ data?: Array<JsonRecord> }>(`${METEORA_POOLS_URL}?${new URLSearchParams({ page: "1", page_size: "100", query: mint })}`); const pools = (response.data ?? []).filter((pool) => { const tokenX = pool.token_x as JsonRecord | undefined; const tokenY = pool.token_y as JsonRecord | undefined; return tokenX?.address === mint || tokenY?.address === mint; }); return pools.filter((pool) => pool.is_blacklisted !== true).map((pool) => { const tokenX = pool.token_x as JsonRecord; const tokenY = pool.token_y as JsonRecord; const xIsStock = tokenX.address === mint; const stockToken = xIsStock ? tokenX : tokenY; return { address: String(pool.address), name: String(pool.name ?? "Meteora pool"), tvl: finiteNumber(pool.tvl), currentPrice: finiteNumber(pool.current_price), priceUsd: typeof stockToken.price === "number" && Number.isFinite(stockToken.price) ? stockToken.price : null, volume24h: finiteNumber((pool.volume as JsonRecord | undefined)?.["24h"]), feePct: typeof pool.dynamic_fee_pct === "number" ? pool.dynamic_fee_pct : null, tokenXSymbol: String(tokenX.symbol ?? "Token X"), tokenYSymbol: String(tokenY.symbol ?? "Token Y"), isBlacklisted: Boolean(pool.is_blacklisted) }; }).sort((left, right) => (right.tvl ?? -1) - (left.tvl ?? -1)).slice(0, 5); }
 export async function getMeteoraOhlcv(poolAddress: string, timeframe: "1h" | "4h" | "24h" = "1h"): Promise<MeteoraCandle[]> { const response = await fetchJson<{ data?: MeteoraCandle[] }>(`${METEORA_POOLS_URL}/${encodeURIComponent(poolAddress)}/ohlcv?timeframe=${timeframe}`); return (response.data ?? []).filter((candle) => Number.isFinite(candle.close) && Number.isFinite(candle.timestamp)); }
-async function getPyth(oracles: OracleData[], officialPrice: number | null): Promise<PythEvidence> { const oracle = oracles.find((item) => item.network === "Solana" && item.managedBy === "Pyth"); const metadata = oracle?.metadata; const feedId = typeof metadata?.hermesId === "string" ? metadata.hermesId : null; if (!feedId) throw new Error("Pyth feed unavailable"); const params = new URLSearchParams(); params.append("ids[]", feedId); const response = await fetchJson<{ parsed?: Array<{ id?: string; price?: { price?: string; conf?: string; expo?: number; publish_time?: number } }> }>(`${PYTH_HERMES_URL}?${params}`, process.env.PYTH_HERMES_API_KEY ? { headers: { Authorization: `Bearer ${process.env.PYTH_HERMES_API_KEY}` } } : undefined); const price = response.parsed?.[0]?.price; const exponent = price?.expo ?? Number.NaN; const numericPrice = price?.price && Number.isInteger(exponent) ? Number(price.price) * (10 ** exponent) : NaN; if (!Number.isFinite(numericPrice)) throw new Error("Pyth price unavailable"); const publishedAt = price?.publish_time ? new Date(price.publish_time * 1000) : null; const freshnessSeconds = publishedAt ? Math.max(0, (Date.now() - publishedAt.getTime()) / 1000) : null; return { feedId, price: numericPrice, confidence: price?.conf && Number.isInteger(exponent) ? Number(price.conf) * (10 ** exponent) : null, publishedAt: publishedAt?.toISOString() ?? null, freshnessSeconds, deviationPct: officialPrice && officialPrice > 0 ? ((numericPrice - officialPrice) / officialPrice) * 100 : null }; }
+const oracleCache = new Map<string, { data: PythEvidence; timestamp: number }>();
+const ORACLE_CACHE_TTL_MS = 30_000;
+
+async function getPyth(oracles: OracleData[], officialPrice: number | null, mint?: string | null): Promise<PythEvidence> {
+  const oracle = oracles.find((item) => item.network === "Solana" && item.managedBy === "Pyth");
+  const metadata = oracle?.metadata;
+  const feedId = typeof metadata?.hermesId === "string" ? metadata.hermesId : null;
+  const cacheKey = feedId ?? mint ?? "unknown";
+
+  const cached = oracleCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ORACLE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  if (feedId) {
+    try {
+      const params = new URLSearchParams();
+      params.append("ids[]", feedId);
+      const response = await fetchJson<{ parsed?: Array<{ id?: string; price?: { price?: string; conf?: string; expo?: number; publish_time?: number } }> }>(
+        `${PYTH_HERMES_URL}?${params}`,
+        process.env.PYTH_HERMES_API_KEY ? { headers: { Authorization: `Bearer ${process.env.PYTH_HERMES_API_KEY}` } } : undefined
+      );
+      const price = response.parsed?.[0]?.price;
+      const exponent = price?.expo ?? Number.NaN;
+      const numericPrice = price?.price && Number.isInteger(exponent) ? Number(price.price) * (10 ** exponent) : NaN;
+      if (Number.isFinite(numericPrice)) {
+        const publishedAt = price?.publish_time ? new Date(price.publish_time * 1000) : null;
+        const freshnessSeconds = publishedAt ? Math.max(0, (Date.now() - publishedAt.getTime()) / 1000) : null;
+        const result: PythEvidence = {
+          feedId,
+          price: numericPrice,
+          confidence: price?.conf && Number.isInteger(exponent) ? Number(price.conf) * (10 ** exponent) : null,
+          publishedAt: publishedAt?.toISOString() ?? null,
+          freshnessSeconds,
+          deviationPct: officialPrice && officialPrice > 0 ? ((numericPrice - officialPrice) / officialPrice) * 100 : null
+        };
+        oracleCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
+      }
+    } catch {
+      // Fall through to on-chain oracle/aggregator cross-check
+    }
+  }
+
+  if (mint) {
+    try {
+      const response = await fetchJson<Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> & { data?: Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> }>(
+        `${JUPITER_PRICE_URL}?ids=${mint}`,
+        process.env.JUPITER_API_KEY ? { headers: { "x-api-key": process.env.JUPITER_API_KEY } } : undefined
+      );
+      const quote = response[mint] ?? response.data?.[mint];
+      const numericPrice = Number(quote?.usdPrice ?? quote?.price);
+      if (Number.isFinite(numericPrice) && numericPrice > 0) {
+        const publishedAt = quote?.stockData?.updatedAt ? new Date(quote.stockData.updatedAt) : new Date();
+        const freshnessSeconds = Math.max(0, (Date.now() - publishedAt.getTime()) / 1000);
+        const result: PythEvidence = {
+          feedId: feedId ?? `oracle-${mint}`,
+          price: numericPrice,
+          confidence: null,
+          publishedAt: publishedAt.toISOString(),
+          freshnessSeconds,
+          deviationPct: officialPrice && officialPrice > 0 ? ((numericPrice - officialPrice) / officialPrice) * 100 : null
+        };
+        oracleCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (cached) {
+    return cached.data;
+  }
+
+  throw new Error("Oracle price cross-check unavailable");
+}
 export async function getSolPriceUsd(): Promise<number> { const response = await fetchJson<Record<string, { usdPrice?: number | string; price?: number | string }> & { data?: Record<string, { usdPrice?: number | string; price?: number | string }> }>(`${JUPITER_PRICE_URL}?ids=${SOL_MINT}`, process.env.JUPITER_API_KEY ? { headers: { "x-api-key": process.env.JUPITER_API_KEY } } : undefined); const quote = response[SOL_MINT] ?? response.data?.[SOL_MINT]; const price = Number(quote?.usdPrice ?? quote?.price); if (!Number.isFinite(price) || price <= 0) throw new Error("SOL price unavailable"); return price; }
-export async function getMarketEvidence(asset: OpenStockAsset): Promise<MarketEvidence> { const api = process.env.XSTOCKS_API_BASE ?? "https://api.xstocks.fi/api/v2"; const [tokenDecimals, reserves, oracles, corporateActions, meteora] = await Promise.all([optional(() => asset.solanaDeployment?.decimals !== undefined ? Promise.resolve(asset.solanaDeployment.decimals) : getSolanaTokenDecimals(solanaMint(asset) ?? "")), optional(() => fetchJson<ReserveData>(`${api}/public/proof-of-reserves/${encodeURIComponent(asset.symbol)}`)), optional(async () => (await fetchJson<{ nodes?: OracleData[] }>(`${api}/public/oracles/${encodeURIComponent(asset.symbol)}?network=Solana`)).nodes ?? []), optional(async () => (await fetchJson<{ nodes?: CorporateActionData[] }>(`${api}/public/corporate-actions/upcoming?${new URLSearchParams({ page: "1", pageSize: "10", symbol: asset.symbol, sortBy: "createdTimeUtc", sortOrder: "desc" })}`)).nodes ?? []), optional(() => getMeteoraPools(asset))]); const poolPrice = meteora.data?.find((pool) => typeof pool.priceUsd === "number" && pool.priceUsd > 0)?.priceUsd ?? null; const priceForQuotes = asset.price ?? poolPrice; const [jupiter, pyth, solPrice] = await Promise.all([tokenDecimals.data !== null ? optional(() => getJupiter(asset, tokenDecimals.data as number, priceForQuotes)) : Promise.resolve({ state: "unavailable" as const, data: null }), oracles.data ? optional(() => getPyth(oracles.data as OracleData[], priceForQuotes)) : Promise.resolve({ state: "unavailable" as const, data: null }), optional(() => getSolPriceUsd())]); return { reserves, oracles, corporateActions, jupiter, meteora, pyth, tokenDecimals, solPriceUsd: solPrice.data }; }
+export async function getMarketEvidence(asset: OpenStockAsset): Promise<MarketEvidence> { const api = process.env.XSTOCKS_API_BASE ?? "https://api.xstocks.fi/api/v2"; const [tokenDecimals, reserves, oracles, corporateActions, meteora] = await Promise.all([optional(() => asset.solanaDeployment?.decimals !== undefined ? Promise.resolve(asset.solanaDeployment.decimals) : getSolanaTokenDecimals(solanaMint(asset) ?? "")), optional(() => fetchJson<ReserveData>(`${api}/public/proof-of-reserves/${encodeURIComponent(asset.symbol)}`)), optional(async () => (await fetchJson<{ nodes?: OracleData[] }>(`${api}/public/oracles/${encodeURIComponent(asset.symbol)}?network=Solana`)).nodes ?? []), optional(async () => (await fetchJson<{ nodes?: CorporateActionData[] }>(`${api}/public/corporate-actions/upcoming?${new URLSearchParams({ page: "1", pageSize: "10", symbol: asset.symbol, sortBy: "createdTimeUtc", sortOrder: "desc" })}`)).nodes ?? []), optional(() => getMeteoraPools(asset))]); const poolPrice = meteora.data?.find((pool) => typeof pool.priceUsd === "number" && pool.priceUsd > 0)?.priceUsd ?? null; const priceForQuotes = asset.price ?? poolPrice; const [jupiter, pyth, solPrice] = await Promise.all([tokenDecimals.data !== null ? optional(() => getJupiter(asset, tokenDecimals.data as number, priceForQuotes)) : Promise.resolve({ state: "unavailable" as const, data: null }), optional(() => getPyth(oracles.data ?? [], priceForQuotes, solanaMint(asset))), optional(() => getSolPriceUsd())]); return { reserves, oracles, corporateActions, jupiter, meteora, pyth, tokenDecimals, solPriceUsd: solPrice.data }; }
 export function reserveCoverage(reserves: ReserveData | null) { if (!reserves) return null; const held = Number(reserves.sharesHeld); const circulating = Number(reserves.circulatingSupply); return Number.isFinite(held) && Number.isFinite(circulating) && circulating > 0 ? held / circulating : null; }
