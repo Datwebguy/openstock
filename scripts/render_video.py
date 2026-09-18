@@ -15,8 +15,8 @@ async def render_chunk(worker_id, start_frame, end_frame, html_path):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page(viewport={"width": 1920, "height": 1080})
-        await page.goto(f"file:///{html_path}")
-        await page.wait_for_timeout(600)
+        await page.goto(f"file:///{html_path}", wait_until="domcontentloaded")
+        await page.wait_for_timeout(400)
         
         for f in range(start_frame, end_frame):
             t = f / FPS
@@ -32,7 +32,13 @@ async def render_chunk(worker_id, start_frame, end_frame, html_path):
 
 async def main():
     os.makedirs(FRAMES_DIR, exist_ok=True)
-    html_path = os.path.abspath("scripts/motion_renderer.html").replace("\\", "/")
+    for old_file in os.listdir(FRAMES_DIR):
+        if old_file.endswith(".jpg") or old_file.endswith(".png"):
+            try:
+                os.remove(os.path.join(FRAMES_DIR, old_file))
+            except Exception:
+                pass
+    html_path = os.path.abspath("scripts/mobile_promo_renderer.html").replace("\\", "/")
     
     print(f"--- Starting Render: {TOTAL_FRAMES} frames @ {FPS}fps ({TOTAL_DURATION:.2f}s) ---")
     t0 = time.time()
