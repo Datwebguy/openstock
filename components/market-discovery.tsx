@@ -196,7 +196,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           <div className="market-pulse-tile__main">
             <div className="market-pulse-tile__meta">
               <strong style={{ color: "var(--solana-green, #14f195)" }}>24/7 DEX Hours</strong>
-              <span>Token-2022 · 100% Backed</span>
+              <span>100% Backed Equities</span>
             </div>
             <Link href="/launch" className="market-pulse-tile__launch-cta" title="Launch stock-paired token">
               Pair &amp; Launch
@@ -356,7 +356,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                           <div className="trends-asset-symbol-row">
                             <strong className="trends-asset-symbol">{asset.symbol}</strong>
                             <span className="trends-verified-badge">VERIFIED</span>
-                            <span className="trends-token2022-badge">Token-2022</span>
+                            <span className="trends-token2022-badge">Backed</span>
                           </div>
                           <span className="trends-asset-name">
                             {issuerName(asset)} · {ticker(asset)}

@@ -123,7 +123,7 @@ export function ProStockHeader({
             <div className="pro-asset-header__title-line">
               <h1 className="pro-asset-header__symbol">{symbol}</h1>
               <span className="pro-asset-header__verified-badge">VERIFIED</span>
-              <span className="pro-asset-header__program-pill">Token-2022</span>
+              <span className="pro-asset-header__program-pill">Backed Equity</span>
             </div>
             <p className="pro-asset-header__subname">
               {name.replace(/ xStock$/, "")} · {underlyingSymbol || symbol.replace(/x$/, "")} · 1:1 Backed Equity
@@ -208,7 +208,7 @@ export function ProStockHeader({
           <div className="pro-asset-header__details-content">
             <div className="pro-asset-header__details-grid">
               <div className="pro-asset-header__detail-item">
-                <span>Solana Mint</span>
+                <span>Asset Identifier</span>
                 <div className="pro-asset-header__mint-copy">
                   <code>{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
                   <button type="button" onClick={copyMint} className="pro-asset-header__copy-btn">
@@ -226,8 +226,8 @@ export function ProStockHeader({
               </div>
 
               <div className="pro-asset-header__detail-item">
-                <span>Token Program</span>
-                <strong>Token-2022 (Spl-Token-2022)</strong>
+                <span>Asset Standard</span>
+                <strong>Solana Backed Stock (1:1 Reserved)</strong>
               </div>
 
               <div className="pro-asset-header__detail-item">

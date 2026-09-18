@@ -428,9 +428,9 @@ export function PaperOrderForm({
         <div className="paper-order__details">
           <span>SOL equivalent</span>
           <strong>{solValue}</strong>
-          <span>Token-2022 Multiplier</span>
+          <span>Share Multiplier</span>
           <strong style={{ color: "var(--solana-green, #14f195)" }}>{rounded(multiplier)}</strong>
-          <span>Pyth / Pool Discrepancy</span>
+          <span>Oracle / Pool Spread</span>
           <strong>{priceDiscrepancy}</strong>
         </div>
 
@@ -481,10 +481,10 @@ export function PaperOrderForm({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <div>
                 <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", color: "var(--solana-purple, #9945ff)", textTransform: "uppercase" }}>
-                  Pre-Flight Verification
+                  Trade Confirmation
                 </span>
                 <h3 id="safety-slip-title" style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 800 }}>
-                  Order Safety Slip
+                  Trade Summary
                 </h3>
               </div>
               <button
@@ -516,9 +516,9 @@ export function PaperOrderForm({
             {/* Invariance Check Notice */}
             <div style={{ padding: "10px 14px", background: "rgba(20, 241, 149, 0.08)", border: "1px solid rgba(20, 241, 149, 0.3)", borderRadius: 12, marginBottom: 16, fontSize: 11, lineHeight: 1.5 }}>
               <strong style={{ color: "#0a8754", display: "block", marginBottom: 2 }}>
-                ✓ Token-2022 Multiplier Invariance Verified
+                ✓ Share Multiplier Verified
               </strong>
-              Active Multiplier: <strong>{rounded(multiplier)}</strong>. 1 Token-2022 unit represents {rounded(multiplier)} underlying shares. Corporate action circuit breaker active.
+              Active Multiplier: <strong>{rounded(multiplier)}</strong>. 1 token unit represents {rounded(multiplier)} underlying shares. Corporate action protection active.
             </div>
 
             {/* Parameter Grid */}
@@ -532,7 +532,7 @@ export function PaperOrderForm({
                 <strong>{conversion.uiAmount} {symbol}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Raw On-Chain Units</span>
+                <span style={{ color: "var(--muted)" }}>Settlement Units</span>
                 <code style={{ fontFamily: "monospace", color: "var(--muted)" }}>{conversion.rawAmount} units ({decimals ?? 6} dec)</code>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>

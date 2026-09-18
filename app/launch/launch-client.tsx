@@ -349,9 +349,9 @@ export function LaunchClient() {
       return;
     }
 
-    // Prevent submitting a DBC transaction that would revert with InvalidTokenBadge
+    // Prevent launching an unbadged pair that cannot settle on-chain
     if (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride) {
-      setErrorMessage(`This xStock (${selectedPair.symbol}) is not badged on Meteora DBC. Tap "Pair with SOL" or "Pair with USDC" below to launch permissionlessly.`);
+      setErrorMessage("This stock can’t be the pair yet. Use SOL or USDC instead.");
       return;
     }
 
@@ -401,7 +401,7 @@ export function LaunchClient() {
     // =========================================================================
     if (selectedVenue === "pumpfun") {
       setStepState("quoting");
-      setStatusMessage("Requesting Pump.fun quote terms via ClawPump API...");
+      setStatusMessage("Preparing launch terms...");
 
       try {
         // Step 1: Preflight quote
@@ -422,7 +422,7 @@ export function LaunchClient() {
 
         const preflightData = await preflightRes.json();
         if (!preflightRes.ok || !preflightData.payment) {
-          throw new Error(preflightData.error || "Failed to obtain Pump.fun launch quote terms.");
+          throw new Error(preflightData.error || "Payment didn’t go through. Try again.");
         }
 
         const { payment, retryWith, agentId, agentName } = preflightData;
@@ -430,9 +430,9 @@ export function LaunchClient() {
         const payTo = payment.payTo;
         const preflightToken = retryWith.preflightToken;
 
-        // Step 2: Pay exact SOL from user wallet directly in OpenStock with Compute Budget Hardening
+        // Step 2: Pay from user wallet directly in OpenStock
         setStepState("paying");
-        setStatusMessage("Estimating network fees and running preflight simulation...");
+        setStatusMessage("Preparing transaction...");
 
         let txSignature = "";
 
@@ -448,7 +448,7 @@ export function LaunchClient() {
             })
           );
 
-          // Dynamic priority fee estimation & compute budget injection
+          // Dynamic priority fee estimation
           const microLamports = await getDynamicPriorityFee(connection, priorityTier);
           applyComputeBudget(tx, 160_000, microLamports);
 
@@ -456,31 +456,31 @@ export function LaunchClient() {
           tx.recentBlockhash = blockhash;
           tx.feePayer = fromPubkey;
 
-          // Run Preflight Simulation against Solana cluster BEFORE wallet popup
-          setStatusMessage("Validating transaction preflight on Solana mainnet...");
+          // Simulation check before wallet popup
+          setStatusMessage("Checking transaction...");
           const sim = await preflightSimulate(connection, tx, fromPubkey);
           if (!sim.success) {
-            throw new Error(sim.humanMessage || sim.error || "Preflight simulation failed.");
+            throw new Error(sim.humanMessage || sim.error || "Payment didn’t go through. Try again.");
           }
           if (sim.unitsConsumed) {
             setSimulatedUnits(sim.unitsConsumed);
           }
 
-          setStatusMessage(`Please approve ${(amountLamports / 1e9).toFixed(5)} SOL in your wallet...`);
+          setStatusMessage("Please approve in your wallet...");
 
           if (solanaProvider.signAndSendTransaction) {
             const sendRes = await solanaProvider.signAndSendTransaction(tx);
             txSignature = sendRes.signature;
           } else if (solanaProvider.signTransaction) {
             const signed = await solanaProvider.signTransaction(tx);
-            setStatusMessage("Broadcasting transaction to Solana cluster...");
+            setStatusMessage("Submitting transaction...");
             txSignature = await connection.sendRawTransaction(signed.serialize(), {
-              skipPreflight: true, // Already validated via preflightSimulate
+              skipPreflight: true,
               maxRetries: 3,
             });
           }
 
-          setStatusMessage("Confirming block inclusion on Solana mainnet...");
+          setStatusMessage("Confirming transaction...");
           const confirmation = await connection.confirmTransaction(
             { signature: txSignature, blockhash, lastValidBlockHeight },
             "confirmed"
@@ -489,7 +489,7 @@ export function LaunchClient() {
             throw new Error(translateWalletError(confirmation.value.err));
           }
         } else {
-          throw new Error("Solana wallet provider not detected. Connect Phantom or Solflare to sign and broadcast this launch transaction.");
+          throw new Error("Wallet not detected. Connect Phantom or Solflare to continue.");
         }
 
         // Step 3: Complete launch with txSignature proof
@@ -542,14 +542,14 @@ export function LaunchClient() {
     // =========================================================================
     else if (selectedVenue === "meteora") {
       setStepState("quoting");
-      setStatusMessage("Preparing Meteora DBC parameters and deriving pool PDAs...");
+      setStatusMessage("Preparing launch terms...");
 
       try {
         if (!solanaProvider || (!solanaProvider.signAndSendTransaction && !solanaProvider.signTransaction)) {
-          throw new Error("Solana wallet provider not detected. Connect Phantom or Solflare to sign and broadcast this launch transaction.");
+          throw new Error("Wallet not detected. Connect Phantom or Solflare to continue.");
         }
 
-        // Step 1: Request authentic prepared on-chain Meteora DBC transaction
+        // Step 1: Request prepared pool transaction
         const prepareRes = await fetch("/api/launch/meteora", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -569,31 +569,31 @@ export function LaunchClient() {
 
         const prepareData = await prepareRes.json();
         if (!prepareRes.ok || !prepareData.transactionBase64) {
-          throw new Error(prepareData.error || "Failed to prepare Meteora DBC pool transaction.");
+          throw new Error(prepareData.error || "Failed to prepare pool. Please try again.");
         }
 
         const { transactionBase64, mintAddress, poolAddress } = prepareData;
 
-        // Step 2: Deserialize and sign the real Meteora transaction with the user's wallet
+        // Step 2: Sign transaction with user wallet
         setStepState("paying");
-        setStatusMessage("Estimating network fees and running preflight simulation...");
+        setStatusMessage("Preparing transaction...");
 
         const fromPubkey = new PublicKey(address);
         const txBytes = base64ToUint8Array(transactionBase64);
         const tx = Transaction.from(txBytes);
 
         // Preflight validation simulation
-        setStatusMessage("Validating Meteora DBC transaction preflight on Solana...");
+        setStatusMessage("Checking transaction...");
         try {
           const sim = await preflightSimulate(connection, tx, fromPubkey);
           if (sim.unitsConsumed) {
             setSimulatedUnits(sim.unitsConsumed);
           }
         } catch (simErr) {
-          console.warn("Preflight simulation check:", simErr);
+          console.warn("Transaction check note:", simErr);
         }
 
-        setStatusMessage("Please sign Meteora DBC pool creation in your wallet...");
+        setStatusMessage("Please approve in your wallet...");
 
         let txSignature = "";
         if (solanaProvider.signAndSendTransaction) {
@@ -601,14 +601,14 @@ export function LaunchClient() {
           txSignature = sendRes.signature;
         } else if (solanaProvider.signTransaction) {
           const signed = await solanaProvider.signTransaction(tx);
-          setStatusMessage("Broadcasting transaction to Solana cluster...");
+          setStatusMessage("Submitting transaction...");
           txSignature = await connection.sendRawTransaction(signed.serialize(), {
             skipPreflight: false,
             maxRetries: 3,
           });
         }
 
-        setStatusMessage("Confirming Meteora DBC pool creation on Solana mainnet...");
+        setStatusMessage("Confirming launch...");
         const confirmation = await connection.confirmTransaction(txSignature, "confirmed");
         if (confirmation.value.err) {
           throw new Error(translateWalletError(confirmation.value.err));
@@ -616,7 +616,7 @@ export function LaunchClient() {
 
         // Step 3: Confirm launch on OpenStock registry
         setStepState("confirming");
-        setStatusMessage(`Finalizing Meteora DBC pool against ${effectiveQuoteSymbol}...`);
+        setStatusMessage(`Finalizing launch against ${effectiveQuoteSymbol}...`);
 
         const confirmRes = await fetch("/api/launch/meteora", {
           method: "POST",
@@ -640,11 +640,11 @@ export function LaunchClient() {
 
         const confirmData = await confirmRes.json();
         if (!confirmRes.ok || !confirmData.success) {
-          throw new Error(confirmData.error || "Failed to confirm Meteora DBC pool.");
+          throw new Error(confirmData.error || "Payment didn’t go through. Try again.");
         }
 
         setStepState("success");
-        setStatusMessage("Meteora DBC Pool successfully created!");
+        setStatusMessage("Live!");
         setLaunchReceipt({
           mintAddress: confirmData.mintAddress,
           poolAddress: confirmData.poolAddress,
@@ -672,17 +672,17 @@ export function LaunchClient() {
           </Link>
           <div className="launch-header-chips">
             <span className="launch-network-pill">
-              <span className="launch-pulse-dot" /> Solana Mainnet
+              <span className="launch-pulse-dot" /> Solana
             </span>
             <span className="launch-protocol-pill">
-              ClawPump &amp; Meteora DBC Engine
+              Stock-Paired Token Studio
             </span>
           </div>
         </div>
 
         <div className="launch-intro-body">
           <span className="launch-studio-kicker">
-            <span className="launch-pulse-dot" /> SOLANA TOKEN × XSTOCK STUDIO
+            <span className="launch-pulse-dot" /> TOKEN × STOCK STUDIO
           </span>
           <h1 id="launch-title" className="launch-intro-title">
             YOUR TOKEN × <span className="launch-accent-symbol">{selectedPair?.symbol || "AAPLx"}</span>
@@ -868,28 +868,28 @@ export function LaunchClient() {
                       {isUp ? "+" : ""}{pairStats.change24h.toFixed(2)}% (24h)
                     </span>
                     <span className="launch-selected-pair-badge">
-                      <span className="launch-pulse-dot" /> Verified on Solana
+                      <span className="launch-pulse-dot" /> Verified stock
                     </span>
                   </div>
                 </div>
               );
             })()}
 
-            {/* Token-2022 Badge Verification Pill & Fallback */}
+            {/* Pair Availability & Fallback */}
             {selectedPair && (
               <div className="launch-badge-section">
                 {activeQuoteOverride ? (
                   <div className="launch-badge-card is-fallback">
                     <div className="launch-badge-row">
                       <span className="launch-badge-pill is-verified">
-                        ✓ Verified Meteora DBC badged quote ({activeQuoteOverride.symbol})
+                        ✓ Paired with {activeQuoteOverride.symbol}
                       </span>
                       <span className="launch-badge-index-tag">
-                        Stock Anchor: {selectedPair.symbol} (Pyth Index)
+                        Reference stock: {selectedPair.symbol}
                       </span>
                     </div>
                     <p className="launch-badge-note">
-                      Pairing on-chain against <strong>{activeQuoteOverride.label}</strong> to avoid Token-2022 badge reverts. <strong>{selectedPair.symbol}</strong> remains your thematic stock index and reference price.
+                      Pairing with <strong>{activeQuoteOverride.label}</strong>. <strong>{selectedPair.symbol}</strong> remains your reference stock.
                     </p>
                     <button
                       type="button"
@@ -902,34 +902,30 @@ export function LaunchClient() {
                           .catch(() => setStockBadgeStatus("unbadged"));
                       }}
                     >
-                      ↺ Reset to {selectedPair.symbol} Quote
+                      ↺ Reset to {selectedPair.symbol}
                     </button>
                   </div>
                 ) : quoteBadgeStatus === "checking" ? (
                   <div className="launch-badge-checking">
-                    <span className="launch-pulse-dot" /> Checking on-chain Meteora DBC token badge...
+                    <span className="launch-pulse-dot" /> Checking pair availability...
                   </div>
                 ) : quoteBadgeStatus === "badged" ? (
                   <div className="launch-badge-card is-verified">
                     <span className="launch-badge-pill is-verified">
-                      ✓ Verified Meteora DBC badged quote
+                      ✓ Ready to pair
                     </span>
                     <span className="launch-badge-note">
-                      {selectedPair.symbol} has an active on-chain token_badge PDA. Native bonding curve pool creation enabled.
+                      {selectedPair.symbol} is ready for pair creation.
                     </span>
                   </div>
                 ) : (
                   <div className="launch-badge-card is-unbadged">
                     <div className="launch-badge-row">
                       <span className="launch-badge-pill is-unbadged">
-                        ⚠️ This xStock is not badged on DBC
+                        ⚠️ This stock can’t be the pair yet. Use SOL or USDC instead.
                       </span>
-                      <span className="launch-badge-sub">Token-2022 requires an on-chain token_badge PDA</span>
                     </div>
-                    <p className="launch-badge-note">
-                      Token-2022 equity mints without an on-chain Meteora badge will revert with <code>InvalidTokenBadge</code>. Tap below to pair permissionlessly with SOL or USDC while preserving {selectedPair.symbol} as your stock index &amp; Pyth oracle.
-                    </p>
-                    <div className="launch-fallback-actions">
+                    <div className="launch-fallback-actions" style={{ marginTop: 12 }}>
                       <button
                         type="button"
                         className="launch-fallback-btn"
@@ -944,8 +940,8 @@ export function LaunchClient() {
                       >
                         <span className="launch-fallback-btn-icon">⚡</span>
                         <div className="launch-fallback-btn-copy">
-                          <strong>Pair with SOL</strong>
-                          <small>Permissionless SPL · Instant liquidity</small>
+                          <strong>Use SOL</strong>
+                          <small>Instant liquidity</small>
                         </div>
                       </button>
                       <button
@@ -962,8 +958,8 @@ export function LaunchClient() {
                       >
                         <span className="launch-fallback-btn-icon">💵</span>
                         <div className="launch-fallback-btn-copy">
-                          <strong>Pair with USDC</strong>
-                          <small>Permissionless SPL · Dollar stable</small>
+                          <strong>Use USDC</strong>
+                          <small>Dollar stable</small>
                         </div>
                       </button>
                     </div>
@@ -1086,7 +1082,7 @@ export function LaunchClient() {
                 </label>
 
                 <div className="launch-venue-grid" role="radiogroup" aria-label="Execution Venue">
-                  {/* Pump.fun Venue Option - Hidden if quote is unsupported */}
+                  {/* Pump Venue Option */}
                   {venueSupport.pumpfun ? (
                     <button
                       type="button"
@@ -1096,11 +1092,11 @@ export function LaunchClient() {
                       aria-checked={selectedVenue === "pumpfun"}
                     >
                       <div className="launch-venue-head">
-                        <span className="launch-venue-title">Pump.fun</span>
-                        <span className="launch-venue-badge">ClawPump API</span>
+                        <span className="launch-venue-title">Pump</span>
+                        <span className="launch-venue-badge">Instant</span>
                       </div>
                       <p className="launch-venue-desc">
-                        Pairs against {selectedPair?.symbol || "xStock"} via Pump.fun bonding curve. Migrates to AMM upon graduation.
+                        Pairs against {selectedPair?.symbol || "xStock"}. Moves to full pool upon reaching target.
                       </p>
                       <div className="launch-venue-foot">
                         <span>75% Creator Fee</span>
@@ -1111,7 +1107,7 @@ export function LaunchClient() {
                     </button>
                   ) : null}
 
-                  {/* Meteora DBC Venue Option - Hidden if quote is unsupported */}
+                  {/* Meteora Curve Venue Option */}
                   {venueSupport.meteora ? (
                     <button
                       type="button"
@@ -1121,16 +1117,16 @@ export function LaunchClient() {
                       aria-checked={selectedVenue === "meteora"}
                     >
                       <div className="launch-venue-head">
-                        <span className="launch-venue-title">Meteora DBC</span>
+                        <span className="launch-venue-title">Meteora curve</span>
                         <span className="launch-venue-badge" style={{ color: "var(--solana-cyan, #03e1ff)", borderColor: "rgba(3, 225, 255, 0.3)" }}>
-                          DLMM Concentrated
+                          Full Pool Target
                         </span>
                       </div>
                       <p className="launch-venue-desc">
-                        Dynamic Bonding Curve SDK with automated concentrated liquidity migration to Meteora DLMM.
+                        Bonding curve with automatic move to full trading pool upon graduation.
                       </p>
                       <div className="launch-venue-foot">
-                        <span>DLMM Migration</span>
+                        <span>Move to full pool</span>
                         <div className="launch-venue-radio">
                           <span className="launch-venue-radio-dot" />
                         </div>
@@ -1139,18 +1135,18 @@ export function LaunchClient() {
                   ) : null}
                 </div>
 
-                {/* Meteora DBC Curve Preset Selector - Visible ONLY when selectedVenue === "meteora" */}
+                {/* Curve Preset Selector - Visible ONLY when selectedVenue === "meteora" */}
                 {selectedVenue === "meteora" && (
                   <div className="launch-curve-box">
                     <div className="launch-curve-head">
                       <label className="launch-curve-label">
-                        DBC Curve Preset
+                        Curve style
                       </label>
                       <span className="launch-curve-badge">
-                        Meteora SDK
+                        Options
                       </span>
                     </div>
-                    <div className="launch-curve-cards" role="radiogroup" aria-label="DBC Curve Preset">
+                    <div className="launch-curve-cards" role="radiogroup" aria-label="Curve Preset">
                       {(Object.keys(METEORA_DBC_CURVE_PRESETS) as DbcCurvePresetKey[]).map((presetKey) => {
                         const preset = METEORA_DBC_CURVE_PRESETS[presetKey];
                         const isChosen = selectedCurvePreset === presetKey;
@@ -1173,11 +1169,6 @@ export function LaunchClient() {
                               <span>Fee: {(preset.baseFeeBps / 100).toFixed(1)}%</span>
                               <span>Target: {preset.targetMarketCap}</span>
                             </div>
-                            {preset.configAddress ? (
-                              <div className="launch-curve-config-id">
-                                <code>Config: {preset.configAddress.slice(0, 4)}...{preset.configAddress.slice(-4)}</code>
-                              </div>
-                            ) : null}
                           </button>
                         );
                       })}
@@ -1280,21 +1271,21 @@ export function LaunchClient() {
                 </div>
               )}
 
-              {/* Hardened Preflight Priority Fee Selector */}
+              {/* Priority Speed Selector */}
               <div className="launch-priority-box">
                 <div className="launch-priority-head">
                   <span className="launch-priority-title">
-                    <span>⚡</span> Solana Priority Fee (Compute Budget)
+                    <span>⚡</span> Transaction Speed
                   </span>
                   <span className="launch-priority-badge">
-                    {simulatedUnits ? `${simulatedUnits.toLocaleString()} CU simulated` : "Preflight Active"}
+                    Auto-tuned
                   </span>
                 </div>
-                <div className="launch-priority-pills" role="radiogroup" aria-label="Network Priority Fee Tier">
+                <div className="launch-priority-pills" role="radiogroup" aria-label="Transaction Speed">
                   {[
-                    { id: "standard" as const, label: "Standard", desc: "~50k μL", note: "Normal congestion" },
-                    { id: "fast" as const, label: "Fast", desc: "~150k μL", note: "Moderate load" },
-                    { id: "turbo" as const, label: "Turbo", desc: "~500k μL", note: "Maximum guarantee" },
+                    { id: "standard" as const, label: "Normal", desc: "Standard", note: "Standard speed" },
+                    { id: "fast" as const, label: "Fast", desc: "High priority", note: "Fast confirmation" },
+                    { id: "turbo" as const, label: "Instant", desc: "Maximum priority", note: "Instant confirmation" },
                   ].map((tier) => (
                     <button
                       type="button"
@@ -1311,7 +1302,7 @@ export function LaunchClient() {
                 </div>
               </div>
 
-              {/* One-Click Launch CTA Button */}
+              {/* Launch CTA Button */}
               <button
                 type="button"
                 className="launch-execute-btn"
@@ -1332,16 +1323,16 @@ export function LaunchClient() {
                 ) : stepState === "confirming" ? (
                   "Creating Market on Solana..."
                 ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride ? (
-                  `Cannot Launch: ${selectedPair?.symbol || "xStock"} Unbadged on DBC (Pair with SOL / USDC)`
+                  "This stock can’t be the pair yet. Use SOL or USDC instead."
                 ) : (
                   <>
-                    Launch on {selectedVenue === "pumpfun" ? "Pump.fun" : "Meteora DBC"}: {tokenSymbol || "TOKEN"} × {effectiveQuoteSymbol || "xStock"}
+                    Launch {tokenSymbol || "TOKEN"} × {effectiveQuoteSymbol || "xStock"}
                   </>
                 )}
               </button>
 
               <p className="launch-checkout-disclaimer">
-                Estimated network fee: ~0.0075 SOL · User wallet signs and pays directly on OpenStock · No external redirect
+                Estimated network fee: ~0.0075 SOL · Wallet signs and pays directly on OpenStock
               </p>
 
               {/* Success Receipt Card */}
@@ -1349,10 +1340,10 @@ export function LaunchClient() {
                 <div className="launch-success-card" role="status">
                   <div className="launch-success-title">
                     <span style={{ fontSize: 20 }}>🎉</span>
-                    <h3>Successfully Minted!</h3>
+                    <h3>{tokenName || "Token"} is Live!</h3>
                   </div>
                   <p>
-                    Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump.fun" : "Meteora DBC"}.
+                    Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump" : "Meteora curve"}.
                   </p>
                   <div className="launch-receipt-grid">
                     <div className="launch-receipt-item">
@@ -1360,56 +1351,25 @@ export function LaunchClient() {
                       <strong>{tokenSymbol} × {selectedPair?.symbol}</strong>
                     </div>
                     <div className="launch-receipt-item">
-                      <span>Venue</span>
-                      <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                        {launchReceipt.venue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
+                      <span>Status</span>
+                      <strong style={{ color: "var(--solana-green, #14f195)" }}>
+                        Live
                       </strong>
-                    </div>
-                    <div className="launch-receipt-item">
-                      <span>Mint Address</span>
-                      <code>{launchReceipt.mintAddress.slice(0, 5)}...{launchReceipt.mintAddress.slice(-5)}</code>
-                    </div>
-                    {launchReceipt.poolAddress && (
-                      <div className="launch-receipt-item">
-                        <span>DBC Pool PDA</span>
-                        <code>{launchReceipt.poolAddress.slice(0, 5)}...{launchReceipt.poolAddress.slice(-5)}</code>
-                      </div>
-                    )}
-                    <div className="launch-receipt-item">
-                      <span>Tx Signature</span>
-                      <code>{launchReceipt.txHash.slice(0, 5)}...{launchReceipt.txHash.slice(-5)}</code>
                     </div>
                   </div>
                   <div className="launch-success-actions">
-                    {launchReceipt.venue === "pumpfun" ? (
-                      <a href={launchReceipt.pumpUrl} target="_blank" rel="noreferrer" className="launch-btn-pump">
-                        View on Pump.fun ↗
-                      </a>
-                    ) : (
-                      <a href={launchReceipt.pumpUrl} target="_blank" rel="noreferrer" className="launch-btn-pump" style={{ background: "linear-gradient(135deg, #03e1ff 0%, #14f195 100%)", color: "#000" }}>
-                        View on Meteora DLMM ↗
-                      </a>
-                    )}
                     <a href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer" className="launch-btn-solscan">
-                      Solscan ↗
-                    </a>
-                    <a
-                      href={`https://app.bubblemaps.io/sol/token/${launchReceipt.mintAddress}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="launch-btn-solscan"
-                    >
-                      Bubblemaps ↗
+                      View transaction ↗
                     </a>
                     <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
-                      {selectedPair?.symbol} Market ↗
+                      View market ↗
                     </Link>
                     <button
                       type="button"
                       className="launch-btn-share-x"
                       onClick={() => setShowShareModal(true)}
                     >
-                      <span>Share to 𝕏 (Twitter)</span>
+                      <span>Share</span>
                       <span>🚀</span>
                     </button>
                   </div>
@@ -1430,7 +1390,7 @@ export function LaunchClient() {
                   <span className="launch-pulse-dot" /> LIVE SIMULATOR
                 </span>
                 <span className="launch-holo-chain">
-                  {selectedVenue === "pumpfun" ? "Pump.fun Curve" : "Meteora DBC"}
+                  {selectedVenue === "pumpfun" ? "Pump curve" : "Meteora curve"}
                 </span>
               </div>
 
@@ -1471,14 +1431,14 @@ export function LaunchClient() {
                 <div className="launch-holo-spec-row">
                   <span>Execution Venue</span>
                   <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                    {selectedVenue === "pumpfun" ? "Pump.fun (ClawPump)" : "Meteora DBC"}
+                    {selectedVenue === "pumpfun" ? "Pump" : "Meteora curve"}
                   </strong>
                 </div>
                 {selectedVenue === "meteora" && (
                   <div className="launch-holo-spec-row">
                     <span>Curve Preset</span>
                     <strong style={{ color: "var(--solana-green, #14f195)" }}>
-                      {METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Linear Standard"}
+                      {METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Standard"}
                     </strong>
                   </div>
                 )}
@@ -1492,25 +1452,25 @@ export function LaunchClient() {
                   <span>Quote Asset</span>
                   <strong>
                     {activeQuoteOverride
-                      ? `${activeQuoteOverride.symbol} (${selectedPair?.symbol} context)`
+                      ? `${activeQuoteOverride.symbol} (${selectedPair?.symbol} reference)`
                       : selectedPair
                       ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})`
-                      : "xStock"}
+                      : "Stock"}
                   </strong>
                 </div>
                 <div className="launch-holo-spec-row">
                   <span>Creator Royalty</span>
                   <strong className="launch-holo-highlight">
-                    {(creatorFeeBps / 100).toFixed(1)}% ({creatorFeeBps} bps) in {effectiveQuoteSymbol || selectedPair?.symbol}
+                    {(creatorFeeBps / 100).toFixed(1)}% in {effectiveQuoteSymbol || selectedPair?.symbol}
                   </strong>
                 </div>
                 <div className="launch-holo-spec-row">
-                  <span>Liquidity Destination</span>
-                  <strong>{selectedVenue === "pumpfun" ? "Raydium / PumpAMM" : "Meteora DLMM"}</strong>
+                  <span>Liquidity Target</span>
+                  <strong>Full Trading Pool</strong>
                 </div>
                 <div className="launch-holo-spec-row">
-                  <span>Settlement Latency</span>
-                  <strong>~400ms Sub-second</strong>
+                  <span>Settlement</span>
+                  <strong>Instant on Solana</strong>
                 </div>
               </div>
 

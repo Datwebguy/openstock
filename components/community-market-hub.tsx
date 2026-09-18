@@ -139,12 +139,12 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
         </div>
 
         <div className="community-kpi-card">
-          <span className="community-kpi-label">GRADUATED TO DLMM</span>
+          <span className="community-kpi-label">IN FULL POOL</span>
           <div className="community-kpi-value-row">
             <strong>{graduatedCount}</strong>
-            <span className="community-kpi-badge is-cyan">Meteora Active</span>
+            <span className="community-kpi-badge is-cyan">Meteora Live</span>
           </div>
-      </div>
+        </div>
       </div>
 
       {/* Feature #2: Live Bonding Curve Migration Tracker ("Graduation Radar") */}
@@ -321,7 +321,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                       <div
                         className="bonding-progress-cell is-interactive"
                         onClick={() => setActiveMigrationToken(item)}
-                        title="Click to view bonding curve migration & Meteora DLMM mechanics"
+                        title="Click to view pool migration progress"
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
@@ -333,7 +333,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                           />
                         </div>
                         <span className="bonding-progress-label">
-                          {item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "Graduated" : "Filled"} 🔍
+                          {item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "In Full Pool" : "Filled"} 🔍
                         </span>
                       </div>
                     </td>
@@ -445,14 +445,14 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                 <div
                   className="community-card__bonding is-interactive"
                   onClick={() => setActiveMigrationToken(item)}
-                  title="Click to view bonding curve migration & Meteora DLMM mechanics"
+                  title="Click to view pool migration progress"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
                 >
                   <div className="community-card__bonding-head">
-                    <span>Bonding Curve</span>
-                    <strong>{item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "✓ Graduated" : "🔍"}</strong>
+                    <span>Curve Progress</span>
+                    <strong>{item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "✓ In Full Pool" : "🔍"}</strong>
                   </div>
                   <div className="bonding-progress-bar">
                     <div

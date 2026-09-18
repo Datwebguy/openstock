@@ -234,7 +234,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             className={`analytics-module-tab ${activeTab === "audit" ? "is-active" : ""}`}
             onClick={() => setActiveTab("audit")}
           >
-            Token-2022 Reserves Audit
+            Physical Reserves Audit
           </button>
           <button
             type="button"
@@ -380,8 +380,8 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
                 <strong>1:1 Physically Backed Equity Shares</strong>
               </div>
               <div className="analytics-audit-item">
-                <span>Solana Mint Program</span>
-                <strong>Token-2022 (Spl-Token-2022)</strong>
+                <span>Asset Standard</span>
+                <strong>Solana Backed Stock (1:1 Reserved)</strong>
               </div>
               <div className="analytics-audit-item">
                 <span>Mint Address</span>

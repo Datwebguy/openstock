@@ -27,14 +27,14 @@ export default function MultiplierGuidePage() {
           <div className="workspace-heading__body">
             <div className="workspace-kicker">
               <span className="live-dot" aria-hidden="true" />
-              <span>Solana SPL Token-2022 Standard · Corporate Action Invariance</span>
+              <span>Solana Equity Accounting · Corporate Action Protection</span>
             </div>
             <h1 style={{ fontSize: "clamp(28px, 4vw, 42px)", marginTop: 8 }}>
-              Token-2022 Multipliers &amp; Stock Splits
+              Share Multipliers &amp; Stock Splits
             </h1>
             <p style={{ maxWidth: "68ch", fontSize: 16, lineHeight: 1.6, color: "var(--os-muted, #6e6782)" }}>
-              Traditional stock splits change the number of outstanding shares. On Solana, Backed uses SPL Token-2022
-              dynamic multipliers so token balances stay invariant on-chain while your tradeable equity automatically scales.
+              Traditional stock splits change the number of outstanding shares. On Solana, Backed uses
+              dynamic share multipliers so token balances stay secure on-chain while your tradeable equity automatically scales.
             </p>
           </div>
         </header>
@@ -65,7 +65,7 @@ export default function MultiplierGuidePage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--os-muted)" }}>
-                Raw Token-2022 Balance
+                Base Token Balance
               </label>
               <input
                 type="number"
@@ -193,7 +193,7 @@ export default function MultiplierGuidePage() {
           <div className="panel" style={{ padding: 24, borderRadius: 20, border: "1px solid var(--os-line, rgba(22, 19, 33, 0.1))" }}>
             <h3 style={{ fontSize: 18, marginBottom: 8 }}>1. No Taxable Events</h3>
             <p style={{ fontSize: 13, color: "var(--os-muted)", lineHeight: 1.5 }}>
-              In traditional wrapped token protocols, stock splits require burning old tokens and minting new ones, which can trigger taxable disposal events. With Token-2022 dynamic multipliers, the token mint remains identical while the share multiplier scales cleanly.
+              In traditional wrapped token protocols, stock splits require burning old tokens and minting new ones, which can trigger taxable disposal events. With dynamic share multipliers, the token identity remains identical while the share multiplier scales cleanly.
             </p>
           </div>
 
@@ -205,9 +205,9 @@ export default function MultiplierGuidePage() {
           </div>
 
           <div className="panel" style={{ padding: 24, borderRadius: 20, border: "1px solid var(--os-line, rgba(22, 19, 33, 0.1))" }}>
-            <h3 style={{ fontSize: 18, marginBottom: 8 }}>3. Pre-Flight Slip Verifications</h3>
+            <h3 style={{ fontSize: 18, marginBottom: 8 }}>3. Trade Slip Verifications</h3>
             <p style={{ fontSize: 13, color: "var(--os-muted)", lineHeight: 1.5 }}>
-              Whenever you place an order on OpenStock, our pre-flight safety slip recalculates the exact raw units and effective multiplier immediately before requesting your wallet signature to prevent front-running or stale multipliers.
+              Whenever you place an order on OpenStock, our trade summary recalculates the exact units and effective multiplier immediately before requesting your wallet signature to prevent front-running or stale multipliers.
             </p>
           </div>
         </div>

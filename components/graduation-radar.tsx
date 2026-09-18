@@ -35,11 +35,11 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
           <div className="graduation-radar-header-left">
             <div className="graduation-radar-title-row">
               <span className="radar-pulse-core" aria-hidden="true" />
-              <h2 className="graduation-radar-title">Bonding Curves Near 100% Migration</h2>
-              <span className="graduation-radar-chip">Meteora DLMM Queue</span>
+              <h2 className="graduation-radar-title">Tokens Approaching Full Pool</h2>
+              <span className="graduation-radar-chip">Meteora Full Pool Target</span>
             </div>
             <p className="graduation-radar-subtitle">
-              Live curve capacity tracking. Pairs automatically seed concentrated Meteora DLMM pools on Solana upon reaching 100%.
+              Live curve progress tracking. Tokens automatically move to a full Meteora trading pool on Solana once filled.
             </p>
           </div>
           <div className="graduation-radar-header-right">
@@ -96,14 +96,14 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                   </div>
 
                   <span className={`radar-status-tag ${isGraduated ? "is-graduated" : "is-filling"}`}>
-                    {isGraduated ? "✓ Graduated" : `${progress.toFixed(1)}%`}
+                    {isGraduated ? "✓ Full Pool" : `${progress.toFixed(1)}%`}
                   </span>
                 </div>
 
                 {/* Progress Visualizer */}
                 <div className="radar-progress-container">
                   <div className="radar-progress-labels">
-                    <span className="radar-progress-title">Migration Capacity</span>
+                    <span className="radar-progress-title">Curve Progress</span>
                     <strong className="radar-progress-percent">{progress.toFixed(1)}%</strong>
                   </div>
                   <div className="radar-progress-track">
@@ -115,7 +115,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                   <div className="radar-progress-sub">
                     <span className="radar-target-label">Target: $69,000 Pool</span>
                     {isGraduated ? (
-                      <span className="radar-sub-success">Active on DLMM</span>
+                      <span className="radar-sub-success">Live in Full Pool</span>
                     ) : (
                       <span className="radar-sub-needed">${remainingUsd.toLocaleString()} USD needed</span>
                     )}
@@ -174,9 +174,9 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                     type="button"
                     className="radar-btn-details"
                     onClick={() => onInspectMigration(item)}
-                    title="View bonding curve migration mechanics"
+                    title="View full pool progress"
                   >
-                    Migration Details
+                    Pool Details
                   </button>
                 </div>
               </article>

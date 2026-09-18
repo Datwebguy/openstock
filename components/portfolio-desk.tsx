@@ -490,7 +490,7 @@ export function PortfolioDesk() {
                 <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--os-foreground)" }}>No Tokenized Stock Assets</h3>
                 <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto 20px", fontSize: 13, lineHeight: 1.6 }}>
                   {address
-                    ? "No SPL Token-2022 US equity tokens ($NVDAx, $TSLAx, $AAPLx, etc.) were found in this wallet."
+                    ? "No tokenized stock assets ($NVDAx, $TSLAx, $AAPLx, etc.) were found in this wallet."
                     : "Connect your wallet to inspect your on-chain synthetic stock portfolio."}
                 </p>
                 <Link href="/app/community" className="button button--light" style={{ padding: "10px 24px", fontSize: 13 }}>

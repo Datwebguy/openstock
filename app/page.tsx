@@ -28,7 +28,7 @@ const questions = [
   ],
   [
     "Is an xStock the same as a company share?",
-    "xStocks are Token-2022 assets backed 1:1 by underlying shares with on-chain oracle verification.",
+    "xStocks are tokenized equities backed 1:1 by underlying shares with on-chain oracle verification.",
   ],
   [
     "Why can reference prices differ from pool quotes?",
@@ -173,7 +173,7 @@ export default function HomePage() {
                 </span>
               </span>
             </h2>
-            <p>24/7 liquid tokenized equities backed 1:1 with Token-2022 accounting.</p>
+            <p>24/7 liquid tokenized equities backed 1:1 with transparent share reserves.</p>
             <Link className="os-text-link" href="/app">
               Explore 25 tokenized stocks <span aria-hidden="true">→</span>
             </Link>
@@ -339,7 +339,7 @@ export default function HomePage() {
                 </div>
                 <span className="os-arch-card__badge os-badge-green">1:1 Backed</span>
               </div>
-              <h3>Token-2022 Equities</h3>
+              <h3>Tokenized Equities</h3>
               <p>25 curated blue-chip stocks backed by physical custodian shares.</p>
               <div className="os-arch-card__meta">
                 <span>Depository</span>
@@ -504,7 +504,7 @@ export default function HomePage() {
                 ↶
               </span>
               <h3>Receipts & Audit Trail</h3>
-              <p>Cryptographic receipts retaining display shares and Token-2022 raw amounts.</p>
+              <p>Cryptographic receipts retaining display shares and verifiable settlement amounts.</p>
               <div className="os-widget-preview">
                 <div className="os-receipt-chip">
                   <span>Receipt #4A81 · Solana Mainnet</span>

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!isBadgeSupported) {
       return NextResponse.json(
         {
-          error: `Quote token ${quoteMint} is not badged on Meteora DBC. Token-2022 assets require an on-chain token_badge created by Meteora. Please switch to SOL or USDC permissionless pairing.`,
+          error: "This stock can’t be the pair yet. Use SOL or USDC instead.",
           unbadged: true,
         },
         { status: 400 }
