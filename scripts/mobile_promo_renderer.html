@@ -55,34 +55,48 @@
       pointer-events: none;
     }
 
-    /* Big Kinetic Typography Layer (Behind Phones) */
+    /* Primary Kinetic Typography Layer (Top Headline Tier) */
     #kinetic-bg-text {
       position: absolute;
-      top: 50%;
+      top: 75px;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       width: 100%;
+      max-width: 1600px;
+      padding: 0 40px;
+      box-sizing: border-box;
       text-align: center;
-      font-size: 150px;
-      font-weight: 900;
-      letter-spacing: -0.05em;
-      line-height: 0.95;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.95);
-      z-index: 10;
+      z-index: 30;
       pointer-events: none;
       opacity: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
-    .outline-text {
-      color: transparent;
-      -webkit-text-stroke: 3px rgba(255, 255, 255, 0.4);
+    #text-line-1, #text-line-2 {
+      font-size: 50px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+      white-space: nowrap;
+      text-align: center;
     }
 
-    .solana-grad-text {
+    #text-line-1 {
+      color: #ffffff;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+    }
+
+    #text-line-2 {
+      color: #03e1ff;
       background: linear-gradient(135deg, #03e1ff 0%, #14f195 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 4px 15px rgba(20, 241, 149, 0.35));
     }
 
     /* 3D Master Scene Stage */
@@ -98,12 +112,12 @@
     /* Realistic iPhone 15 Pro Chassis */
     .iphone-device {
       position: absolute;
-      width: 390px;
-      height: 800px;
-      top: 50%;
+      width: 366px;
+      height: 614px;
+      top: 560px;
       left: 50%;
-      margin-top: -400px;
-      margin-left: -195px;
+      margin-top: -307px;
+      margin-left: -183px;
       transform-style: preserve-3d;
       will-change: transform, opacity;
     }
@@ -111,48 +125,40 @@
     .iphone-frame {
       position: absolute;
       inset: 0;
-      border-radius: 54px;
-      background: #1e1b29;
-      border: 5px solid #4a455a;
+      border-radius: 46px;
+      background: #181524;
+      border: 4px solid #3c364e;
       box-shadow: 
-        inset 0 0 4px 2px rgba(255, 255, 255, 0.25),
-        0 25px 70px rgba(0, 0, 0, 0.7),
-        0 50px 140px rgba(153, 69, 255, 0.22);
+        inset 0 0 4px 2px rgba(255, 255, 255, 0.2),
+        0 25px 60px rgba(0, 0, 0, 0.75),
+        0 40px 120px rgba(153, 69, 255, 0.25);
       overflow: hidden;
-      padding: 12px;
+      padding: 10px;
+      box-sizing: border-box;
     }
 
     .iphone-screen {
       position: relative;
       width: 100%;
       height: 100%;
-      border-radius: 42px;
+      border-radius: 36px;
       background: #0d0c14;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .iphone-screen img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
     }
 
     /* Dynamic Island Pill */
     .iphone-island {
-      position: absolute;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 105px;
-      height: 28px;
-      border-radius: 20px;
-      background: #000000;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 10px;
+      display: none;
     }
 
     .island-lens {
@@ -383,13 +389,12 @@
     // Deterministic seek function
     window.seekTime = function(t) {
       // Reset default dimensions
-      pCenter.style.width = '390px';
-      pCenter.style.height = '800px';
-      pCenter.style.marginTop = '-400px';
-      pCenter.style.marginLeft = '-195px';
+      pCenter.style.width = '366px';
+      pCenter.style.height = '614px';
+      pCenter.style.marginTop = '-307px';
+      pCenter.style.marginLeft = '-183px';
+      pCenter.style.top = '560px';
       tagStrip.style.display = 'flex';
-      const islandCenter = pCenter.querySelector('.iphone-island');
-      if (islandCenter) islandCenter.style.opacity = '1';
 
       // SCENE 1: 0.0s - 4.8s (Hero Single Phone Entrance + Kinetic Typography)
       if (t < 4.8) {
@@ -404,17 +409,17 @@
         text1.textContent = 'WALL STREET SLEEPS';
         text1.className = '';
         text2.textContent = "SOLANA DOESN'T";
-        text2.className = 'outline-text';
+        text2.className = '';
 
         imgCenter.src = '../video_assets/mobile_screens/01_home_hero.png';
 
         const p = clamp(t / 4.8, 0, 1);
-        const sc = 0.85 + easeInOutCubic(p) * 0.25;
-        const ry = (1 - easeInOutCubic(p)) * -18;
-        const rz = (1 - easeInOutCubic(p)) * 6;
+        const sc = 0.94 + easeInOutCubic(p) * 0.16;
+        const ry = (1 - easeInOutCubic(p)) * -14;
+        const rz = (1 - easeInOutCubic(p)) * 4;
 
         pCenter.style.opacity = '1';
-        pCenter.style.transform = `scale(${sc}) rotateY(${ry}deg) rotateZ(${rz}deg) translateZ(80px)`;
+        pCenter.style.transform = `scale(${sc}) rotateY(${ry}deg) rotateZ(${rz}deg) translateZ(60px)`;
         tagText.textContent = '24/7 TOKENIZED EQUITIES ON SOLANA';
         return;
       }
@@ -422,10 +427,12 @@
       // SCENE 2: 4.8s - 9.8s (Trio Isometric Cascade - Market Discovery & NVDAx)
       if (t < 9.8) {
         outro.style.display = 'none';
-        stripes.style.opacity = '1';
-        kineticText.style.opacity = '0.35';
-        text1.textContent = '25 BLUE-CHIPS';
+        stripes.style.opacity = '0.75';
+        kineticText.style.opacity = '1';
+        text1.textContent = '25 CURATED BLUE-CHIPS';
+        text1.className = '';
         text2.textContent = '1:1 PHYSICALLY BACKED';
+        text2.className = '';
 
         imgCenter.src = '../video_assets/mobile_screens/01_home_hero.png';
         imgLeftMid.src = '../video_assets/mobile_screens/02_market_discovery.png';
@@ -438,9 +445,9 @@
         pCenter.style.opacity = '1';
 
         // Trio layout matching reference video
-        pCenter.style.transform = `translateX(0px) scale(1.05) translateZ(100px)`;
-        pLeftMid.style.transform = `translateX(-420px) translateY(20px) rotateY(18deg) rotateX(6deg) scale(0.92) translateZ(-40px)`;
-        pRightMid.style.transform = `translateX(420px) translateY(20px) rotateY(-18deg) rotateX(6deg) scale(0.92) translateZ(-40px)`;
+        pCenter.style.transform = `translateX(0px) scale(1.02) translateZ(80px)`;
+        pLeftMid.style.transform = `translateX(-390px) translateY(10px) rotateY(16deg) rotateX(4deg) scale(0.92) translateZ(-40px)`;
+        pRightMid.style.transform = `translateX(390px) translateY(10px) rotateY(-16deg) rotateX(4deg) scale(0.92) translateZ(-40px)`;
         tagText.textContent = 'INSTITUTIONAL RESERVES · PYTH HERMES BENCHMARK';
         return;
       }
@@ -449,9 +456,11 @@
       if (t < 14.5) {
         outro.style.display = 'none';
         stripes.style.opacity = '0.4';
-        kineticText.style.opacity = '0.7';
+        kineticText.style.opacity = '1';
         text1.textContent = 'NVDAx · AAPLx · TSLAx';
-        text2.textContent = 'LIVE DEX DEPTH';
+        text1.className = '';
+        text2.textContent = 'LIVE ON-CHAIN DEPTH';
+        text2.className = '';
 
         imgCenter.src = '../video_assets/mobile_screens/03_asset_nvdax.png';
 
@@ -463,9 +472,9 @@
         pCenter.style.opacity = '1';
 
         // Camera macro punch into center phone showing chart & oracle price
-        const zoom = 1.05 + easeInOutCubic(p) * 0.45;
-        const tiltX = 8 * Math.sin(p * Math.PI);
-        pCenter.style.transform = `scale(${zoom}) rotateX(${tiltX}deg) translateY(-20px) translateZ(200px)`;
+        const zoom = 1.02 + easeInOutCubic(p) * 0.28;
+        const tiltX = 6 * Math.sin(p * Math.PI);
+        pCenter.style.transform = `scale(${zoom}) rotateX(${tiltX}deg) translateY(-10px) translateZ(100px)`;
         tagText.textContent = 'PYTH ORACLES & METEORA DLMM LIQUIDITY';
         return;
       }
@@ -474,9 +483,11 @@
       if (t < 19.2) {
         outro.style.display = 'none';
         stripes.style.opacity = '0.6';
-        kineticText.style.opacity = '0.6';
-        text1.textContent = 'LAUNCH TOKEN';
+        kineticText.style.opacity = '1';
+        text1.textContent = 'LAUNCH COMMUNITY TOKENS';
+        text1.className = '';
         text2.textContent = 'PAIR ANY STOCK';
+        text2.className = '';
 
         imgCenter.src = '../video_assets/mobile_screens/04_launch_studio.png';
         imgLeftMid.src = '../video_assets/mobile_screens/05_community_radar.png';
@@ -487,8 +498,8 @@
         pRightMid.style.opacity = '0';
         pCenter.style.opacity = '1';
 
-        pCenter.style.transform = `translateX(180px) scale(1.02) rotateY(-8deg)`;
-        pLeftMid.style.transform = `translateX(-260px) scale(0.95) rotateY(12deg) translateZ(-60px)`;
+        pCenter.style.transform = `translateX(180px) scale(1.0) rotateY(-8deg) translateZ(40px)`;
+        pLeftMid.style.transform = `translateX(-220px) scale(0.94) rotateY(10deg) translateZ(-40px)`;
         tagText.textContent = 'PAIR WITH NVDAx · METEORA DYNAMIC BONDING CURVES';
         return;
       }
@@ -496,10 +507,12 @@
       // SCENE 5: 19.2s - 24.5s (5-Phone Fan Layout: Full Pool Migration)
       if (t < 24.5) {
         outro.style.display = 'none';
-        stripes.style.opacity = '1';
-        kineticText.style.opacity = '0.4';
-        text1.textContent = 'AUTONOMOUS POOL';
-        text2.textContent = 'PERMANENT LP LOCK';
+        stripes.style.opacity = '0.8';
+        kineticText.style.opacity = '1';
+        text1.textContent = 'AUTONOMOUS POOL MIGRATION';
+        text1.className = '';
+        text2.textContent = 'METEORA DAMM v2 LOCK';
+        text2.className = '';
 
         imgFarLeft.src = '../video_assets/mobile_screens/04_launch_studio.png';
         imgLeftMid.src = '../video_assets/mobile_screens/02_market_discovery.png';
@@ -514,11 +527,11 @@
         pFarRight.style.opacity = '1';
 
         // 5-phone fan expansion
-        pFarLeft.style.transform = `translateX(-640px) rotateZ(-12deg) scale(0.82) translateZ(-120px)`;
-        pLeftMid.style.transform = `translateX(-320px) rotateZ(-6deg) scale(0.92) translateZ(-40px)`;
-        pCenter.style.transform = `translateX(0px) rotateZ(0deg) scale(1.08) translateZ(120px)`;
-        pRightMid.style.transform = `translateX(320px) rotateZ(6deg) scale(0.92) translateZ(-40px)`;
-        pFarRight.style.transform = `translateX(640px) rotateZ(12deg) scale(0.82) translateZ(-120px)`;
+        pFarLeft.style.transform = `translateX(-540px) rotateZ(-8deg) scale(0.82) translateZ(-80px)`;
+        pLeftMid.style.transform = `translateX(-270px) rotateZ(-4deg) scale(0.92) translateZ(-30px)`;
+        pCenter.style.transform = `translateX(0px) rotateZ(0deg) scale(1.04) translateZ(80px)`;
+        pRightMid.style.transform = `translateX(270px) rotateZ(4deg) scale(0.92) translateZ(-30px)`;
+        pFarRight.style.transform = `translateX(540px) rotateZ(8deg) scale(0.82) translateZ(-80px)`;
 
         tagText.textContent = 'METEORA DAMM v2 FULL POOL · ZERO RUG RISK';
         return;
@@ -534,20 +547,22 @@
         pRightMid.style.opacity = '0';
         pCenter.style.opacity = '1';
 
-        kineticText.style.opacity = '0.7';
+        kineticText.style.opacity = '1';
         text1.textContent = 'AUTOMATE YOUR EDGE';
-        text2.textContent = 'LIMIT · DCA · OCO';
+        text1.className = '';
+        text2.textContent = 'LIMIT · DCA · VAULTS';
+        text2.className = '';
 
-        if (islandCenter) islandCenter.style.opacity = '0';
-        pCenter.style.width = '880px';
-        pCenter.style.height = '460px';
-        pCenter.style.marginTop = '-230px';
-        pCenter.style.marginLeft = '-440px';
+        pCenter.style.top = '550px';
+        pCenter.style.width = '940px';
+        pCenter.style.height = '540px';
+        pCenter.style.marginTop = '-270px';
+        pCenter.style.marginLeft = '-470px';
         imgCenter.src = '../video_assets/desktop_screens/desktop_04_asset_nvda.png';
 
         const p = clamp((t - 24.5) / 4.0, 0, 1);
-        const sc = 0.95 + easeInOutCubic(p) * 0.15;
-        pCenter.style.transform = `scale(${sc}) translateZ(140px)`;
+        const sc = 0.95 + easeInOutCubic(p) * 0.12;
+        pCenter.style.transform = `scale(${sc}) translateZ(80px)`;
         tagText.textContent = 'NON-CUSTODIAL VAULTS & LIMIT ORDERS';
         return;
       }
