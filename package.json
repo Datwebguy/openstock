@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.12",
+    "@privy-io/react-auth": "^3.44.0",
     "@solana/web3.js": "^1.99.0",
     "bs58": "^6.0.0",
     "next": "^15.5.0",

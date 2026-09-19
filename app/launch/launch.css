@@ -2129,3 +2129,218 @@ html[data-theme="dark"] .launch-curve-meta {
   font-family: var(--font-mono, monospace);
 }
 
+
+/* ============================================================
+   Step 04: Deployer Initial Buy (Dev Buy)
+   ============================================================ */
+
+.launch-devbuy-container {
+  background: var(--card, #fff);
+  border: 1px solid var(--os-border, #e5e5eb);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 16px;
+}
+
+html[data-theme="dark"] .launch-devbuy-container {
+  background: rgba(15, 14, 22, 0.7);
+  border-color: rgba(153, 69, 255, 0.18);
+}
+
+.launch-devbuy-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.launch-devbuy-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 3px;
+}
+
+.launch-devbuy-header p {
+  font-size: 12px;
+  color: var(--muted, #888);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.launch-devbuy-antilabel {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(20, 241, 149, 0.1);
+  border: 1px solid rgba(20, 241, 149, 0.3);
+  color: #14f195;
+  white-space: nowrap;
+}
+
+/* Preset percentage buttons */
+.launch-devbuy-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.launch-devbuy-preset-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--os-border, #e5e5eb);
+  background: var(--surface, #f9f9fb);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text, #1a1a2e);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+html[data-theme="dark"] .launch-devbuy-preset-btn {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+  color: #e2e2f0;
+}
+
+.launch-devbuy-preset-btn:hover {
+  border-color: #9945ff;
+  color: #9945ff;
+}
+
+.launch-devbuy-preset-btn.is-active {
+  background: rgba(153, 69, 255, 0.14);
+  border-color: #9945ff;
+  color: #9945ff;
+}
+
+/* Input grid */
+.launch-devbuy-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.launch-devbuy-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.launch-devbuy-input-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted, #888);
+}
+
+.launch-input-with-suffix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--os-border, #e5e5eb);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface, #f9f9fb);
+  transition: border-color 0.15s;
+}
+
+html[data-theme="dark"] .launch-input-with-suffix {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.launch-input-with-suffix:focus-within {
+  border-color: #9945ff;
+}
+
+.launch-devbuy-sol-input,
+.launch-devbuy-pct-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1a1a2e);
+  -moz-appearance: textfield;
+  width: 0;
+}
+
+.launch-devbuy-sol-input::-webkit-outer-spin-button,
+.launch-devbuy-sol-input::-webkit-inner-spin-button,
+.launch-devbuy-pct-input::-webkit-outer-spin-button,
+.launch-devbuy-pct-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.launch-devbuy-pct-input {
+  color: var(--muted, #888);
+}
+
+html[data-theme="dark"] .launch-devbuy-sol-input,
+html[data-theme="dark"] .launch-devbuy-pct-input {
+  color: #e2e2f0;
+}
+
+.launch-input-suffix {
+  padding: 9px 12px 9px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+/* Summary card */
+.launch-devbuy-summary-card {
+  background: linear-gradient(135deg, rgba(20, 241, 149, 0.06), rgba(153, 69, 255, 0.08));
+  border: 1px solid rgba(20, 241, 149, 0.2);
+  border-radius: 12px;
+  padding: 14px 16px 10px;
+}
+
+.launch-devbuy-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 4px 0;
+}
+
+.launch-devbuy-summary-row span {
+  color: var(--muted, #888);
+}
+
+.launch-devbuy-summary-row strong {
+  font-weight: 700;
+  color: var(--text, #1a1a2e);
+}
+
+html[data-theme="dark"] .launch-devbuy-summary-row strong {
+  color: #e2e2f0;
+}
+
+.launch-devbuy-note {
+  font-size: 11px;
+  color: var(--muted, #aaa);
+  margin: 8px 0 0;
+  line-height: 1.45;
+  border-top: 1px solid rgba(20, 241, 149, 0.12);
+  padding-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .launch-devbuy-inputs-grid {
+    grid-template-columns: 1fr;
+  }
+}

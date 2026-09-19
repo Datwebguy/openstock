@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
       txSignature,
       preflightToken,
       supply,
+      devBuySol,
     } = body;
 
     if (!txSignature || typeof txSignature !== "string") {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
+    const initialBuySol = devBuySol && Number.isFinite(Number(devBuySol)) && Number(devBuySol) >= 0 ? Number(devBuySol) : 0;
 
     const launchResult = await executeClawPumpLaunch({
       name,
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
       txSignature,
       preflightToken,
       supply: tokenSupply,
+      devBuySol: initialBuySol,
     });
 
     // Record the newly created community stock-pair token in the live registry

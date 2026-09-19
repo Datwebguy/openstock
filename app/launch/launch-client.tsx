@@ -123,6 +123,10 @@ export function LaunchClient() {
   const [customSupplyInput, setCustomSupplyInput] = useState("1,000,000,000");
   const [creatorFeeBps, setCreatorFeeBps] = useState(150); // 1.5% default (100–300 bps)
 
+  // Deployer Initial Buy (Dev Buy / Pre-mine) State
+  const [devBuyPercent, setDevBuyPercent] = useState<number>(0); // 0% default
+  const [devBuySolInput, setDevBuySolInput] = useState<string>("0");
+
   // Hardened Priority Fee & Preflight Simulation State
   const [priorityTier, setPriorityTier] = useState<PriorityFeeTier>("standard");
   const [simulatedUnits, setSimulatedUnits] = useState<number | null>(null);
@@ -279,6 +283,48 @@ export function LaunchClient() {
     }
   }
 
+  // Deployer Initial Buy (Dev Buy / Pre-mine) Calculation Handlers
+  // Virtual bonding curve formula: 30 virtual SOL reserve
+  const estimateTokensForSol = (sol: number, supply: number = tokenSupply) => {
+    if (sol <= 0) return 0;
+    const virtualSol = 30;
+    const virtualTokens = supply * 1.073;
+    const tokens = (virtualTokens * sol) / (virtualSol + sol);
+    return Math.min(tokens, supply * 0.5);
+  };
+
+  const estimateSolForPercent = (pct: number, supply: number = tokenSupply) => {
+    if (pct <= 0) return 0;
+    const targetTokens = (pct / 100) * supply;
+    const virtualSol = 30;
+    const virtualTokens = supply * 1.073;
+    if (targetTokens >= virtualTokens) return 30;
+    const sol = (virtualSol * targetTokens) / (virtualTokens - targetTokens);
+    return Math.max(0, Number(sol.toFixed(3)));
+  };
+
+  function handleDevBuyPercentSelect(pct: number) {
+    setDevBuyPercent(pct);
+    if (pct === 0) {
+      setDevBuySolInput("0");
+    } else {
+      const estimatedSol = estimateSolForPercent(pct);
+      setDevBuySolInput(estimatedSol.toString());
+    }
+  }
+
+  function handleDevBuySolChange(val: string) {
+    setDevBuySolInput(val);
+    const numeric = parseFloat(val);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      setDevBuyPercent(0);
+    } else {
+      const tokens = estimateTokensForSol(numeric);
+      const calculatedPct = Math.min(50, (tokens / tokenSupply) * 100);
+      setDevBuyPercent(Number(calculatedPct.toFixed(2)));
+    }
+  }
+
   // Preset avatar selector
   function handlePresetSelect(url: string) {
     setImageUrl(url);
@@ -417,6 +463,7 @@ export function LaunchClient() {
             pumpCreatorFeeBps: creatorFeeBps,
             walletAddress: address,
             supply: tokenSupply,
+            devBuySol: Number(devBuySolInput) > 0 ? Number(devBuySolInput) : 0,
           }),
         });
 
@@ -512,6 +559,7 @@ export function LaunchClient() {
             txSignature,
             preflightToken,
             supply: tokenSupply,
+            devBuySol: Number(devBuySolInput) > 0 ? Number(devBuySolInput) : 0,
           }),
         });
 
@@ -1246,6 +1294,93 @@ export function LaunchClient() {
               </div>
             </div>
 
+            {/* Step 04: Deployer Initial Buy (Dev Buy) */}
+            {selectedVenue === "pumpfun" && (
+              <section className="launch-devbuy-container" aria-label="Deployer Initial Buy">
+                <div className="launch-devbuy-header">
+                  <div className="launch-step-pill">04</div>
+                  <div>
+                    <h2>Deployer Initial Buy</h2>
+                    <p>Buy a percentage of your token in the same genesis transaction — before anyone else can snipe.</p>
+                  </div>
+                  {devBuyPercent > 0 && (
+                    <span className="launch-devbuy-antilabel">
+                      🛡️ Sniper-proof
+                    </span>
+                  )}
+                </div>
+
+                {/* Percent Preset Buttons */}
+                <div className="launch-devbuy-presets">
+                  {[0, 1, 2, 5, 10, 15, 20].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      className={`launch-devbuy-preset-btn ${devBuyPercent === pct ? "is-active" : ""}`}
+                      onClick={() => handleDevBuyPercentSelect(pct)}
+                    >
+                      {pct === 0 ? "Skip" : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* SOL Input + Live Readout */}
+                <div className="launch-devbuy-inputs-grid">
+                  <div className="launch-devbuy-input-wrap">
+                    <label htmlFor="dev-buy-sol" className="launch-devbuy-input-label">SOL Amount</label>
+                    <div className="launch-input-with-suffix">
+                      <input
+                        id="dev-buy-sol"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={devBuySolInput === "0" ? "" : devBuySolInput}
+                        onChange={(e) => handleDevBuySolChange(e.target.value)}
+                        className="launch-devbuy-sol-input"
+                      />
+                      <span className="launch-input-suffix">SOL</span>
+                    </div>
+                  </div>
+
+                  <div className="launch-devbuy-input-wrap">
+                    <label className="launch-devbuy-input-label">Supply %</label>
+                    <div className="launch-input-with-suffix">
+                      <input
+                        type="number"
+                        readOnly
+                        value={devBuyPercent > 0 ? devBuyPercent.toFixed(2) : ""}
+                        placeholder="0.00"
+                        className="launch-devbuy-pct-input"
+                      />
+                      <span className="launch-input-suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Card */}
+                {devBuyPercent > 0 && (
+                  <div className="launch-devbuy-summary-card">
+                    <div className="launch-devbuy-summary-row">
+                      <span>You receive</span>
+                      <strong>≈ {new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(estimateTokensForSol(Number(devBuySolInput)))} {tokenSymbol || "TOKEN"}</strong>
+                    </div>
+                    <div className="launch-devbuy-summary-row">
+                      <span>Supply share</span>
+                      <strong>{devBuyPercent.toFixed(2)}% of {new Intl.NumberFormat("en-US", { notation: "compact" }).format(tokenSupply)}</strong>
+                    </div>
+                    <div className="launch-devbuy-summary-row">
+                      <span>Extra SOL cost</span>
+                      <strong>+{Number(devBuySolInput).toFixed(3)} SOL</strong>
+                    </div>
+                    <p className="launch-devbuy-note">
+                      Atomic genesis buy — tokens sent directly to your wallet in the same block as token creation.
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Launch Execution Console (Naturally placed at the bottom of the multi-step form) */}
             <div className="launch-action-bar">
               {/* Wallet Bar */}
@@ -1332,7 +1467,12 @@ export function LaunchClient() {
               </button>
 
               <p className="launch-checkout-disclaimer">
-                Estimated network fee: ~0.0075 SOL · Wallet signs and pays directly on OpenStock
+                Estimated cost: ~0.02 SOL platform fee
+                {devBuyPercent > 0 && selectedVenue === "pumpfun" ? (
+                  <> + {Number(devBuySolInput).toFixed(3)} SOL initial buy = <strong>{(0.02 + Number(devBuySolInput)).toFixed(3)} SOL total</strong></>
+                ) : (
+                  <> · Wallet signs and pays directly on OpenStock</>
+                )}
               </p>
 
               {/* Success Receipt Card */}
@@ -1472,6 +1612,14 @@ export function LaunchClient() {
                   <span>Settlement</span>
                   <strong>Instant on Solana</strong>
                 </div>
+                {selectedVenue === "pumpfun" && devBuyPercent > 0 && (
+                  <div className="launch-holo-spec-row" style={{ borderTop: "1px solid rgba(153,69,255,0.25)", marginTop: 4, paddingTop: 8 }}>
+                    <span>Deployer Buy</span>
+                    <strong className="launch-holo-highlight" style={{ color: "var(--solana-green, #14f195)" }}>
+                      {devBuyPercent.toFixed(1)}% · {Number(devBuySolInput).toFixed(3)} SOL
+                    </strong>
+                  </div>
+                )}
               </div>
 
               <div className="launch-holo-footer-note">

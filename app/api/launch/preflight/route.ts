@@ -4,7 +4,7 @@ import { requestPreflightQuote } from "@/lib/clawpump";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, symbol, description, imageUrl, pumpQuoteMint, pumpCreatorFeeBps, walletAddress, supply } = body;
+    const { name, symbol, description, imageUrl, pumpQuoteMint, pumpCreatorFeeBps, walletAddress, supply, devBuySol } = body;
 
     // Validation
     if (!name || typeof name !== "string" || name.trim().length < 1 || name.length > 32) {
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
+    const initialBuySol = devBuySol && Number.isFinite(Number(devBuySol)) && Number(devBuySol) >= 0 ? Number(devBuySol) : 0;
 
     const preflight = await requestPreflightQuote({
       name: name.trim(),
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
       pumpCreatorFeeBps: feeBps,
       walletAddress,
       supply: tokenSupply,
+      devBuySol: initialBuySol,
     });
 
     return NextResponse.json(preflight);

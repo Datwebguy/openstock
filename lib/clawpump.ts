@@ -168,6 +168,7 @@ export type PreflightPayload = {
   pumpCreatorFeeBps: number;
   walletAddress: string;
   supply?: number;
+  devBuySol?: number;
 };
 
 export type PreflightResult = {
@@ -218,7 +219,7 @@ export async function requestPreflightQuote(payload: PreflightPayload): Promise<
       pumpCreatorFeeBps: payload.pumpCreatorFeeBps,
       walletAddress: payload.walletAddress,
       supply: payload.supply ?? 1000000000,
-      devBuySol: 0,
+      devBuySol: Number(payload.devBuySol || 0),
     }),
     signal: AbortSignal.timeout(120000), // ClawPump recommends at least 120s timeout
   });
@@ -284,7 +285,8 @@ export async function executeClawPumpLaunch(payload: ConfirmLaunchPayload): Prom
       pumpQuoteMint: payload.pumpQuoteMint,
       pumpCreatorFeeBps: payload.pumpCreatorFeeBps,
       walletAddress: payload.walletAddress,
-      devBuySol: 0,
+      supply: payload.supply ?? 1000000000,
+      devBuySol: Number(payload.devBuySol || 0),
       txSignature: payload.txSignature,
       preflightToken: payload.preflightToken,
     }),
