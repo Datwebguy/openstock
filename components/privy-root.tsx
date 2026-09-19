@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmu7rgvjs00va0ekwi16117xy";
@@ -44,7 +44,13 @@ function PrivyBridge() {
 }
 
 export function OptionalPrivyProvider({ children }: { children: ReactNode }) {
-  if (!privyConfigured()) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !privyConfigured()) {
     return <>{children}</>;
   }
 
