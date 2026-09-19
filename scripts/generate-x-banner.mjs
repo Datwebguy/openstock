@@ -219,7 +219,7 @@ async function generateBanner() {
           <div class="meta-row">
             <div class="meta-item">TOKENIZED EQUITIES · 24/7</div>
             <div class="meta-item center">NEW YORK · WALL STREET</div>
-            <div class="meta-item right">OPENSTOCK.APP</div>
+            <div class="meta-item right">JOINOPENSTOCK.XYZ</div>
           </div>
         </div>
       </body>

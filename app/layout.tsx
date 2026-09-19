@@ -31,15 +31,59 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", 
 const body = Manrope({ subsets: ["latin"], variable: "--font-body", weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
-  title: "OpenStock — Tokenized-stock market context",
-  description: "A clear market context layer for tokenized stocks on Solana.",
+  metadataBase: new URL("https://joinopenstock.xyz"),
+  title: "OpenStock — Tokenized Stock Market Context & Launchpad",
+  description: "Trade tokenized stocks on Solana and launch community token pairs with automated creator royalties.",
+  keywords: ["OpenStock", "joinopenstock.xyz", "Solana", "xStocks", "Tokenized Stocks", "ClawPump", "Meteora DBC", "DeFi"],
+  authors: [{ name: "OpenStock Team", url: "https://joinopenstock.xyz" }],
+  creator: "OpenStock",
+  publisher: "OpenStock",
+  alternates: {
+    canonical: "https://joinopenstock.xyz",
+  },
+  openGraph: {
+    title: "OpenStock — Tokenized Stock Market Context & Launchpad",
+    description: "Trade tokenized stocks on Solana and launch community token pairs with automated creator royalties.",
+    url: "https://joinopenstock.xyz",
+    siteName: "OpenStock",
+    images: [
+      {
+        url: "/logo/openstock-banner-nyse-brandmark.png",
+        width: 1200,
+        height: 630,
+        alt: "OpenStock — Tokenized Stock Market Context & Launchpad",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OpenStock — Tokenized Stock Market Context & Launchpad",
+    description: "Trade tokenized stocks on Solana and launch community token pairs with automated creator royalties.",
+    images: ["/logo/openstock-banner-nyse-brandmark.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" suppressHydrationWarning>
-    <body className={`${display.variable} ${body.variable}`}>
-      <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem("openstock:theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();` }} />
-      <AppProviders>{children}</AppProviders>
-    </body>
-  </html>;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${display.variable} ${body.variable}`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("openstock:theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`,
+          }}
+        />
+        <AppProviders>{children}</AppProviders>
+      </body>
+    </html>
+  );
 }

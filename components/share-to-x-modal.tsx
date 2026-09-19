@@ -28,7 +28,7 @@ export function ShareToXModal({ token, onClose }: ShareToXModalProps) {
     token.symbol
   )}&stock=${encodeURIComponent(token.pairedStockSymbol)}&fee=${feePercent}&venue=${token.venue || "pumpfun"}`;
 
-  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "https://openstock.fi";
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "https://joinopenstock.xyz";
   const shareUrl = `${currentOrigin}/launch?symbol=${token.pairedStockSymbol}`;
 
   const tweetContent = `Just launched $${token.symbol} paired against tokenized ${token.pairedStockSymbol} on @OpenStock_! 🚀

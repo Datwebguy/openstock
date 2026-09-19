@@ -26,7 +26,7 @@ async function run() {
       letterSpacing: "0.14em",
       subLeft: "TOKENIZED EQUITIES · 24/7",
       subCenter: "NEW YORK · WALL STREET",
-      subRight: "OPENSTOCK.APP",
+      subRight: "JOINOPENSTOCK.XYZ",
     },
     {
       id: "openstock-x-banner-nyse-classic",
@@ -40,7 +40,7 @@ async function run() {
       letterSpacing: "0.14em",
       subLeft: "SOLANA MAINNET-BETA",
       subCenter: "NYSE · EQUITIES ON-CHAIN",
-      subRight: "OPENSTOCK.APP",
+      subRight: "JOINOPENSTOCK.XYZ",
     },
     {
       id: "openstock-x-banner-nyse-brandmark",
@@ -54,7 +54,7 @@ async function run() {
       letterSpacing: "0.12em",
       subLeft: "TOKENIZED EQUITIES · 24/7",
       subCenter: "NEW YORK · WALL STREET",
-      subRight: "OPENSTOCK.APP",
+      subRight: "JOINOPENSTOCK.XYZ",
     }
   ];
 
