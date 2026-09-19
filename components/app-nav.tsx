@@ -32,7 +32,8 @@ export function AppNav({ ctaHref = "/app", ctaLabel = "Market", hideCta = false 
   return (
     <nav className="nav workspace-nav" aria-label="OpenStock navigation">
       <Link className="brand" href="/">
-        <span className="brand-mark" aria-hidden="true">◒</span> OpenStock
+        <img src="/logo/openstock-icon-transparent.png" alt="OpenStock" width={24} height={24} className="brand-logo-img" />
+        <span>OpenStock</span>
       </Link>
       <div className="nav-links">
         {primary.map(([href, label]) => (

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="solanaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9945FF" />
+      <stop offset="50%" stop-color="#03E1FF" />
+      <stop offset="100%" stop-color="#14F195" />
+    </linearGradient>
+  </defs>
+  <!-- Core Solana Brand Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#solanaGrad)" />
+  
+  <!-- Stock Ledger Horizontal Bars -->
+  <path d="M136 196h240M136 256h240M136 316h168" fill="none" stroke="#07070D" stroke-width="44" stroke-linecap="round" />
+</svg>

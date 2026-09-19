@@ -32,7 +32,9 @@ export default function WalletPage() {
         <div><h1>Wallet</h1><p className="workspace-description">Non-custodial Solana holdings &amp; activity.</p></div>
       </header>
       <section className="panel settings-panel">
-        <div className="settings-panel__icon" aria-hidden="true">◒</div>
+        <div className="settings-panel__icon" aria-hidden="true">
+          <img src="/logo/openstock-icon-transparent.png" alt="" width={32} height={32} />
+        </div>
         <div className="settings-panel__body">
           <h2>{address ? shortWallet(address) : "Not connected"}</h2>
           <p className="settings-panel__address">

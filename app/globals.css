@@ -27,6 +27,7 @@ button { font: inherit; }
 .nav { position: fixed; z-index: 50; top: 18px; left: 50%; transform: translateX(-50%); width: min(1180px, calc(100% - 32px)); display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 11px 12px 11px 18px; background: var(--nav-bg); border: 1px solid var(--nav-border); border-radius: 999px; box-shadow: 0 20px 60px rgba(24,12,50,.12); backdrop-filter: blur(24px); }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.045em; }
 .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; color: var(--night); background: linear-gradient(135deg,var(--solana-purple),var(--solana-blue),var(--solana-green)); border-radius: 9px 9px 9px 2px; font-size: 16px; }
+.brand-logo-img { width: 26px; height: 26px; object-fit: contain; border-radius: 50%; display: inline-block; vertical-align: middle; flex-shrink: 0; }
 .nav-links { display: flex; align-items: center; gap: 30px; color: #716b7c; font-size: 13px; font-weight: 700; }
 .nav-links a:hover { color: var(--solana-purple); }
 .nav-cta__mobile { display: none; }

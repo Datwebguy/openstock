@@ -50,7 +50,9 @@ export function PortfolioDashboard({ hideConnect = false }: { hideConnect?: bool
 
   return <section className={styles.shell} aria-live="polite">
     {!wallet && hideConnect ? null : !wallet ? <div className={styles.connectCard}>
-      <div className={styles.signalMark}>◒</div>
+      <div className={styles.signalMark}>
+        <img src="/logo/openstock-icon-transparent.png" alt="" width={36} height={36} />
+      </div>
       <div><h2>Connect to read holdings.</h2><p>Use the same wallet across market, automation, and this desk.</p><button className="button button--gradient" type="button" onClick={() => void onConnect()} disabled={connecting}>{connecting ? "Connecting" : "Connect wallet"}</button>{message ? <p className={styles.status}>{message}</p> : null}</div>
     </div> : <>
       <div className={styles.summary}>

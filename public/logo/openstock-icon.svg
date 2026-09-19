@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="solanaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9945FF" />
+      <stop offset="50%" stop-color="#03E1FF" />
+      <stop offset="100%" stop-color="#14F195" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(153, 69, 255, 0.4)" />
+      <stop offset="50%" stop-color="rgba(3, 225, 255, 0.2)" />
+      <stop offset="100%" stop-color="rgba(20, 241, 149, 0.4)" />
+    </linearGradient>
+    <radialGradient id="ambientGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(3, 225, 255, 0.15)" />
+      <stop offset="100%" stop-color="rgba(7, 7, 13, 0)" />
+    </radialGradient>
+  </defs>
+  <!-- Background with subtle corner border -->
+  <rect width="512" height="512" rx="128" fill="#07070D" />
+  <rect x="2" y="2" width="508" height="508" rx="126" fill="none" stroke="url(#borderGrad)" stroke-width="3" />
+  <circle cx="256" cy="256" r="220" fill="url(#ambientGlow)" />
+  
+  <!-- Core Solana Brand Circle -->
+  <circle cx="256" cy="256" r="160" fill="url(#solanaGrad)" />
+  
+  <!-- Stock Ledger Horizontal Bars -->
+  <path d="M176 216h160M176 264h160M176 312h112" fill="none" stroke="#07070D" stroke-width="32" stroke-linecap="round" />
+</svg>

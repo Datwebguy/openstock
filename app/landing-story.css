@@ -262,6 +262,14 @@ html.os-motion-ready [data-reveal]:not(.is-in) {
   color: var(--os-ink);
   text-decoration: none;
 }
+.os-brand-logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
 .os-brand-mark {
   width: 28px;
   height: 28px;

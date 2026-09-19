@@ -64,9 +64,7 @@ export default function HomePage() {
       <nav className="os-site-nav" aria-label="OpenStock navigation">
         <div className="os-shell os-nav-inner">
           <Link className="os-wordmark" href="/" aria-label="OpenStock home">
-            <span className="os-brand-mark" aria-hidden="true">
-              ◒
-            </span>
+            <img src="/logo/openstock-icon-transparent.png" alt="OpenStock" width={28} height={28} className="os-brand-logo-img" />
             <span>OpenStock</span>
           </Link>
           <div className="os-site-links">
@@ -632,9 +630,7 @@ export default function HomePage() {
         <div className="os-shell os-footer-top">
           <div className="os-footer-brand">
             <Link className="os-wordmark" href="/">
-              <span className="os-brand-mark" aria-hidden="true">
-                ◒
-              </span>
+              <img src="/logo/openstock-icon-transparent.png" alt="OpenStock" width={28} height={28} className="os-brand-logo-img" />
               <span>OpenStock</span>
             </Link>
             <p>
