@@ -27,15 +27,15 @@ type EvidenceLike = {
 };
 
 /** Soft caution when pool TVL is below this (USD). */
-const THIN_TVL_USD = 25_000;
+const THIN_TVL_USD = 10_000;
 /** Hard block when oracle vs pool/executable disagree by more than this %. */
 const DISAGREE_HARD_PCT = 5;
 /** Soft warning when disagreement exceeds this %. */
-const DISAGREE_SOFT_PCT = 1.5;
+const DISAGREE_SOFT_PCT = 2.5;
 /** Soft warning when Pyth freshness older than this (seconds). */
-const STALE_ORACLE_SOFT_SEC = 120;
+const STALE_ORACLE_SOFT_SEC = 300;
 /** Soft warning when Jupiter quote older than this (ms). */
-const STALE_QUOTE_SOFT_MS = 45_000;
+const STALE_QUOTE_SOFT_MS = 60_000;
 
 function finite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
