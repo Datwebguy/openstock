@@ -70,3 +70,5 @@ video_assets/
 *.aac
 *.mp3
 *.wav
+
+.env*

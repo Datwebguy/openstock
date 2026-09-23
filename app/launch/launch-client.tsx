@@ -376,10 +376,18 @@ export function LaunchClient() {
     }
   }
 
-  // Filtered list of pairs based on category tabs and search
+  // Filtered list of pairs based on category tabs, search, and venue support
   const visiblePairs = pairs.filter((p) => {
     const matchesCat = matchesCategory(p.symbol, selectedCategory);
     if (!matchesCat) return false;
+    
+    // Filter by venue support
+    if (selectedVenue === "meteora") {
+      // Only show stocks that support Meteora DBC (NVDAx, AAPLx)
+      const meteoraSupportedSymbols = ["NVDAx", "AAPLx"];
+      if (!meteoraSupportedSymbols.includes(p.symbol)) return false;
+    }
+    
     if (!pairFilter.trim()) return true;
     const q = pairFilter.toLowerCase();
     return p.symbol.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
