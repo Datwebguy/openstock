@@ -415,78 +415,7 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
 export async function getCommunityTokens(): Promise<CommunityToken[]> {
   const store = await readStore();
   const sorted = store.tokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  
-  // Try to fetch real tokens from DexScreener paired against known xStocks
-  try {
-    const realTokens = await fetchRealMeteoraPairs();
-    if (realTokens.length > 0) {
-      // Merge real tokens with seed data, avoiding duplicates
-      const existingMints = new Set(sorted.map(t => t.mint));
-      const newTokens = realTokens.filter(t => !existingMints.has(t.mint));
-      return enrichTokensWithLiveMarketData([...newTokens, ...sorted]);
-    }
-  } catch (err) {
-    console.warn("Failed to fetch real Meteora pairs, using seed data:", err);
-  }
-  
   return enrichTokensWithLiveMarketData(sorted);
-}
-
-async function fetchRealMeteoraPairs(): Promise<CommunityToken[]> {
-  try {
-    // Known xStock mints to search for pairs
-    const xStockMints = [
-      "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", // NVDAx
-      "BwpKWcauiC9XMNuUH2JaH3wqjYKjVDmfhWh2a6Gq8Jrw", // AAPLx
-      // Add more xStock mints as needed
-    ];
-    
-    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${xStockMints.join(",")}`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-    
-    if (!response.ok) return [];
-    
-    const data = await response.json();
-    const pairs = data.pairs || [];
-    
-    // Convert DexScreener pairs to CommunityToken format
-    const tokens: CommunityToken[] = pairs
-      .filter((pair: any) => pair.chainId === "solana" && pair.dexId === "meteora")
-      .map((pair: any) => ({
-        mint: pair.baseToken.address,
-        name: pair.baseToken.name || pair.baseToken.symbol,
-        symbol: pair.baseToken.symbol,
-        description: `Community token paired on Meteora DLMM`,
-        imageUrl: pair.info?.imageUrl || "",
-        pairedStockSymbol: pair.quoteToken?.symbol || "UNKNOWN",
-        pairedStockName: pair.quoteToken?.name || "Unknown",
-        creatorWallet: pair.baseToken.address.slice(0, 8) + "..." + pair.baseToken.address.slice(-4),
-        supply: pair.fdv ? Math.round(pair.fdv / (pair.priceUsd || 1)) : 0,
-        creatorFeeBps: 100,
-        priceSol: parseFloat(pair.priceNative || "0"),
-        priceUsd: parseFloat(pair.priceUsd || "0"),
-        marketCapUsd: pair.fdv || pair.marketCap || 0,
-        volume24hUsd: pair.volume?.h24 || 0,
-        change24h: pair.priceChange?.h24 || 0,
-        bondingCurveProgress: 100,
-        status: "graduated" as const,
-        holdersCount: 0,
-        txSignature: pair.pairAddress || "",
-        pumpUrl: pair.url,
-        explorerUrl: `https://solscan.io/token/${pair.baseToken.address}`,
-        poolAddress: pair.pairAddress,
-        meteoraUrl: pair.url,
-        venue: "meteora" as const,
-        createdAt: pair.pairCreatedAt || new Date().toISOString(),
-      }));
-    
-    return tokens;
-  } catch (err) {
-    console.warn("Error fetching real Meteora pairs:", err);
-    return [];
-  }
 }
 
 export async function addCommunityToken(token: CommunityToken): Promise<CommunityToken> {
