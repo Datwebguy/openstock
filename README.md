@@ -25,7 +25,15 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-Copy `.env.example` to `.env.local` when changing data sources. `PYTH_HERMES_API_KEY` is optional. Set `JUPITER_API_KEY` only when you are ready to enable server-side live route preparation and execution; no key means the app remains browse-only and will not request a signature. Set `NEXT_PUBLIC_PRIVY_APP_ID` to add email login beside Phantom and Solflare.
+Copy `.env.example` to `.env.local` when changing data sources.
+
+- `PYTH_HERMES_API_KEY` is optional.
+- `JUPITER_API_KEY` enables live xStock order preparation. Without it the desk stays browse-only / paper review and will not request a trade signature.
+- `CLAWPUMP_API_KEY` enables Pump.fun launches against xStocks.
+- `NEXT_PUBLIC_PRIVY_APP_ID` adds email login beside Phantom and Solflare.
+- `PLATFORM_TREASURY_WALLET` is the platform fee destination (public address, not a private key).
+
+Community launches pair against tokenized stocks (`YOUR_TOKEN × AAPLx`). They do not create SOL/USDC markets.
 
 The app does not ship with a wallet, private key, seed phrase, or funded account. A user must explicitly connect an existing wallet and approve each transaction.
 

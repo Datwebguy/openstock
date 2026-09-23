@@ -678,6 +678,116 @@ html[data-theme="dark"] .pro-chart-rail-btn:hover {
   }
 }
 
+.asset-stock-pairs {
+  margin: 18px 0 28px;
+  padding: 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+html[data-theme="dark"] .asset-stock-pairs {
+  background: rgba(18, 16, 26, 0.88);
+}
+
+.asset-stock-pairs__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.asset-stock-pairs__head h2 {
+  margin: 6px 0 4px;
+  font-size: 22px;
+}
+
+.asset-stock-pairs__head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.asset-stock-pairs__grid {
+  display: grid;
+  gap: 14px;
+}
+
+.asset-stock-pairs__group h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.asset-stock-pairs__group ul,
+.asset-stock-pairs__simple {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.asset-stock-pairs__group li,
+.asset-stock-pairs__simple li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.asset-stock-pairs__group button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+}
+
+.asset-stock-pairs__group span,
+.asset-stock-pairs__simple span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Pass 1 mobile: stack desk trade, keep order CTA reachable above footer nav */
+@media (max-width: 759px) {
+  .asset-workspace {
+    overflow-x: clip;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .asset-trade-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-order-card {
+    position: sticky;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    box-shadow: 0 -10px 28px rgba(7, 5, 16, 0.12);
+  }
+
+  .asset-fact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pro-asset-header__mint-copy {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
 /* Popover menus for Indicators and Settings */
 .pro-chart-popover {
   position: absolute;

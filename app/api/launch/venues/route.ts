@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS, getClawPumpPairs } from "@/lib/clawpump";
-import { checkMeteoraDbcBadgeSupport, METEORA_DBC_CURVE_PRESETS } from "@/lib/meteora-dbc";
+import {
+  checkMeteoraDbcBadgeSupport,
+  METEORA_DBC_CURVE_PRESETS,
+  resolveDbcConfigAddress,
+} from "@/lib/meteora-dbc";
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,29 +36,44 @@ export async function GET(req: NextRequest) {
     );
 
     // 2. Check Meteora DBC support via on-chain token badge check
-    const meteoraSupported = await checkMeteoraDbcBadgeSupport(mint);
+    const meteoraBadged = await checkMeteoraDbcBadgeSupport(mint);
+    // 3. Per-stock PoolConfig (quote mint is fixed on each config account)
+    const dbcConfigAddress = resolveDbcConfigAddress({
+      quoteMint: mint,
+      pairedStockSymbol: symbol,
+      symbol,
+    });
+    const dbcConfigReady = Boolean(dbcConfigAddress);
+    const meteoraLaunchReady = meteoraBadged && dbcConfigReady;
 
     return NextResponse.json({
       symbol,
       quoteMint: mint,
-      isBadged: meteoraSupported,
+      isBadged: meteoraBadged,
+      dbcConfigReady,
+      dbcConfigAddress,
+      workingLaunchPath: pumpSupported ? "pumpfun" : meteoraLaunchReady ? "meteora" : null,
       curvePresets: METEORA_DBC_CURVE_PRESETS,
       venues: {
         pumpfun: {
           id: "pumpfun",
           name: "Pump.fun (ClawPump)",
-          badge: "ClawPump API v1",
-          description: "Pairs against tokenized equity on Pump.fun bonding curve. Migrates with liquidity lock.",
+          badge: "Working path",
+          description: "Pairs against tokenized equity on Pump.fun bonding curve. Primary launch path until a DBC PoolConfig is set.",
           supported: pumpSupported,
           creatorFeeRange: clawPumpData.creatorFeeBps ?? { min: 100, max: 300, default: 100 },
         },
         meteora: {
           id: "meteora",
           name: "Meteora DBC",
-          badge: "Dynamic Bonding Curve",
-          description: "Dynamic Bonding Curve with concentrated liquidity migration directly into Meteora DLMM pool.",
-          supported: true,
-          isBadged: meteoraSupported,
+          badge: dbcConfigReady ? "Dynamic Bonding Curve" : "Needs PoolConfig",
+          description: dbcConfigReady
+            ? `Dynamic Bonding Curve paired against ${symbol}, with migration into a Meteora pool.`
+            : `No PoolConfig for ${symbol} yet. Use Pump.fun, or create an xStock-quoted METEORA_DBC_CONFIG_${symbol.toUpperCase()}.`,
+          supported: meteoraLaunchReady,
+          isBadged: meteoraBadged,
+          dbcConfigReady,
+          dbcConfigAddress,
           creatorFeeRange: { min: 100, max: 300, default: 150 },
         },
       },

@@ -3,8 +3,8 @@
 The official brand identity, logo files, and iconography for **OpenStock: The Solana Equity Protocol**.
 
 ## Folder Location
-- **Local Filesystem**: `C:\Users\DELL\Downloads\openstock\public\logo\`
-- **Web App Static URL**: `http://localhost:3005/logo/[filename]` (serves directly from `/public`)
+- **Local Filesystem**: `public/logo/`
+- **Web App Static URL**: `/logo/[filename]` (served from `/public`)
 
 ---
 

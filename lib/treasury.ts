@@ -4,7 +4,8 @@
  * launch surcharges, trading fee splits, and referral rewards are routed.
  */
 
-export const DEFAULT_FALLBACK_TREASURY = "6zSNxgRm8p6JQcHSanFkELedbxQQnc9Jq6TMQMe6ZfYT";
+/** OpenStock platform treasury (fee / surcharge destination). Override via PLATFORM_TREASURY_WALLET. */
+export const DEFAULT_FALLBACK_TREASURY = "3FJwowmTbZ7A5EX3kSV1XGQgQWij8ZoF6Xm1rGZMhdok";
 
 /**
  * Returns the currently active platform treasury wallet address.

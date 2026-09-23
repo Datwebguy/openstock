@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
+import { USDC_MINT, isSolanaAddress } from "@/lib/solana";
 import { CURATED_SYMBOLS, getHydratedAsset } from "@/lib/xstocks";
 
 const JUPITER_PRICE_ORDER = "https://api.jup.ag/trigger/v2/orders/price";
 const JUPITER_DCA_ORDER = "https://api.jup.ag/trigger/v2/orders/dca";
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGkGzwyTDt1v";
 
 type Body = {
   symbol?: string;
@@ -20,7 +20,7 @@ type Body = {
   rounds?: number;
 };
 
-function isWallet(value: string) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value); }
+function isWallet(value: string) { return isSolanaAddress(value); }
 function isRawAmount(value: string) { return /^[1-9][0-9]*$/.test(value); }
 function isSignedTransaction(value: string) { return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length > 100; }
 function interval(cadence: string | undefined) { return cadence === "daily" ? 86400 : cadence === "monthly" ? 2592000 : 604800; }

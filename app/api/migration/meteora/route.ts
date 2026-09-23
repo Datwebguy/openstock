@@ -4,13 +4,14 @@ import {
   prepareMeteoraDammMigrationTx,
   queryOnChainDbcProgress,
 } from "@/lib/meteora-dbc";
+import { isSolanaAddress } from "@/lib/solana";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const poolAddress = searchParams.get("poolAddress");
 
-    if (!poolAddress) {
+    if (!poolAddress || !isSolanaAddress(poolAddress)) {
       return NextResponse.json({ error: "Missing poolAddress parameter." }, { status: 400 });
     }
 
@@ -21,9 +22,8 @@ export async function GET(req: NextRequest) {
       progress,
       isGraduated: progress !== null && progress >= 100,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to query DBC progress";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to query DBC progress" }, { status: 500 });
   }
 }
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       dammPoolAddress,
     } = body;
 
-    if (!poolAddress) {
+    if (!poolAddress || !isSolanaAddress(poolAddress)) {
       return NextResponse.json({ error: "Missing DBC poolAddress." }, { status: 400 });
     }
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     // Mode 2: Prepare DAMM v2 Migration Transaction
     if (mode === "prepare") {
-      if (!payerWallet) {
+      if (!payerWallet || !isSolanaAddress(payerWallet)) {
         return NextResponse.json({ error: "Missing payerWallet address." }, { status: 400 });
       }
 
@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
       const explorerUrl = `https://solscan.io/tx/${txSignature}`;
 
       if (mint) {
+        if (!isSolanaAddress(mint) || (dammPoolAddress && !isSolanaAddress(dammPoolAddress))) {
+          return NextResponse.json({ error: "The migration mint or pool address is not valid." }, { status: 400 });
+        }
         await updateCommunityTokenStatus(mint, "graduated", targetDammPool, meteoraUrl);
       }
 
@@ -100,8 +103,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Meteora migration transaction failed";
     console.error("Meteora migration route error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Meteora migration transaction failed" }, { status: 500 });
   }
 }

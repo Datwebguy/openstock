@@ -18,6 +18,9 @@ type Props = {
   halted: boolean;
   ready: boolean;
   liveTrading: boolean;
+  /** Verdict engine hard-block — refuse submit even if quotes look present. */
+  hardBlock?: boolean;
+  hardBlockReason?: string | null;
   pythPrice?: number | null;
   poolPrice?: number | null;
   mintAddress?: string;
@@ -43,6 +46,8 @@ export function PaperOrderForm({
   halted,
   ready,
   liveTrading,
+  hardBlock = false,
+  hardBlockReason = null,
   pythPrice,
   poolPrice,
   mintAddress = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
@@ -68,7 +73,7 @@ export function PaperOrderForm({
   );
 
   const effectivePrice = orderMode === "limit" && Number(limitPrice) > 0 ? Number(limitPrice) : price;
-  const canTrade = ready && !halted && Boolean(conversion) && price !== null;
+  const canTrade = ready && !halted && !hardBlock && Boolean(conversion) && price !== null;
 
   const roundCount = orderMode === "dca" ? Math.max(2, Number(rounds) || 2) : 1;
   const estimatedUsd = effectivePrice !== null && Number.isFinite(numericShares) && numericShares > 0
@@ -78,19 +83,19 @@ export function PaperOrderForm({
     ? estimatedUsd / solPriceUsd
     : null;
 
-  // Price discrepancy between Pyth Oracle and Meteora Pool
+  // Price discrepancy between Pyth Oracle and Meteora Pool — only when both exist
   const priceDiscrepancy = useMemo(() => {
-    const oracle = pythPrice ?? price;
-    const pool = poolPrice ?? price;
-    if (oracle && pool && oracle > 0) {
-      const diff = Math.abs(pool - oracle) / oracle * 100;
-      return diff.toFixed(2) + "%";
-    }
-    return "0.02%";
-  }, [price, poolPrice, pythPrice]);
+    if (!pythPrice || !poolPrice || pythPrice <= 0) return "—";
+    const diff = Math.abs(poolPrice - pythPrice) / pythPrice * 100;
+    return diff.toFixed(2) + "%";
+  }, [poolPrice, pythPrice]);
 
   function handleOpenSlip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (hardBlock) {
+      setMessage(hardBlockReason || "Orders are blocked until market evidence clears the safety checks.");
+      return;
+    }
     if (!canTrade || !conversion || price === null || multiplier === null || decimals === null) {
       setMessage(halted ? "Trading is paused for this stock." : price === null ? "Waiting for a live Solana quote." : "Waiting for market data.");
       return;

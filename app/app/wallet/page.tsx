@@ -8,7 +8,7 @@ import { PortfolioDashboard } from "@/components/portfolio-dashboard";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 
 export default function WalletPage() {
-  const { address, connecting, connect, connectEmail, disconnect, emailEnabled } = useWallet();
+  const { address, connecting, connect, connectEmail, disconnect, emailEnabled, canSign } = useWallet();
 
   const [copied, setCopied] = useState(false);
 
@@ -38,9 +38,11 @@ export default function WalletPage() {
         <div className="settings-panel__body">
           <h2>{address ? shortWallet(address) : "Not connected"}</h2>
           <p className="settings-panel__address">
-            {address 
-              ? "Solana Mainnet account." 
-              : "Connect Phantom or Solflare."}
+            {address
+              ? canSign
+                ? "Solana Mainnet — ready to sign."
+                : "Address restored. Connect Phantom or Solflare to sign launches and trades."
+              : "Browse without a wallet. Connect Phantom or Solflare to trade or launch."}
           </p>
         </div>
         {address ? (

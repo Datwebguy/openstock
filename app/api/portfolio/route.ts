@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSolPriceUsd } from "@/lib/market-evidence";
 import { getPortfolioSnapshots, portfolioChange, recordPortfolioSnapshot, type PortfolioSnapshot } from "@/lib/portfolio-snapshots";
-import { USDC_DECIMALS, USDC_MINT } from "@/lib/solana";
+import { USDC_DECIMALS, USDC_MINT, isSolanaAddress } from "@/lib/solana";
 import { CURATED_SYMBOLS, getHydratedAsset } from "@/lib/xstocks";
 
 const SOLANA_RPC = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
@@ -9,7 +9,7 @@ type TokenAccount = { account?: { data?: { parsed?: { info?: { tokenAmount?: { u
 type RpcResponse<T> = { result?: T; error?: { message?: string } };
 type AssetBalance = { shares: number; rawAmount: string; decimals: number };
 
-function isWallet(value: string) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value); }
+function isWallet(value: string) { return isSolanaAddress(value); }
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {

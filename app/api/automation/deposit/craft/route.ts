@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
+import { USDC_MINT, isSolanaAddress } from "@/lib/solana";
 import { CURATED_SYMBOLS, getHydratedAsset } from "@/lib/xstocks";
 
 const JUPITER_DEPOSIT = "https://api.jup.ag/trigger/v2/deposit/craft";
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGkGzwyTDt1v";
 
 type Body = { token?: string; symbol?: string; side?: "buy" | "sell"; kind?: "limit" | "stop" | "oco" | "dca"; userAddress?: string; amount?: string };
 
-function isWallet(value: string) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value); }
+function isWallet(value: string) { return isSolanaAddress(value); }
 function isRawAmount(value: string) { return /^[1-9][0-9]*$/.test(value); }
 
 export async function POST(request: Request) {

@@ -58,7 +58,7 @@ function compact(value: number | null | undefined) {
 function generateCandlesForTimeframe(
   basePrice: number,
   tf: "1m" | "5m" | "15m" | "1h" | "4h" | "1d",
-  change24hPct = 1.84
+  change24hPct: number | null = null
 ): Candle[] {
   const count = tf === "1m" ? 60 : tf === "5m" ? 48 : tf === "15m" ? 40 : tf === "1h" ? 36 : tf === "4h" ? 30 : 28;
   const stepMs =
@@ -82,7 +82,9 @@ function generateCandlesForTimeframe(
   // If change is negative (e.g. -2.45%), startPrice is higher than basePrice, trending downward (red chart).
   // If change is positive (e.g. +3.14%), startPrice is lower than basePrice, trending upward (green chart).
   const timeframeRatio = Math.min(1.0, count / 36);
-  const effectiveChange = (change24hPct / 100) * timeframeRatio;
+  // No invented 24h direction — flat synthetic path when live change is unknown
+  const directedChange = typeof change24hPct === "number" && Number.isFinite(change24hPct) ? change24hPct : 0;
+  const effectiveChange = (directedChange / 100) * timeframeRatio;
   const startPrice = Math.max(0.01, basePrice / (1 + effectiveChange));
   const trendStep = (basePrice - startPrice) / count;
   let prevClose = startPrice;
@@ -242,7 +244,7 @@ export function AssetPriceChart({
     return ((livePrice - candles[0].open) / candles[0].open) * 100;
   }, [candles, livePrice, assetMarketStats.change24h]);
 
-  const isUp = change24h >= 0;
+  const isUp = change24h === null || change24h === undefined ? true : change24h >= 0;
 
   // Technical Indicators: SMA 20
   const smaPoints = useMemo(() => {

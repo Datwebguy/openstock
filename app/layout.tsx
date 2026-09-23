@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     siteName: "OpenStock",
     images: [
       {
-        url: "/logo/openstock-banner-nyse-brandmark.png",
+        url: "/logo/openstock-x-banner-nyse-brandmark-1500x500.png",
         width: 1200,
         height: 630,
         alt: "OpenStock — Tokenized Stock Market Context & Launchpad",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "OpenStock — Tokenized Stock Market Context & Launchpad",
     description: "Trade tokenized stocks on Solana and launch community token pairs with automated creator royalties.",
-    images: ["/logo/openstock-banner-nyse-brandmark.png"],
+    images: ["/logo/openstock-x-banner-nyse-brandmark-1500x500.png"],
   },
   robots: {
     index: true,

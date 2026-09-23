@@ -29,7 +29,10 @@ export function ShareToXModal({ token, onClose }: ShareToXModalProps) {
   )}&stock=${encodeURIComponent(token.pairedStockSymbol)}&fee=${feePercent}&venue=${token.venue || "pumpfun"}`;
 
   const currentOrigin = typeof window !== "undefined" ? window.location.origin : "https://joinopenstock.xyz";
-  const shareUrl = `${currentOrigin}/launch?symbol=${token.pairedStockSymbol}`;
+  // Deep-link the minted TOKEN×xStock on the community desk (not the empty launch studio).
+  const shareUrl = token.mintAddress
+    ? `${currentOrigin}/app/community?mint=${encodeURIComponent(token.mintAddress)}`
+    : `${currentOrigin}/app/asset/${encodeURIComponent(token.pairedStockSymbol)}`;
 
   const tweetContent = `Just launched $${token.symbol} paired against tokenized ${token.pairedStockSymbol} on @OpenStock_! 🚀
 
@@ -37,7 +40,7 @@ export function ShareToXModal({ token, onClose }: ShareToXModalProps) {
 ⚡ Venue: ${venueLabel}
 🔍 Mint: ${token.mintAddress}
 
-Trade on OpenStock: ${shareUrl}
+Trade the pair on OpenStock: ${shareUrl}
 
 #Solana #xStocks #OpenStock #${token.symbol}`;
 

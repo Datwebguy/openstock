@@ -18,9 +18,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "The signed order could not be read." }, { status: 400 });
   }
 
-  if (!body.signedTransaction || !body.requestId) {
+  if (!body.signedTransaction || !body.requestId || body.signedTransaction.length < 80 || body.signedTransaction.length > 12_000) {
     return NextResponse.json(
       { error: "The signed order is incomplete. Please review the trade and try again." },
+      { status: 400 },
+    );
+  }
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(body.signedTransaction)) {
+    return NextResponse.json(
+      { error: "The signed order could not be read." },
       { status: 400 },
     );
   }
@@ -56,6 +62,7 @@ export async function POST(request: Request) {
       const signature = await connection.sendRawTransaction(rawTransaction, {
         skipPreflight: false,
         preflightCommitment: "confirmed",
+        maxRetries: 2,
       });
 
       return NextResponse.json(
@@ -68,10 +75,9 @@ export async function POST(request: Request) {
         { status: 200, headers: { "Cache-Control": "no-store" } }
       );
     }
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "The execution service could not be reached.";
+  } catch {
     return NextResponse.json(
-      { error: errorMsg },
+      { error: "The execution service could not be reached." },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }

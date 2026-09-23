@@ -130,11 +130,13 @@ export async function getMarketEvidence(asset: OpenStockAsset): Promise<MarketEv
     optional(() => getSolPriceUsd())
   ]);
 
-  // Ensure reserve data fallback if upstream proof-of-reserves is slow or down
-  const resolvedReserves: SourceResult<ReserveData> = reserves.data !== null ? reserves : (cached?.data?.reserves.data ? cached.data.reserves : {
-    state: "ok",
-    data: { symbol: asset.symbol, timestamp: new Date().toISOString(), sharesHeld: "100000", circulatingSupply: "100000" }
-  });
+  // Prefer live reserves, then short-lived cache. Never invent PoR coverage.
+  const resolvedReserves: SourceResult<ReserveData> =
+    reserves.data !== null
+      ? reserves
+      : cached?.data?.reserves.data
+        ? cached.data.reserves
+        : { state: "unavailable", data: null };
 
   const result: MarketEvidence = {
     reserves: resolvedReserves,
@@ -143,8 +145,8 @@ export async function getMarketEvidence(asset: OpenStockAsset): Promise<MarketEv
     jupiter: jupiter.data !== null ? jupiter : (cached?.data?.jupiter ?? jupiter),
     meteora: meteora.data !== null ? meteora : (cached?.data?.meteora ?? meteora),
     pyth: pyth.data !== null ? pyth : (cached?.data?.pyth ?? pyth),
-    tokenDecimals: tokenDecimals.data !== null ? tokenDecimals : (cached?.data?.tokenDecimals ?? { state: "ok", data: 8 }),
-    solPriceUsd: solPrice.data ?? cached?.data?.solPriceUsd ?? 115.0
+    tokenDecimals: tokenDecimals.data !== null ? tokenDecimals : (cached?.data?.tokenDecimals ?? { state: "unavailable", data: null }),
+    solPriceUsd: solPrice.data ?? cached?.data?.solPriceUsd ?? null
   };
 
   evidenceCache.set(asset.symbol, { data: result, timestamp: Date.now() });

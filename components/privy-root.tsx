@@ -24,17 +24,17 @@ function PrivyBridge() {
     };
 
     if (authenticated && user) {
-      // Find linked Solana wallet or embedded wallet
+      // Only promote a Solana-capable wallet into the shared session.
       const solanaAcc = user.linkedAccounts?.find(
         (a) => a.type === "wallet" && (a as { chainType?: string }).chainType === "solana"
       ) as { address?: string } | undefined;
 
-      const walletAddress = solanaAcc?.address || user.wallet?.address;
+      const walletAddress = solanaAcc?.address;
       if (walletAddress) {
         localStorage.setItem("openstock:wallet", walletAddress);
         window.dispatchEvent(new Event("openstock:wallet-change"));
       } else if (user.email?.address) {
-        // If logged in via email/google without a native wallet yet, save identity for session
+        // Email/Google identity only — do not invent a signing wallet address.
         localStorage.setItem("openstock:email", user.email.address);
       }
     }

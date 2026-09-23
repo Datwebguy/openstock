@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requestPreflightQuote } from "@/lib/clawpump";
+import { requestPreflightQuote, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
+import { resolvePublicImageUrl } from "@/lib/safe-image-url";
+import { isSolanaAddress } from "@/lib/solana";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, symbol, description, imageUrl, pumpQuoteMint, pumpCreatorFeeBps, walletAddress, supply, devBuySol } = body;
 
-    // Validation
     if (!name || typeof name !== "string" || name.trim().length < 1 || name.length > 32) {
       return NextResponse.json({ error: "Token name must be between 1 and 32 characters." }, { status: 400 });
     }
@@ -17,21 +18,20 @@ export async function POST(req: NextRequest) {
       ? description.trim().slice(0, 500)
       : `${name.trim()} paired against ${symbol.trim()} on Solana via OpenStock`;
 
-    // Support device upload path (/uploads/...), data URI, or external HTTPS URL
-    let resolvedImageUrl = imageUrl;
-    if (!resolvedImageUrl || typeof resolvedImageUrl !== "string") {
+    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000");
+    if (!resolvedImageUrl) {
       return NextResponse.json({ error: "Please provide or upload token artwork." }, { status: 400 });
     }
 
-    if (resolvedImageUrl.startsWith("/uploads/")) {
-      const origin = req.nextUrl.origin || "http://localhost:3000";
-      resolvedImageUrl = `${origin}${resolvedImageUrl}`;
-    } else if (!resolvedImageUrl.startsWith("http://") && !resolvedImageUrl.startsWith("https://") && !resolvedImageUrl.startsWith("data:")) {
-      return NextResponse.json({ error: "Artwork must be a valid uploaded image, data URL, or https:// URL." }, { status: 400 });
+    if (!pumpQuoteMint || typeof pumpQuoteMint !== "string" || !isSolanaAddress(pumpQuoteMint)) {
+      return NextResponse.json({ error: "Missing selected xStock pump quote mint." }, { status: 400 });
     }
 
-    if (!pumpQuoteMint || typeof pumpQuoteMint !== "string") {
-      return NextResponse.json({ error: "Missing selected xStock pump quote mint." }, { status: 400 });
+    const pairedAsset = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === pumpQuoteMint);
+    if (!pairedAsset) {
+      return NextResponse.json({
+        error: "Choose a verified xStock pair. OpenStock launches against tokenized stocks, not SOL or USDC.",
+      }, { status: 400 });
     }
 
     const feeBps = Number(pumpCreatorFeeBps);
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Creator fee must be an integer between 50 and 500 bps (0.5%–5%)." }, { status: 400 });
     }
 
-    if (!walletAddress || typeof walletAddress !== "string" || walletAddress.length < 32 || walletAddress.length > 44) {
+    if (!walletAddress || typeof walletAddress !== "string" || !isSolanaAddress(walletAddress)) {
       return NextResponse.json({ error: "Invalid Solana wallet address provided." }, { status: 400 });
     }
 
@@ -59,9 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(preflight);
-  } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : "Failed to generate launch preflight quote";
-    console.error("Launch preflight error:", error);
-    return NextResponse.json({ error: errMessage }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to generate launch preflight quote" }, { status: 500 });
   }
 }

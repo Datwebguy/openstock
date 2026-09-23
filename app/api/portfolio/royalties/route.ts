@@ -1,28 +1,40 @@
 import { NextResponse } from "next/server";
 import { type CreatorVaultItem, type RoyaltyClaimReceipt } from "@/lib/creator-royalties";
-import { getAssetMarketStats } from "@/lib/market-stats";
 import { getCommunityTokens, type CommunityToken } from "@/lib/community-tokens";
+import { getCreatorPoolFees, prepareClaimCreatorTradingFeeTx } from "@/lib/meteora-dbc";
+import { isSolanaAddress } from "@/lib/solana";
 
-// In-memory runtime cache for claimed states during user session
-const memoryVaults: Map<string, CreatorVaultItem[]> = new Map();
 const memoryClaims: Map<string, RoyaltyClaimReceipt[]> = new Map();
 
-async function getWalletVaults(wallet: string): Promise<CreatorVaultItem[]> {
-  if (memoryVaults.has(wallet)) {
-    return memoryVaults.get(wallet)!;
+function rawToUi(raw: string, decimals = 6): number {
+  try {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return n / 10 ** decimals;
+  } catch {
+    return 0;
   }
+}
 
-  // Look up real tokens created by this wallet in the community tokens registry
+async function getWalletVaults(wallet: string): Promise<(CreatorVaultItem & { poolAddress?: string; unclaimedQuoteRaw?: string })[]> {
   const allTokens = await getCommunityTokens().catch(() => [] as CommunityToken[]);
   const created = allTokens.filter(
-    (t) => t.creatorWallet && (t.creatorWallet.toLowerCase() === wallet.toLowerCase() || wallet.toLowerCase().includes(t.creatorWallet.toLowerCase().slice(0, 4)))
+    (t) => t.creatorWallet && t.creatorWallet.toLowerCase() === wallet.toLowerCase()
   );
 
-  const realVaults: CreatorVaultItem[] = created.map((t) => {
-    const stats = getAssetMarketStats(t.pairedStockSymbol);
-    const feeRate = (t.creatorFeeBps || 200) / 10_000; // e.g. 2%
-    const accruedUsd = (t.volume24hUsd || 0) * feeRate;
-    const unclaimedStockShares = stats.price > 0 ? Number((accruedUsd / stats.price).toFixed(4)) : 0;
+  let onChainFees: Awaited<ReturnType<typeof getCreatorPoolFees>> = [];
+  try {
+    onChainFees = await getCreatorPoolFees(wallet);
+  } catch (err) {
+    console.warn("getCreatorPoolFees failed:", err);
+  }
+
+  const feeByPool = new Map(onChainFees.map((f) => [f.poolAddress, f]));
+
+  return created.map((t) => {
+    const fee = t.poolAddress ? feeByPool.get(t.poolAddress) : undefined;
+    const unclaimedQuoteRaw = fee?.unclaimedQuoteFeeRaw ?? "0";
+    const unclaimedStockShares = rawToUi(unclaimedQuoteRaw, 6);
 
     return {
       id: `vault-${t.mint}`,
@@ -37,17 +49,14 @@ async function getWalletVaults(wallet: string): Promise<CreatorVaultItem[]> {
       unclaimedStockShares,
       claimedStockShares: 0,
       lastClaimDate: undefined,
+      poolAddress: t.poolAddress,
+      unclaimedQuoteRaw,
     };
   });
-
-  memoryVaults.set(wallet, realVaults);
-  return realVaults;
 }
 
 function getWalletClaims(wallet: string): RoyaltyClaimReceipt[] {
-  if (!memoryClaims.has(wallet)) {
-    memoryClaims.set(wallet, []);
-  }
+  if (!memoryClaims.has(wallet)) memoryClaims.set(wallet, []);
   return memoryClaims.get(wallet)!;
 }
 
@@ -55,52 +64,39 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const wallet = searchParams.get("wallet") || "";
 
-  if (!wallet) {
+  if (!wallet || !isSolanaAddress(wallet)) {
     return NextResponse.json({
       wallet: "",
       vaults: [],
       claims: [],
-      summary: {
-        totalUnclaimedUsd: 0,
-        totalClaimedUsd: 0,
-        vaultCount: 0,
-        activeQuotes: [],
-      },
+      summary: { totalUnclaimedUsd: 0, totalClaimedUsd: 0, vaultCount: 0, activeQuotes: [] },
     });
   }
 
   const vaults = await getWalletVaults(wallet);
   const claims = getWalletClaims(wallet);
 
-  // Compute total unclaimed and claimed USD values with live prices
-  let totalUnclaimedUsd = 0;
-  let totalClaimedUsd = 0;
-
-  const enrichedVaults = vaults.map((v) => {
-    const stats = getAssetMarketStats(v.pairedStockSymbol);
-    const unclaimedUsd = Number((v.unclaimedStockShares * stats.price).toFixed(2));
-    const claimedUsd = Number((v.claimedStockShares * stats.price).toFixed(2));
-    totalUnclaimedUsd += unclaimedUsd;
-    totalClaimedUsd += claimedUsd;
-
-    return {
-      ...v,
-      stockPriceUsd: stats.price,
-      stockChange24h: stats.change24h,
-      unclaimedUsd,
-      claimedUsd,
-    };
-  });
+  // Stock-share units are already quote-token amounts (xStock). USD is unknown without a live price — leave 0 when unavailable.
+  const enrichedVaults = vaults.map((v) => ({
+    ...v,
+    stockPriceUsd: 0,
+    stockChange24h: null as number | null,
+    unclaimedUsd: 0,
+    claimedUsd: 0,
+  }));
 
   return NextResponse.json({
     wallet,
     vaults: enrichedVaults,
     claims,
     summary: {
-      totalUnclaimedUsd: Number(totalUnclaimedUsd.toFixed(2)),
-      totalClaimedUsd: Number(totalClaimedUsd.toFixed(2)),
+      totalUnclaimedUsd: 0,
+      totalClaimedUsd: 0,
       vaultCount: vaults.length,
       activeQuotes: Array.from(new Set(vaults.map((v) => v.pairedStockSymbol))),
+      totalUnclaimedStockShares: Number(
+        vaults.reduce((acc, v) => acc + (v.unclaimedStockShares || 0), 0).toFixed(6)
+      ),
     },
   });
 }
@@ -110,31 +106,51 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { wallet, vaultId, claimAll } = body as { wallet: string; vaultId?: string; claimAll?: boolean };
 
-    if (!wallet) {
+    if (!wallet || !isSolanaAddress(wallet)) {
       return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
     const vaults = await getWalletVaults(wallet);
-    const claims = getWalletClaims(wallet);
+    const targets = claimAll
+      ? vaults.filter((v) => (v.unclaimedStockShares || 0) > 0 && v.poolAddress && v.venue !== "pumpfun")
+      : vaults.filter((v) => v.id === vaultId && (v.unclaimedStockShares || 0) > 0 && v.poolAddress);
 
-    const now = new Date().toISOString();
-    const newReceipts: RoyaltyClaimReceipt[] = [];
-
-    const claimableVaults = claimAll ? vaults.filter((v) => v.unclaimedStockShares > 0) : vaults.filter((v) => v.id === vaultId && v.unclaimedStockShares > 0);
-
-    if (claimableVaults.length === 0) {
+    if (targets.length === 0) {
+      const pumpOnly = vaults.some((v) => v.id === vaultId && v.venue === "pumpfun");
       return NextResponse.json({
-        error: "No settled on-chain creator royalties are currently claimable for this wallet. Royalties accumulate and settle on Solana as trading volume occurs on your launched pair's Meteora DLMM pool or ClawPump bonding curve.",
+        error: pumpOnly
+          ? "Pump.fun creator fee claim is not wired yet. Meteora DBC stock-paired fees can be claimed when unclaimed quote balance is > 0."
+          : "No claimable Meteora creator fees in the paired xStock for this wallet right now.",
       }, { status: 400 });
     }
 
-    // In a live production environment, creator fees are withdrawn from the on-chain pool PDA via DLMM / ClawPump contract.
-    // If the pool has not settled fees to the distribution vault yet, notify the creator transparently without mock signatures.
+    // Prepare the first claimable pool tx (client signs). Multi-vault claim-all returns one at a time.
+    const target = targets[0];
+    if (!target.poolAddress) {
+      return NextResponse.json({ error: "Pool address missing for this vault." }, { status: 400 });
+    }
+
+    const prepared = await prepareClaimCreatorTradingFeeTx({
+      poolAddress: target.poolAddress,
+      creatorWallet: wallet,
+      maxQuoteAmount: target.unclaimedQuoteRaw && target.unclaimedQuoteRaw !== "0"
+        ? target.unclaimedQuoteRaw
+        : undefined,
+    });
+
     return NextResponse.json({
-      error: "Accrued royalties are pending pool fee distribution cycle on Solana Mainnet. Fees settle directly to your creator wallet once the bonding curve threshold is reached.",
-    }, { status: 409 });
+      success: true,
+      mode: "prepare",
+      vaultId: target.id,
+      poolAddress: prepared.poolAddress,
+      pairedStockSymbol: target.pairedStockSymbol,
+      unclaimedStockShares: target.unclaimedStockShares,
+      transactionBase64: prepared.transactionBase64,
+      remainingVaults: Math.max(0, targets.length - 1),
+    });
   } catch (err: unknown) {
     console.error("Failed to process royalty claim:", err);
-    return NextResponse.json({ error: "Failed to claim royalties" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to prepare royalty claim";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

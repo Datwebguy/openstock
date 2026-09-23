@@ -41,32 +41,32 @@ export interface DbcCurvePresetInfo {
 export const METEORA_DBC_CURVE_PRESETS: Record<DbcCurvePresetKey, DbcCurvePresetInfo> = {
   linear: {
     id: "linear",
-    name: "Standard",
-    subtitle: "Balanced Discovery",
-    description: "Even price discovery curve with standard graduation threshold.",
+    name: "Equity Standard",
+    subtitle: "Mega-cap discovery",
+    description: "Balanced TOKEN×xStock discovery for liquid names like NVDAx and AAPLx. Fees quote in the paired stock.",
     configAddress: process.env.METEORA_DBC_CONFIG_LINEAR || process.env.METEORA_DBC_CONFIG || undefined,
     baseFeeBps: 150,
-    curveType: "Standard",
+    curveType: "Linear",
     targetMarketCap: "$69,000 USD",
   },
   exponential: {
     id: "exponential",
-    name: "Fast rise",
-    subtitle: "Steeper Early Curve",
-    description: "Steeper price escalation that accelerates early progress.",
+    name: "Equity Momentum",
+    subtitle: "Steeper early curve",
+    description: "Faster early price discovery for high-attention stock pairs; accelerates progress toward DAMM graduation.",
     configAddress: process.env.METEORA_DBC_CONFIG_EXPONENTIAL || undefined,
     baseFeeBps: 200,
-    curveType: "Fast rise",
+    curveType: "Exponential",
     targetMarketCap: "$85,000 USD",
   },
   flat: {
     id: "flat",
-    name: "Steady",
-    subtitle: "Deep Liquidity",
-    description: "Low-slippage, deep liquidity curve tailored for broad participation.",
+    name: "Equity Deep Book",
+    subtitle: "Index / low slip",
+    description: "Flatter curve for broad names (SPYx, QQQx) where low slippage and deeper early book matter more than speed.",
     configAddress: process.env.METEORA_DBC_CONFIG_FLAT || undefined,
     baseFeeBps: 100,
-    curveType: "Steady",
+    curveType: "Flat",
     targetMarketCap: "$100,000 USD",
   },
 };
@@ -76,13 +76,53 @@ export const DEFAULT_DBC_CONFIG: PublicKey | null = process.env.METEORA_DBC_CONF
   ? new PublicKey(process.env.METEORA_DBC_CONFIG)
   : null;
 
-export const SOL_MINT = "So11111111111111111111111111111111111111112";
-export const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+/**
+ * Resolve PoolConfig for a quote mint. Each xStock needs its own config (quote mint is fixed on-chain).
+ * Lookup order:
+ * 1. METEORA_DBC_CONFIG_<SYMBOL> (e.g. METEORA_DBC_CONFIG_AAPLX)
+ * 2. METEORA_DBC_CONFIG_BY_MINT JSON map { "<mint>": "<config>" }
+ * 3. preset configAddress / METEORA_DBC_CONFIG fallback
+ */
+export function resolveDbcConfigAddress(opts: {
+  quoteMint: string;
+  /** Stock symbol (NVDAx) or launch token symbol — stock preferred via pairedStockSymbol env keys. */
+  symbol?: string | null;
+  pairedStockSymbol?: string | null;
+  curvePreset?: DbcCurvePresetKey | string | null;
+}): string | null {
+  // 1) Explicit mint → config map (authoritative for multi-stock)
+  const mapRaw = process.env.METEORA_DBC_CONFIG_BY_MINT?.trim();
+  let mintMap: Record<string, string> | null = null;
+  if (mapRaw) {
+    try {
+      mintMap = JSON.parse(mapRaw) as Record<string, string>;
+      const hit = mintMap[opts.quoteMint] || mintMap[opts.quoteMint.trim()];
+      if (typeof hit === "string" && hit.length > 0) return hit;
+    } catch {
+      mintMap = null;
+    }
+  }
 
-export const PERMISSIONLESS_SPL_MINTS = new Set([
-  SOL_MINT, // Wrapped SOL
-  USDC_MINT, // Circle USDC
-]);
+  // 2) Per-stock env: METEORA_DBC_CONFIG_NVDAx / _AAPLx
+  for (const raw of [opts.pairedStockSymbol, opts.symbol]) {
+    const symbolKey = (raw || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (!symbolKey) continue;
+    const bySymbol = process.env[`METEORA_DBC_CONFIG_${symbolKey}`]?.trim();
+    if (bySymbol) return bySymbol;
+  }
+
+  // 3) Global fallback only in single-stock mode (no BY_MINT map configured).
+  // Never reuse NVDAx's config for TSLAx — quote mint is fixed on-chain.
+  if (mintMap && Object.keys(mintMap).length > 0) {
+    return null;
+  }
+
+  const curvePresetKey = (opts.curvePreset || "linear") as DbcCurvePresetKey;
+  const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
+  return selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG || null;
+}
+
+export { SOL_MINT, USDC_MINT } from "./solana";
 
 // In-memory cache for token badge existence check
 const tokenBadgeCache = new Map<string, boolean>();
@@ -92,15 +132,11 @@ const tokenBadgeCache = new Map<string, boolean>();
  * In Meteora DBC, Token-2022 quote tokens require an on-chain Token Badge:
  * PDA: ["token_badge", quoteMint] with DYNAMIC_BONDING_CURVE_PROGRAM_ID.
  *
- * NOTE: Standard SPL tokens (SOL, USDC) are permissionless and do not require a token badge.
- * Token-2022 tokens without an initialized on-chain badge account will return false.
+ * OpenStock only launches against tokenized stocks. SOL and USDC are not quote assets.
+ * Token-2022 xStocks without an initialized on-chain badge account return false.
  * We never invent or mock a badge.
  */
 export async function checkMeteoraDbcBadgeSupport(quoteMint: string): Promise<boolean> {
-  // Native SOL and USDC are standard SPL tokens (Token Program) - fully permissionless
-  if (PERMISSIONLESS_SPL_MINTS.has(quoteMint)) {
-    return true;
-  }
 
   const cached = tokenBadgeCache.get(quoteMint);
   if (cached !== undefined) return cached;
@@ -135,6 +171,8 @@ export type MeteoraDbcLaunchPayload = {
   creatorFeeBps: number;
   supply: number;
   curvePreset?: DbcCurvePresetKey;
+  /** Underlying xStock ticker (NVDAx / AAPLx) for per-stock PoolConfig lookup. */
+  pairedStockSymbol?: string;
 };
 
 export type PreparedDbcLaunch = {
@@ -188,11 +226,15 @@ export async function prepareMeteoraDbcPoolTx(
   const creator = payer;
   const quoteMint = new PublicKey(payload.quoteMint);
   const curvePresetKey = payload.curvePreset || "linear";
-  const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
-  const configAddress = selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG;
+  const configAddress = resolveDbcConfigAddress({
+    quoteMint: payload.quoteMint,
+    symbol: payload.symbol,
+    pairedStockSymbol: payload.pairedStockSymbol,
+    curvePreset: curvePresetKey,
+  });
   if (!configAddress) {
     throw new Error(
-      `No valid Meteora DBC PoolConfig address is configured for preset '${curvePresetKey}'. A real on-chain config account owned by dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN is required.`
+      `No valid Meteora DBC PoolConfig for quote ${payload.quoteMint}. Set METEORA_DBC_CONFIG_<SYMBOL> or METEORA_DBC_CONFIG_BY_MINT.`
     );
   }
   const config = new PublicKey(configAddress);
@@ -411,9 +453,12 @@ export async function executeMeteoraDbcLaunch(
 
   const mintAddress = providedMintAddress || Keypair.generate().publicKey.toBase58();
 
-  const curvePresetKey = payload.curvePreset || "linear";
-  const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
-  const configAddress = selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG;
+  const configAddress = resolveDbcConfigAddress({
+    quoteMint: payload.quoteMint,
+    symbol: payload.symbol,
+    pairedStockSymbol: payload.pairedStockSymbol,
+    curvePreset: payload.curvePreset || "linear",
+  });
 
   const poolAddress =
     providedPoolAddress ||
@@ -436,5 +481,82 @@ export async function executeMeteoraDbcLaunch(
     txHash: userSignature,
     explorerUrl: `https://solscan.io/token/${mintAddress}`,
     meteoraUrl: `https://app.meteora.ag/dlmm/${poolAddress}`,
+  };
+}
+
+export type CreatorPoolFeeSnapshot = {
+  poolAddress: string;
+  creatorBaseFeeRaw: string;
+  creatorQuoteFeeRaw: string;
+  unclaimedBaseFeeRaw: string;
+  unclaimedQuoteFeeRaw: string;
+};
+
+/**
+ * Read creator fee balances for pools owned by this wallet (quote side = xStock when stock-paired).
+ */
+export async function getCreatorPoolFees(creatorWallet: string): Promise<CreatorPoolFeeSnapshot[]> {
+  const connection = new Connection(DEFAULT_RPC, "confirmed");
+  const client = DynamicBondingCurveClient.create(connection, "confirmed");
+  const pools = await client.state.getPoolsFeesByCreator(new PublicKey(creatorWallet));
+  const snapshots: CreatorPoolFeeSnapshot[] = [];
+
+  for (const pool of pools) {
+    let unclaimedBase = pool.creatorBaseFee?.toString?.() ?? "0";
+    let unclaimedQuote = pool.creatorQuoteFee?.toString?.() ?? "0";
+    try {
+      const breakdown = await client.state.getPoolFeeBreakdown(pool.poolAddress);
+      unclaimedBase = breakdown.creator.unclaimedBaseFee.toString();
+      unclaimedQuote = breakdown.creator.unclaimedQuoteFee.toString();
+    } catch {
+      /* fall back to getPoolsFeesByCreator totals */
+    }
+    snapshots.push({
+      poolAddress: pool.poolAddress.toBase58(),
+      creatorBaseFeeRaw: pool.creatorBaseFee?.toString?.() ?? "0",
+      creatorQuoteFeeRaw: pool.creatorQuoteFee?.toString?.() ?? "0",
+      unclaimedBaseFeeRaw: unclaimedBase,
+      unclaimedQuoteFeeRaw: unclaimedQuote,
+    });
+  }
+
+  return snapshots;
+}
+
+/**
+ * Prepare an unsigned claimCreatorTradingFee transaction for the pool creator.
+ * Fees settle in base + quote (xStock quote for stock-paired DBC pools).
+ */
+export async function prepareClaimCreatorTradingFeeTx(params: {
+  poolAddress: string;
+  creatorWallet: string;
+  maxBaseAmount?: string;
+  maxQuoteAmount?: string;
+}): Promise<{ transactionBase64: string; poolAddress: string }> {
+  const { BN } = await import("@coral-xyz/anchor");
+  const connection = new Connection(DEFAULT_RPC, "confirmed");
+  const client = DynamicBondingCurveClient.create(connection, "confirmed");
+  const creator = new PublicKey(params.creatorWallet);
+  const pool = new PublicKey(params.poolAddress);
+
+  const maxBaseAmount = new BN(params.maxBaseAmount ?? "18446744073709551615");
+  const maxQuoteAmount = new BN(params.maxQuoteAmount ?? "18446744073709551615");
+
+  const tx = await client.creator.claimCreatorTradingFee({
+    creator,
+    payer: creator,
+    pool,
+    maxBaseAmount,
+    maxQuoteAmount,
+    receiver: creator,
+  });
+
+  const { blockhash } = await connection.getLatestBlockhash("confirmed");
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = creator;
+
+  return {
+    transactionBase64: tx.serialize({ requireAllSignatures: false }).toString("base64"),
+    poolAddress: params.poolAddress,
   };
 }

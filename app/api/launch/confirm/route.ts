@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeClawPumpLaunch, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { addCommunityToken } from "@/lib/community-tokens";
+import { resolvePublicImageUrl } from "@/lib/safe-image-url";
+import { isSolanaAddress } from "@/lib/solana";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,32 +23,55 @@ export async function POST(req: NextRequest) {
       devBuySol,
     } = body;
 
-    if (!txSignature || typeof txSignature !== "string") {
+    if (!name || typeof name !== "string" || name.trim().length < 1 || name.length > 32) {
+      return NextResponse.json({ error: "Token name must be between 1 and 32 characters." }, { status: 400 });
+    }
+    if (!symbol || typeof symbol !== "string" || symbol.trim().length < 1 || symbol.length > 10) {
+      return NextResponse.json({ error: "Token symbol must be between 1 and 10 characters." }, { status: 400 });
+    }
+    if (!txSignature || typeof txSignature !== "string" || txSignature.length < 32 || txSignature.length > 128) {
       return NextResponse.json({ error: "Missing transaction signature proof." }, { status: 400 });
     }
-    if (!preflightToken || typeof preflightToken !== "string") {
+    if (!preflightToken || typeof preflightToken !== "string" || preflightToken.length > 2048) {
       return NextResponse.json({ error: "Missing preflight token." }, { status: 400 });
     }
-    if (!agentId || !agentName) {
+    if (!agentId || !agentName || typeof agentId !== "string" || typeof agentName !== "string") {
       return NextResponse.json({ error: "Missing launcher agent details." }, { status: 400 });
     }
+    if (!walletAddress || typeof walletAddress !== "string" || !isSolanaAddress(walletAddress)) {
+      return NextResponse.json({ error: "Invalid Solana wallet address provided." }, { status: 400 });
+    }
+    if (!pumpQuoteMint || typeof pumpQuoteMint !== "string" || !isSolanaAddress(pumpQuoteMint)) {
+      return NextResponse.json({ error: "Missing selected xStock pump quote mint." }, { status: 400 });
+    }
 
-    let resolvedImageUrl = imageUrl;
-    if (resolvedImageUrl && typeof resolvedImageUrl === "string" && resolvedImageUrl.startsWith("/uploads/")) {
-      const origin = req.nextUrl.origin || "http://localhost:3000";
-      resolvedImageUrl = `${origin}${resolvedImageUrl}`;
+    const feeBps = Number(pumpCreatorFeeBps);
+    if (!Number.isInteger(feeBps) || feeBps < 50 || feeBps > 500) {
+      return NextResponse.json({ error: "Creator fee must be an integer between 50 and 500 bps (0.5%–5%)." }, { status: 400 });
+    }
+
+    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000");
+    if (!resolvedImageUrl) {
+      return NextResponse.json({ error: "Please provide or upload token artwork." }, { status: 400 });
     }
 
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
     const initialBuySol = devBuySol && Number.isFinite(Number(devBuySol)) && Number(devBuySol) >= 0 ? Number(devBuySol) : 0;
 
+    const pairedAsset = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === pumpQuoteMint);
+    if (!pairedAsset) {
+      return NextResponse.json({
+        error: "Choose a verified xStock pair. OpenStock launches against tokenized stocks, not SOL or USDC.",
+      }, { status: 400 });
+    }
+
     const launchResult = await executeClawPumpLaunch({
-      name,
-      symbol,
-      description,
+      name: name.trim(),
+      symbol: symbol.trim().toUpperCase(),
+      description: typeof description === "string" ? description.trim().slice(0, 500) : "",
       imageUrl: resolvedImageUrl,
       pumpQuoteMint,
-      pumpCreatorFeeBps: Number(pumpCreatorFeeBps),
+      pumpCreatorFeeBps: feeBps,
       walletAddress,
       agentId,
       agentName,
@@ -56,30 +81,24 @@ export async function POST(req: NextRequest) {
       devBuySol: initialBuySol,
     });
 
-    // Record the newly created community stock-pair token in the live registry
-    const pairedAsset = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === pumpQuoteMint) || {
-      symbol: "NVDAx",
-      name: "NVIDIA Corporation",
-    };
-
     try {
       await addCommunityToken({
         mint: launchResult.mintAddress,
         name: name.trim(),
         symbol: symbol.trim().toUpperCase(),
-        description: description?.trim() || `Community token paired with ${pairedAsset.symbol} on Solana`,
-        imageUrl: resolvedImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80",
+        description: (typeof description === "string" ? description.trim() : "") || `Community token paired with ${pairedAsset.symbol} on Solana`,
+        imageUrl: resolvedImageUrl,
         pairedStockSymbol: pairedAsset.symbol,
         pairedStockName: pairedAsset.name.replace(/ xStock$/, ""),
         creatorWallet: walletAddress,
         supply: tokenSupply,
-        creatorFeeBps: Number(pumpCreatorFeeBps),
-        priceSol: 0.00005,
-        priceUsd: 0.0075,
-        marketCapUsd: 75000,
-        volume24hUsd: 14200,
-        change24h: 12.5,
-        bondingCurveProgress: 4.8,
+        creatorFeeBps: feeBps,
+        priceSol: 0,
+        priceUsd: 0,
+        marketCapUsd: 0,
+        volume24hUsd: 0,
+        change24h: 0,
+        bondingCurveProgress: 0,
         status: "new",
         holdersCount: 1,
         txSignature,
@@ -92,9 +111,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(launchResult);
-  } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : "Launch execution failed";
-    console.error("Launch confirmation error:", error);
-    return NextResponse.json({ error: errMessage }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Launch execution failed" }, { status: 500 });
   }
 }

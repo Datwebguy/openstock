@@ -68,13 +68,14 @@ export default function HomePage() {
             <span>OpenStock</span>
           </Link>
           <div className="os-site-links">
-            <a href="#experience">The experience</a>
-            <a href="#markets">Live stocks</a>
-            <a href="#architecture">Architecture</a>
+            <a href="#signal">Signal</a>
+            <a href="#reference">Reference</a>
+            <a href="#liquidity">Liquidity</a>
+            <a href="#multiplier">Multiplier</a>
+            <a href="#receipt">Receipt</a>
             <Link href="/launch" style={{ color: "var(--solana-purple)", fontWeight: 700 }}>
               Launch
             </Link>
-            <a href="#workspace">Workspace</a>
             <a href="#faq">FAQ</a>
           </div>
           <div className="os-nav-actions">
@@ -88,8 +89,8 @@ export default function HomePage() {
 
       <LandingReveals />
 
-      {/* Hero Section */}
-      <section className="os-hero" aria-labelledby="landing-title">
+      {/* Hero Section — Signal */}
+      <section id="signal" className="os-hero" aria-labelledby="landing-title">
         <div className="os-shell os-hero-grid">
           <div className="os-hero-copy" data-reveal>
             <span className="os-micro os-micro-blue">24/7 Tokenized Equities · Solana</span>
@@ -156,11 +157,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 1: Every stock, an on-chain token */}
-      <section id="experience" className="os-section">
+      {/* Reference — source comparison story */}
+      <section id="reference" className="os-section">
         <div className="os-shell">
           <div className="os-section-head" data-reveal>
-            <span className="os-micro os-micro-blue">Curated Equities</span>
+            <span className="os-micro os-micro-blue">Reference</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
@@ -217,11 +218,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 2: Live Market Intelligence (Electric Blue Band) */}
-      <section id="markets" className="os-section os-band-blue">
+      {/* Liquidity — pools & depth */}
+      <section id="liquidity" className="os-section os-band-blue">
         <div className="os-shell os-split">
           <div className="os-section-head" data-reveal>
-            <span className="os-micro os-micro-light">Market Intelligence</span>
+            <span className="os-micro os-micro-light">Liquidity</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
@@ -309,22 +310,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 3: Architecture & Security */}
-      <section id="architecture" className="os-section os-section-tint">
+      {/* Multiplier — share adjustments & Token-2022 amounts */}
+      <section id="multiplier" className="os-section os-section-tint">
         <div className="os-shell">
           <div className="os-section-head os-head-center" data-reveal>
-            <span className="os-micro os-micro-green">Solana Mainnet Core</span>
+            <span className="os-micro os-micro-green">Multiplier</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
-                  <span>Built for continuous markets.</span>
+                  <span>UI shares stay honest.</span>
                 </span>
                 <span className="os-line" style={{ "--i": 1 } as React.CSSProperties}>
-                  <span>Engineered on Solana.</span>
+                  <span>Raw Token-2022 amounts settle.</span>
                 </span>
               </span>
             </h2>
-            <p>1:1 backed equities, sub-second dual oracles, and permissionless meme-to-stock pairing.</p>
+            <p>Corporate actions and multipliers are applied at display and order layers — never as a decorative afterthought.</p>
           </div>
 
           <div className="os-arch-grid" data-reveal>
@@ -399,22 +400,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 4: Connected Workspace Bento Grid */}
-      <section id="workspace" className="os-section">
+      {/* Receipt — proof & workspace modules */}
+      <section id="receipt" className="os-section">
         <div className="os-shell">
           <div className="os-section-head" data-reveal>
-            <span className="os-micro os-micro-blue">Workspace Modules</span>
+            <span className="os-micro os-micro-blue">Receipt</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
                   <span>Less searching.</span>
                 </span>
                 <span className="os-line" style={{ "--i": 1 } as React.CSSProperties}>
-                  <span>More understanding.</span>
+                  <span>More verifiable proof.</span>
                 </span>
               </span>
             </h2>
-            <p>Unified discovery, live pool telemetry, and automated execution.</p>
+            <p>Discovery, pool telemetry, automation, and receipts that keep UI shares and raw settlement amounts together.</p>
           </div>
 
           <div className="os-bento-grid">

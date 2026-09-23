@@ -26,17 +26,21 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
+      const needle = search.slice(0, 80);
       filtered = filtered.filter(
         (t) =>
-          t.name.toLowerCase().includes(search) ||
-          t.symbol.toLowerCase().includes(search) ||
-          t.pairedStockSymbol.toLowerCase().includes(search) ||
-          t.pairedStockName.toLowerCase().includes(search)
+          t.name.toLowerCase().includes(needle) ||
+          t.symbol.toLowerCase().includes(needle) ||
+          t.pairedStockSymbol.toLowerCase().includes(needle) ||
+          t.pairedStockName.toLowerCase().includes(needle)
       );
     }
 
+    const limit = Math.min(200, Math.max(1, Number(searchParams.get("limit") ?? 100) || 100));
+    const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
+
     return NextResponse.json({
-      tokens: filtered,
+      tokens: filtered.slice(offset, offset + limit),
       kpis,
       count: filtered.length,
     });

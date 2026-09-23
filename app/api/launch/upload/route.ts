@@ -3,52 +3,69 @@ import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
 
+const MAX_BYTES = 5 * 1024 * 1024;
+const WINDOW_MS = 60_000;
+const MAX_UPLOADS_PER_WINDOW = 8;
+const recentUploads = new Map<string, number[]>();
+
+function clientKey(request: NextRequest) {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || request.headers.get("x-real-ip") || "local";
+}
+
+function rateLimited(key: string) {
+  const now = Date.now();
+  const stamps = (recentUploads.get(key) ?? []).filter((time) => now - time < WINDOW_MS);
+  if (stamps.length >= MAX_UPLOADS_PER_WINDOW) {
+    recentUploads.set(key, stamps);
+    return true;
+  }
+  stamps.push(now);
+  recentUploads.set(key, stamps);
+  return false;
+}
+
+function imageExtension(buffer: Buffer): ".png" | ".jpg" | ".webp" | ".gif" | null {
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return ".png";
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return ".jpg";
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") return ".webp";
+  if (buffer.length >= 6 && buffer.toString("ascii", 0, 3) === "GIF") return ".gif";
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
+    if (rateLimited(clientKey(request))) {
+      return NextResponse.json({ error: "Too many uploads. Wait a moment and try again." }, { status: 429 });
+    }
 
-    if (!file) {
+    const formData = await request.formData();
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-
-    // Validate mime type
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "File must be an image (PNG, JPG, WebP, SVG)" }, { status: 400 });
-    }
-
-    // Limit file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size <= 0 || file.size > MAX_BYTES) {
       return NextResponse.json({ error: "Image size must be under 5MB" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = imageExtension(buffer);
+    if (!ext) {
+      return NextResponse.json({ error: "File must be a PNG, JPG, WebP, or GIF image." }, { status: 400 });
+    }
 
-    // Ensure public/uploads exists
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     await fs.mkdir(uploadsDir, { recursive: true });
+    const filename = `token_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+    await fs.writeFile(path.join(uploadsDir, filename), buffer);
 
-    // Generate safe unique filename
-    const ext = path.extname(file.name) || ".png";
-    const cleanExt = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"].includes(ext.toLowerCase()) ? ext.toLowerCase() : ".png";
-    const filename = `token_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${cleanExt}`;
-    const filePath = path.join(uploadsDir, filename);
-
-    await fs.writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/${filename}`;
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: `/uploads/${filename}`,
       filename,
-      size: file.size,
+      size: buffer.length,
     });
-  } catch (err: unknown) {
-    console.error("Image upload failed:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to upload image" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });
   }
 }

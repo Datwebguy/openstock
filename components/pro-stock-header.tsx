@@ -33,7 +33,7 @@ export function ProStockHeader({
   liquidityUsd,
   volume24h,
   oraclePrice,
-  reserveCoverage = "100% Backed",
+  reserveCoverage = "Reserve unavailable",
   mintAddress = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
   decimals = 6,
   venueStatus,
@@ -43,8 +43,8 @@ export function ProStockHeader({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentPriceStr, setCurrentPriceStr] = useState(priceFormatted);
-  const [currentLiquidity, setCurrentLiquidity] = useState(liquidityUsd || "Active Pool");
-  const [currentVolume, setCurrentVolume] = useState(volume24h || "Live Volume");
+  const [currentLiquidity, setCurrentLiquidity] = useState(liquidityUsd || "Unavailable");
+  const [currentVolume, setCurrentVolume] = useState(volume24h || "Unavailable");
   const [isLivePulse, setIsLivePulse] = useState(false);
 
   // 10-Second Live Polling from Solana Meteora Pool & Oracle Stream
@@ -157,11 +157,11 @@ export function ProStockHeader({
 
         <div className="pro-asset-header__cta-box">
           <Link
-            href={`/launch?symbol=${symbol}`}
+            href={`/launch?symbol=${encodeURIComponent(symbol)}&quick=1`}
             className="button button--gradient pro-asset-header__launch-cta"
-            title={`Launch a community meme or token paired with ${symbol}`}
+            title={`One-tap launch a TOKEN × ${symbol} pair`}
           >
-            <span>Pair &amp; Launch Token</span>
+            <span>Launch against {symbol}</span>
           </Link>
         </div>
       </div>

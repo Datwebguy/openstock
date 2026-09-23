@@ -56,6 +56,21 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
     };
   }, []);
 
+  // Deep-link from share cards: /app/community?mint=<address>
+  useEffect(() => {
+    if (typeof window === "undefined" || tokens.length === 0) return;
+    const mint = new URLSearchParams(window.location.search).get("mint")?.trim();
+    if (!mint) return;
+    const match = tokens.find((t) => t.mint.toLowerCase() === mint.toLowerCase());
+    if (!match) {
+      setSearch(mint.slice(0, 8));
+      return;
+    }
+    setSearch(match.symbol);
+    const row = document.getElementById(`community-token-${match.mint}`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [tokens]);
+
   // Filtered Tokens
   const filteredTokens = tokens.filter((t) => {
     if (filter === "new") {
@@ -252,7 +267,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                 const volumeFormatted = formatTokenVolume(item.volume24hUsd);
 
                 return (
-                  <tr key={item.mint} className="trends-tr">
+                  <tr key={item.mint} id={`community-token-${item.mint}`} className="trends-tr">
                     <td className="trends-td--rank">{index + 1}</td>
 
                     {/* Token Identity */}
@@ -301,7 +316,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     <td className="trends-td--price">
                       <div className="trends-price-cell">
                         <strong>{formatTokenPrice(item.priceUsd)}</strong>
-                        <small>{item.priceSol.toFixed(6)} SOL</small>
+                        <small>vs {item.pairedStockSymbol}</small>
                       </div>
                     </td>
 
@@ -407,7 +422,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
             const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
 
             return (
-              <article key={item.mint} className="community-card">
+              <article key={item.mint} id={`community-token-${item.mint}`} className="community-card">
                 <div className="community-card__top">
                   <div className="community-card__avatars">
                     <img

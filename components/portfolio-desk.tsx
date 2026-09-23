@@ -2,9 +2,17 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { Connection, Transaction } from "@solana/web3.js";
 import { StockLogo } from "@/components/stock-logo";
 import { useWallet, shortWallet } from "@/components/wallet-session";
 import type { CreatorVaultItem, RoyaltyClaimReceipt } from "@/lib/creator-royalties";
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = window.atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes;
+}
 
 interface HoldingItem {
   symbol: string;
@@ -35,7 +43,7 @@ interface PortfolioData {
 }
 
 interface RoyaltiesData {
-  vaults: (CreatorVaultItem & { stockPriceUsd: number; stockChange24h: number; unclaimedUsd: number; claimedUsd: number })[];
+  vaults: (CreatorVaultItem & { stockPriceUsd: number; stockChange24h: number | null; unclaimedUsd: number; claimedUsd: number })[];
   claims: RoyaltyClaimReceipt[];
   summary: {
     totalUnclaimedUsd: number;
@@ -126,7 +134,7 @@ export function PortfolioDesk() {
     };
   }, [address]);
 
-  // Handle claiming royalties for a single vault or all
+  // Prepare + sign Meteora claimCreatorTradingFee (fees in paired xStock quote)
   async function handleClaim(vaultId?: string) {
     if (!address) return;
     setClaimingId(vaultId || "all");
@@ -145,18 +153,35 @@ export function PortfolioDesk() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Claim failed");
+      if (!data.transactionBase64) throw new Error("Claim transaction was not prepared.");
 
-      // Refresh royalties data after claim
-      const refreshRes = await fetch(`/api/portfolio/royalties?wallet=${encodeURIComponent(address)}`);
-      if (refreshRes.ok) {
-        const updated = await refreshRes.json();
-        setRoyalties(updated);
+      const win = window as unknown as {
+        solana?: { signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>; signTransaction?: (tx: Transaction) => Promise<Transaction> };
+        phantom?: { solana?: { signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>; signTransaction?: (tx: Transaction) => Promise<Transaction> } };
+      };
+      const provider = win.solana ?? win.phantom?.solana;
+      if (!provider?.signTransaction && !provider?.signAndSendTransaction) {
+        throw new Error("Connect Phantom or Solflare to sign the claim.");
       }
 
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const connection = new Connection(rpcUrl, "confirmed");
+      const tx = Transaction.from(base64ToUint8Array(data.transactionBase64));
+
+      let signature = "";
+      if (provider.signAndSendTransaction) {
+        signature = (await provider.signAndSendTransaction(tx)).signature;
+      } else if (provider.signTransaction) {
+        const signed = await provider.signTransaction(tx);
+        signature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 3 });
+      }
+      await connection.confirmTransaction(signature, "confirmed");
+
+      const refreshRes = await fetch(`/api/portfolio/royalties?wallet=${encodeURIComponent(address)}`);
+      if (refreshRes.ok) setRoyalties(await refreshRes.json());
+
       setClaimSuccessMsg(
-        vaultId
-          ? `✓ Successfully claimed equity royalties! Broadcasted to Solana.`
-          : `✓ All equity royalties successfully claimed into your wallet!`
+        `Claimed ${data.unclaimedStockShares ?? ""} ${data.pairedStockSymbol || "xStock"} fees · ${signature.slice(0, 8)}…`
       );
     } catch (err: unknown) {
       console.error("Claim error:", err);
@@ -439,7 +464,7 @@ export function PortfolioDesk() {
                           </strong>
                         </td>
                         <td>
-                          {h.change24h !== undefined ? (
+                          {h.change24h !== undefined && h.change24h !== null ? (
                             <span className={`launch-pair-stat-tag ${isUp ? "is-up" : "is-down"}`}>
                               {isUp ? "+" : ""}{h.change24h.toFixed(2)}%
                             </span>

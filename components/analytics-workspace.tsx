@@ -190,7 +190,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
         liquidityUsd={stats.liquidity}
         volume24h={stats.volume24h}
         oraclePrice={`$${pythPrice.toFixed(2)}`}
-        reserveCoverage="100% Backed"
+        reserveCoverage="Reserve from issuer feed"
         mintAddress={meta.mint}
         decimals={meta.decimals}
         venueStatus="ROUTE"

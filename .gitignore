@@ -1,26 +1,66 @@
+# Dependencies
 node_modules/
+vendor/
+
+# Next.js / build output
 .next/
 out/
 dist/
 build/
-coverage/
 .cache/
+coverage/
+.nyc_output/
+test-results/
+*.tsbuildinfo
+
+# Local data stores (user sessions, receipts, tokens)
 .data/
+
+# User-generated uploads
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temp
 *.log
+npm-debug.log*
+yarn-error.log*
 *.tmp
 *.temp
 *.cache
-*.tsbuildinfo
 *.swp
 *.bak
 *.old
 *.backup
-.env
-.env.*
-!.env.example
+*_old.*
+*_backup.*
+*_copy.*
+
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE
+.idea/
+*.iml
+.project
+
+# Deploy / local tooling
+.vercel
+.playwright-mcp/
+
+# Local design captures and media (keep public/logo assets)
 *.png
 !public/logo/*.png
 !public/logo/**/*.png
@@ -29,3 +69,4 @@ video_assets/
 *.mp4
 *.aac
 *.mp3
+*.wav

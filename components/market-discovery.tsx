@@ -100,13 +100,13 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           return sort === "price-high" ? rightPrice - leftPrice : leftPrice - rightPrice;
         }
         if (sort === "change-high") {
-          const leftChange = getAssetStats(left.symbol).change24h;
-          const rightChange = getAssetStats(right.symbol).change24h;
+          const leftChange = getAssetStats(left.symbol).change24h ?? Number.NEGATIVE_INFINITY;
+          const rightChange = getAssetStats(right.symbol).change24h ?? Number.NEGATIVE_INFINITY;
           return rightChange - leftChange;
         }
         if (sort === "volume-high") {
-          const leftVol = parseFloat(getAssetStats(left.symbol).volume24h.replace(/[^0-9.]/g, ""));
-          const rightVol = parseFloat(getAssetStats(right.symbol).volume24h.replace(/[^0-9.]/g, ""));
+          const leftVol = parseFloat(getAssetStats(left.symbol).volume24h.replace(/[^0-9.]/g, "")) || -1;
+          const rightVol = parseFloat(getAssetStats(right.symbol).volume24h.replace(/[^0-9.]/g, "")) || -1;
           return rightVol - leftVol;
         }
         return issuerName(left).localeCompare(issuerName(right));
@@ -136,16 +136,14 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {mostTraded && (
           <Link href={`/app/asset/${mostTraded.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Most Traded</span>
-              <span className="market-pulse-tile__delta is-up">
-                +{getAssetStats(mostTraded.symbol).change24h}%
-              </span>
+              <span className="market-pulse-tile__kicker">Featured</span>
+              <span className="market-pulse-tile__tag">24/7 DEX</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={mostTraded.symbol} logo={mostTraded.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{mostTraded.symbol}</strong>
-                <span>{getAssetStats(mostTraded.symbol).volume24h} 24h Vol</span>
+                <span>Live issuer + on-chain quotes</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(mostTraded.price)}</strong>
             </div>
@@ -155,16 +153,14 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {topGainer && (
           <Link href={`/app/asset/${topGainer.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Top Mover</span>
-              <span className="market-pulse-tile__delta is-up">
-                +{getAssetStats(topGainer.symbol).change24h}%
-              </span>
+              <span className="market-pulse-tile__kicker">Also watch</span>
+              <span className="market-pulse-tile__tag">xStock</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={topGainer.symbol} logo={topGainer.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{topGainer.symbol}</strong>
-                <span>Leading 24h Momentum</span>
+                <span>Open asset desk for evidence</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(topGainer.price)}</strong>
             </div>
@@ -174,14 +170,14 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         {mostLiquid && (
           <Link href={`/app/asset/${mostLiquid.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Deepest Liquidity</span>
+              <span className="market-pulse-tile__kicker">Index name</span>
               <span className="market-pulse-tile__tag">Meteora DLMM</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={mostLiquid.symbol} logo={mostLiquid.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{mostLiquid.symbol}</strong>
-                <span>{getAssetStats(mostLiquid.symbol).liquidity} Pool TVL</span>
+                <span>Pool TVL when Meteora reports it</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(mostLiquid.price)}</strong>
             </div>
@@ -196,7 +192,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           <div className="market-pulse-tile__main">
             <div className="market-pulse-tile__meta">
               <strong style={{ color: "var(--solana-green, #14f195)" }}>24/7 DEX Hours</strong>
-              <span>100% Backed Equities</span>
+              <span>Tokenized equities on Solana</span>
             </div>
             <Link href="/launch" className="market-pulse-tile__launch-cta" title="Launch stock-paired token">
               Pair &amp; Launch
@@ -343,7 +339,8 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
             <tbody>
               {filtered.map((asset, index) => {
                 const stats = getAssetStats(asset.symbol);
-                const isPositive = stats.change24h >= 0;
+                const change = stats.change24h;
+                const isPositive = change === null || change === undefined ? true : change >= 0;
                 const isSaved = watchlist.includes(asset.symbol);
 
                 return (
@@ -356,7 +353,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                           <div className="trends-asset-symbol-row">
                             <strong className="trends-asset-symbol">{asset.symbol}</strong>
                             <span className="trends-verified-badge">VERIFIED</span>
-                            <span className="trends-token2022-badge">Backed</span>
+                            <span className="trends-token2022-badge">xStock</span>
                           </div>
                           <span className="trends-asset-name">
                             {issuerName(asset)} · {ticker(asset)}
@@ -368,15 +365,14 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                       <strong className="trends-price-val">{displayPrice(asset.price)}</strong>
                     </td>
                     <td className="trends-td--change">
-                      <span className={`trends-change-pill ${isPositive ? "is-up" : "is-down"}`}>
-                        {isPositive ? "+" : ""}
-                        {stats.change24h.toFixed(2)}%
+                      <span className={`trends-change-pill ${change === null || change === undefined ? "" : isPositive ? "is-up" : "is-down"}`}>
+                        {change === null || change === undefined ? "—" : `${isPositive ? "+" : ""}${change.toFixed(2)}%`}
                       </span>
                     </td>
                     <td className="trends-td--volume">{stats.volume24h}</td>
                     <td className="trends-td--liquidity">{stats.liquidity}</td>
                     <td className="trends-td--backing">
-                      <span className="trends-backing-pill">100% Backed</span>
+                      <span className="trends-backing-pill">Issuer PoR</span>
                     </td>
                     <td className="trends-td--actions">
                       <div className="trends-action-group">
@@ -418,7 +414,8 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
         <div className="stock-grid" aria-label="Tokenized stocks cards">
           {filtered.map((asset) => {
             const stats = getAssetStats(asset.symbol);
-            const isPositive = stats.change24h >= 0;
+            const change = stats.change24h;
+            const isPositive = change === null || change === undefined ? true : change >= 0;
             const isSaved = watchlist.includes(asset.symbol);
 
             return (
@@ -436,9 +433,8 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                         VERIFIED
                       </span>
                     </div>
-                    <span className={`stock-card__delta ${isPositive ? "is-up" : "is-down"}`}>
-                      {isPositive ? "+" : ""}
-                      {stats.change24h}%
+                    <span className={`stock-card__delta ${change === null || change === undefined ? "" : isPositive ? "is-up" : "is-down"}`}>
+                      {change === null || change === undefined ? "—" : `${isPositive ? "+" : ""}${change}%`}
                     </span>
                   </div>
                   <h2>{issuerName(asset)}</h2>

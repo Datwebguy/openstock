@@ -11,8 +11,10 @@
     "test": "node scripts/verify-scaled-amounts.mjs"
   },
   "dependencies": {
+    "@farcaster/mini-app-solana": "^1.1.3",
     "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.12",
     "@privy-io/react-auth": "^3.44.0",
+    "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.99.0",
     "bs58": "^6.0.0",
     "next": "^15.5.0",

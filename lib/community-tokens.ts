@@ -330,14 +330,23 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
 
         if (res.ok) {
           const json = await res.json();
-          const pairs: any[] = Array.isArray(json?.pairs) ? json.pairs : [];
+          type DexScreenerPair = {
+            baseToken?: { address?: string };
+            priceUsd?: string;
+            priceNative?: string;
+            volume?: { h24?: number };
+            priceChange?: { h24?: number };
+            marketCap?: number;
+            fdv?: number;
+          };
+          const pairs: DexScreenerPair[] = Array.isArray(json?.pairs) ? json.pairs : [];
 
           for (const pair of pairs) {
             const address = pair.baseToken?.address;
             if (!address) continue;
 
-            const pUsd = parseFloat(pair.priceUsd) || 0;
-            const pSol = parseFloat(pair.priceNative) || 0;
+            const pUsd = parseFloat(pair.priceUsd ?? "") || 0;
+            const pSol = parseFloat(pair.priceNative ?? "") || 0;
             const vol = typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
             const chg = typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0;
             const mcap = pair.marketCap || pair.fdv || 0;

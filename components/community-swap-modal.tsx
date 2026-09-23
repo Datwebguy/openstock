@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { VersionedTransaction } from "@solana/web3.js";
+import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import type { CommunityToken } from "@/lib/community-tokens";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
@@ -12,7 +13,9 @@ type CommunitySwapModalProps = {
   onTradeSuccess?: (updatedVolume: number) => void;
 };
 
-const SOL_MINT = "So11111111111111111111111111111111111111112";
+function quoteMintFor(token: CommunityToken) {
+  return VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === token.pairedStockSymbol)?.mint ?? null;
+}
 
 function decode(value: string) {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
@@ -29,7 +32,7 @@ function encode(value: Uint8Array) {
 export function CommunitySwapModal({ token, onClose, onTradeSuccess }: CommunitySwapModalProps) {
   const { address, connect, signTransaction } = useWallet();
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [amount, setAmount] = useState<string>("0.5");
+  const [amount, setAmount] = useState<string>("1");
   const [slippage, setSlippage] = useState<number>(1.0);
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
@@ -37,11 +40,9 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
   const [txSuccess, setTxSuccess] = useState<{ signature: string; received: string } | null>(null);
 
   const parsedAmount = parseFloat(amount) || 0;
-  const priceSol = token.priceSol || 0.0001;
-
-  // Real-time bonding curve or AMM quote estimation
-  const tokensToReceive = side === "buy" ? (parsedAmount > 0 ? Math.floor(parsedAmount / priceSol) : 0) : parsedAmount;
-  const solToReceive = side === "sell" ? +(parsedAmount * priceSol * 0.99).toFixed(4) : parsedAmount;
+  const quoteMint = quoteMintFor(token);
+  const quoteSymbol = token.pairedStockSymbol;
+  const quoteDecimals = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === quoteSymbol)?.decimals ?? 6;
 
   async function handleExecuteSwap() {
     if (!address) {
@@ -54,6 +55,10 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
     }
 
     if (parsedAmount <= 0) return;
+    if (!quoteMint) {
+      setSwapError(`No verified ${quoteSymbol} mint is available for this pair.`);
+      return;
+    }
 
     setIsSwapping(true);
     setSwapError(null);
@@ -61,13 +66,10 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
 
     try {
       const slippageBps = Math.round(slippage * 100);
-      const inputMint = side === "buy" ? SOL_MINT : token.mint;
-      const outputMint = side === "buy" ? token.mint : SOL_MINT;
-
-      // SOL has 9 decimals; standard SPL tokens typically 6 decimals
-      const rawAmount = side === "buy"
-        ? Math.max(1, Math.round(parsedAmount * 1e9)).toString()
-        : Math.max(1, Math.round(parsedAmount * 1e6)).toString();
+      const inputMint = side === "buy" ? quoteMint : token.mint;
+      const outputMint = side === "buy" ? token.mint : quoteMint;
+      const inputDecimals = side === "buy" ? quoteDecimals : 6;
+      const rawAmount = Math.max(1, Math.round(parsedAmount * (10 ** inputDecimals))).toString();
 
       // Query live Jupiter Lite routing
       const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(rawAmount)}&slippageBps=${slippageBps}`;
@@ -78,7 +80,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
 
       if (!quoteRes.ok) {
         // If AMM routing is not yet available, token is likely trading on internal bonding curve
-        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/SOL-${token.mint}`;
+        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/${quoteSymbol}-${token.mint}`;
         const poolLabel = token.meteoraUrl ? "Meteora DLMM Pool" : "Pump.fun Bonding Curve";
         setBondingNotice({
           message: `Direct AMM route is pending curve graduation (${token.bondingCurveProgress.toFixed(1)}%). Trade directly on the pool:`,
@@ -101,7 +103,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
         body: JSON.stringify({
           quoteResponse,
           userPublicKey: address,
-          wrapAndUnwrapSol: true,
+          wrapAndUnwrapSol: false,
         }),
         signal: AbortSignal.timeout(12000),
       });
@@ -137,8 +139,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
 
       const formattedReceived =
         side === "buy"
-          ? `${tokensToReceive.toLocaleString()} ${token.symbol}`
-          : `${solToReceive.toFixed(4)} SOL`;
+          ? `${token.symbol} against ${quoteSymbol}`
+          : `${quoteSymbol} against ${token.symbol}`;
 
       setTxSuccess({
         signature: execution.signature,
@@ -194,7 +196,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             className={`community-swap-tab ${side === "buy" ? "is-buy" : ""}`}
             onClick={() => {
               setSide("buy");
-              setAmount("0.5");
+              setAmount("1");
               setTxSuccess(null);
               setSwapError(null);
               setBondingNotice(null);
@@ -254,7 +256,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             <div className="community-swap-field-card">
               <div className="community-swap-field-top">
                 <span>You Pay</span>
-                <span>{address ? `Wallet: ${shortWallet(address)}` : "Balance: ~ SOL"}</span>
+                <span>{address ? `Wallet: ${shortWallet(address)}` : `Pay in ${quoteSymbol}`}</span>
               </div>
               <div className="community-swap-input-row">
                 <input
@@ -272,8 +274,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                 <div className="community-swap-currency-badge">
                   {side === "buy" ? (
                     <>
-                      <span className="solana-badge-mark">SOL</span>
-                      <span>SOL</span>
+                      <StockLogo symbol={quoteSymbol} size={18} />
+                      <span>{quoteSymbol}</span>
                     </>
                   ) : (
                     <>
@@ -295,7 +297,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               {/* Quick Amount Presets (For Buy) */}
               {side === "buy" && (
                 <div className="community-swap-presets">
-                  {[0.1, 0.5, 1.0, 5.0].map((val) => (
+                  {[0.1, 0.5, 1, 5].map((val) => (
                     <button
                       type="button"
                       key={val}
@@ -306,7 +308,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                         setBondingNotice(null);
                       }}
                     >
-                      {val} SOL
+                      {val} {quoteSymbol}
                     </button>
                   ))}
                 </div>
@@ -321,7 +323,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               </div>
               <div className="community-swap-input-row">
                 <div className="community-swap-output-val">
-                  {side === "buy" ? tokensToReceive.toLocaleString() : solToReceive.toFixed(4)}
+                  Quoted on submit
                 </div>
                 <div className="community-swap-currency-badge">
                   {side === "buy" ? (
@@ -339,8 +341,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                     </>
                   ) : (
                     <>
-                      <span className="solana-badge-mark">SOL</span>
-                      <span>SOL</span>
+                      <StockLogo symbol={quoteSymbol} size={18} />
+                      <span>{quoteSymbol}</span>
                     </>
                   )}
                 </div>
@@ -405,8 +407,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                 : isSwapping
                 ? "Broadcasting to Solana..."
                 : side === "buy"
-                ? `Buy ${token.symbol} with ${amount} SOL`
-                : `Sell ${amount} ${token.symbol} for SOL`}
+                ? `Buy ${token.symbol} with ${amount} ${quoteSymbol}`
+                : `Sell ${amount} ${token.symbol} for ${quoteSymbol}`}
             </button>
           </>
         )}
@@ -435,7 +437,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             </a>
           ) : null}
           <a
-            href={`https://jup.ag/swap/SOL-${token.mint}`}
+            href={`https://jup.ag/swap/${quoteSymbol}-${token.mint}`}
             target="_blank"
             rel="noreferrer"
             className="community-swap-ext-link"

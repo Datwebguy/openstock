@@ -17,8 +17,6 @@ import {
   type PriorityFeeTier,
 } from "@/lib/solana-preflight";
 import {
-  SOL_MINT,
-  USDC_MINT,
   METEORA_DBC_CURVE_PRESETS,
   type DbcCurvePresetKey,
 } from "@/lib/meteora-dbc";
@@ -78,8 +76,9 @@ function matchesCategory(symbol: string, categoryId: string): boolean {
 export function LaunchClient() {
   const searchParams = useSearchParams();
   const initialSymbol = searchParams.get("symbol") || "AAPLx";
+  const quickMode = searchParams.get("quick") === "1";
 
-  const { address, ready, connect } = useWallet();
+  const { address, ready, connect, connecting, canSign } = useWallet();
 
   // Supported Stock pairs
   const [pairs, setPairs] = useState<PumpPairAsset[]>([]);
@@ -93,18 +92,19 @@ export function LaunchClient() {
   const [venueSupport, setVenueSupport] = useState<{
     pumpfun: boolean;
     meteora: boolean;
-  }>({ pumpfun: true, meteora: true });
+    meteoraBadged: boolean;
+    dbcConfigReady: boolean;
+  }>({ pumpfun: true, meteora: false, meteoraBadged: false, dbcConfigReady: false });
   const [loadingVenues, setLoadingVenues] = useState(false);
 
-  // Meteora DBC Curve Presets (Linear Standard, Exponential Growth, Flat Deep Liquidity)
+  // Meteora DBC equity-tuned presets (Equity Standard / Momentum / Deep Book)
   const [selectedCurvePreset, setSelectedCurvePreset] = useState<DbcCurvePresetKey>("linear");
 
-  // Token-2022 Badge State & Fallback
+  // Token-2022 Badge State — launches pair against the selected xStock only
   const [stockBadgeStatus, setStockBadgeStatus] = useState<"checking" | "badged" | "unbadged">("checking");
-  const [activeQuoteOverride, setActiveQuoteOverride] = useState<{ mint: string; symbol: string; label: string } | null>(null);
-  const quoteBadgeStatus = activeQuoteOverride ? "badged" : stockBadgeStatus;
-  const effectiveQuoteMint = activeQuoteOverride ? activeQuoteOverride.mint : selectedPair?.mint;
-  const effectiveQuoteSymbol = activeQuoteOverride ? activeQuoteOverride.symbol : selectedPair?.symbol;
+  const quoteBadgeStatus = stockBadgeStatus;
+  const effectiveQuoteMint = selectedPair?.mint;
+  const effectiveQuoteSymbol = selectedPair?.symbol;
 
   // Form State: Token Identity
   const [tokenName, setTokenName] = useState("");
@@ -234,8 +234,6 @@ export function LaunchClient() {
     const pairSymbol = selectedPair.symbol;
     const pairMint = selectedPair.mint;
 
-    // Reset quote override whenever a new xStock is selected
-    setActiveQuoteOverride(null);
     setStockBadgeStatus("checking");
 
     async function evaluateVenues() {
@@ -247,14 +245,23 @@ export function LaunchClient() {
           const pSupported = Boolean(data.venues?.pumpfun?.supported);
           const mSupported = Boolean(data.venues?.meteora?.supported);
           const isBadged = Boolean(data.isBadged ?? data.venues?.meteora?.isBadged);
+          const dbcConfigReady = Boolean(data.dbcConfigReady ?? data.venues?.meteora?.dbcConfigReady);
 
           setStockBadgeStatus(isBadged ? "badged" : "unbadged");
-          setVenueSupport({ pumpfun: pSupported, meteora: mSupported });
+          setVenueSupport({
+            pumpfun: pSupported,
+            meteora: mSupported,
+            meteoraBadged: isBadged,
+            dbcConfigReady,
+          });
 
-          // If current selection is unsupported, automatically flip to the supported one
-          if (!pSupported && mSupported) {
+          // Pre–Phase D: Pump is the working launch path. Only use Meteora when
+          // badge + METEORA_DBC_CONFIG are both ready (venues.supported already encodes that).
+          if (pSupported) {
+            setSelectedVenue("pumpfun");
+          } else if (mSupported) {
             setSelectedVenue("meteora");
-          } else if (pSupported && !mSupported) {
+          } else {
             setSelectedVenue("pumpfun");
           }
         }
@@ -283,8 +290,8 @@ export function LaunchClient() {
     }
   }
 
-  // Deployer Initial Buy (Dev Buy / Pre-mine) Calculation Handlers
-  // Virtual bonding curve formula: 30 virtual SOL reserve
+  // Pump.fun genesis buy is paid in SOL for network/curve bootstrapping.
+  // The quote asset for the pair remains the selected xStock — SOL is not the product quote.
   const estimateTokensForSol = (sol: number, supply: number = tokenSupply) => {
     if (sol <= 0) return 0;
     const virtualSol = 30;
@@ -396,8 +403,8 @@ export function LaunchClient() {
     }
 
     // Prevent launching an unbadged pair that cannot settle on-chain
-    if (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride) {
-      setErrorMessage("This stock can’t be the pair yet. Use SOL or USDC instead.");
+    if (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged") {
+      setErrorMessage("This xStock is not badged on Meteora DBC yet. Launch against it on Pump.fun, or pick a badged stock.");
       return;
     }
 
@@ -411,7 +418,12 @@ export function LaunchClient() {
       return;
     }
 
-    if (description.trim().length < 10) {
+    const resolvedDescription =
+      description.trim().length >= 10
+        ? description.trim()
+        : `${tokenName.trim()} paired against ${selectedPair.symbol} on OpenStock`;
+
+    if (!quickMode && description.trim().length < 10) {
       setErrorMessage("Description / thesis should be at least 10 characters.");
       return;
     }
@@ -457,7 +469,7 @@ export function LaunchClient() {
           body: JSON.stringify({
             name: tokenName.trim(),
             symbol: tokenSymbol.trim().toUpperCase(),
-            description: description.trim(),
+            description: resolvedDescription,
             imageUrl: imageUrl.trim(),
             pumpQuoteMint: selectedPair.mint,
             pumpCreatorFeeBps: creatorFeeBps,
@@ -549,7 +561,7 @@ export function LaunchClient() {
           body: JSON.stringify({
             name: tokenName.trim(),
             symbol: tokenSymbol.trim().toUpperCase(),
-            description: description.trim(),
+            description: resolvedDescription,
             imageUrl: imageUrl.trim(),
             pumpQuoteMint: selectedPair.mint,
             pumpCreatorFeeBps: creatorFeeBps,
@@ -605,7 +617,7 @@ export function LaunchClient() {
             mode: "prepare",
             name: tokenName.trim(),
             symbol: tokenSymbol.trim().toUpperCase(),
-            description: description.trim(),
+            description: resolvedDescription,
             imageUrl: imageUrl.trim(),
             quoteMint: effectiveQuoteMint,
             creatorWallet: address,
@@ -673,7 +685,7 @@ export function LaunchClient() {
             mode: "confirm",
             name: tokenName.trim(),
             symbol: tokenSymbol.trim().toUpperCase(),
-            description: description.trim(),
+            description: resolvedDescription,
             imageUrl: imageUrl.trim(),
             quoteMint: effectiveQuoteMint,
             creatorWallet: address,
@@ -711,35 +723,90 @@ export function LaunchClient() {
   }
 
   return (
-    <div className="launch-container">
-      {/* Restored Hero Header with Well-Aligned Background Card & Concise Note */}
+    <div className={`launch-container ${quickMode ? "launch-container--quick" : ""}`}>
       <section className="launch-intro" aria-labelledby="launch-title">
         <div className="launch-intro-top">
-          <Link href="/app" className="launch-back-link">
-            <span aria-hidden="true">←</span> Back to Market Desk
+          <Link href={quickMode ? `/app/asset/${encodeURIComponent(initialSymbol)}` : "/app"} className="launch-back-link">
+            <span aria-hidden="true">←</span> {quickMode ? `Back to ${initialSymbol}` : "Back to Market Desk"}
           </Link>
           <div className="launch-header-chips">
             <span className="launch-network-pill">
               <span className="launch-pulse-dot" /> Solana
             </span>
             <span className="launch-protocol-pill">
-              Stock-Paired Token Studio
+              {quickMode ? "One-tap stock pair" : "Stock-Paired Token Studio"}
             </span>
           </div>
         </div>
 
         <div className="launch-intro-body">
           <span className="launch-studio-kicker">
-            <span className="launch-pulse-dot" /> TOKEN × STOCK STUDIO
+            <span className="launch-pulse-dot" /> {quickMode ? "ONE-TAP LAUNCH" : "TOKEN × STOCK STUDIO"}
           </span>
           <h1 id="launch-title" className="launch-intro-title">
-            YOUR TOKEN × <span className="launch-accent-symbol">{selectedPair?.symbol || "AAPLx"}</span>
+            YOUR TOKEN × <span className="launch-accent-symbol">{selectedPair?.symbol || initialSymbol}</span>
           </h1>
           <p className="launch-intro-desc">
-            Deploy an on-chain token paired directly against {selectedPair?.name?.replace(/ xStock$/, "") || "Apple"} tokenized equity liquidity.
+            {quickMode
+              ? `Name it, confirm, and launch against ${selectedPair?.symbol || initialSymbol}. Quote is the stock — not SOL or USDC.`
+              : `Deploy an on-chain token paired directly against ${selectedPair?.name?.replace(/ xStock$/, "") || "Apple"} tokenized equity liquidity.`}
           </p>
         </div>
       </section>
+
+      {quickMode ? (
+        <section className="launch-quick-panel" aria-label="One-tap launch">
+          <div className="launch-quick-pair">
+            <StockLogo symbol={selectedPair?.symbol || initialSymbol} logo={selectedPair?.imageUrl ?? undefined} size={40} />
+            <div>
+              <strong>{selectedPair?.symbol || initialSymbol}</strong>
+              <span>Quote locked · {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} · {(creatorFeeBps / 100).toFixed(1)}% fee in stock</span>
+            </div>
+          </div>
+          <div className="launch-quick-fields">
+            <label>
+              Token name
+              <input
+                value={tokenName}
+                maxLength={32}
+                placeholder="e.g. Compute Bull"
+                onChange={(e) => setTokenName(e.target.value)}
+              />
+            </label>
+            <label>
+              Ticker
+              <input
+                value={tokenSymbol}
+                maxLength={10}
+                placeholder="COMPUTE"
+                onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
+              />
+            </label>
+          </div>
+          {!ready || !address ? (
+            <button type="button" className="button button--gradient" onClick={() => void connect()} disabled={connecting}>
+              {connecting ? "Connecting…" : "Connect Phantom / Solflare to launch"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="button button--gradient"
+              disabled={stepState === "quoting" || stepState === "paying" || stepState === "confirming"}
+              onClick={() => void handleLaunch()}
+            >
+              {stepState === "idle" || stepState === "error" || stepState === "success"
+                ? `Launch ${tokenSymbol || "TOKEN"} × ${selectedPair?.symbol || initialSymbol}`
+                : statusMessage || "Launching…"}
+            </button>
+          )}
+          {errorMessage ? <p className="launch-quick-error" role="alert">{errorMessage}</p> : null}
+          <p className="launch-quick-note">
+            Working path: Pump.fun against {selectedPair?.symbol || "xStock"} · 1.5% creator fee · 1B supply.
+            Meteora DBC unlocks after one PoolConfig is set.{" "}
+            <Link href={`/launch?symbol=${encodeURIComponent(initialSymbol)}`}>Open full studio</Link>
+          </p>
+        </section>
+      ) : null}
 
       {/* Hidden File Input for Device Upload */}
       <input
@@ -753,7 +820,20 @@ export function LaunchClient() {
         style={{ display: "none" }}
       />
 
-      {/* Two-Column Studio Layout */}
+      {quickMode && launchReceipt ? (
+        <section className="launch-quick-success" aria-live="polite">
+          <h2>Launched {tokenSymbol} × {selectedPair?.symbol}</h2>
+          <p>Mint <code>{launchReceipt.mintAddress}</code></p>
+          <div className="launch-quick-success-actions">
+            <a className="button button--gradient" href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer">View tx</a>
+            <Link className="button button--light" href={`/app/community?mint=${encodeURIComponent(launchReceipt.mintAddress)}`}>Open on desk</Link>
+            <button type="button" className="button button--light" onClick={() => setShowShareModal(true)}>Share to X</button>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Two-Column Studio Layout — full config (hidden in one-tap mode) */}
+      {!quickMode ? (
       <div className="launch-studio-layout">
         {/* Left Column: Multi-Step Configuration Form */}
         <div className="launch-controls-column">
@@ -901,7 +981,8 @@ export function LaunchClient() {
             {/* Active Selected Stock Banner */}
             {selectedPair && (() => {
               const pairStats = getAssetMarketStats(selectedPair.symbol);
-              const isUp = pairStats.change24h >= 0;
+              const change = pairStats.change24h;
+              const isUp = change === null || change === undefined ? true : change >= 0;
               return (
                 <div className="launch-selected-pair-banner">
                   <div className="launch-selected-pair-info">
@@ -912,8 +993,8 @@ export function LaunchClient() {
                     </div>
                   </div>
                   <div className="launch-selected-pair-meta">
-                    <span className={`launch-selected-pair-stat ${isUp ? "is-up" : "is-down"}`}>
-                      {isUp ? "+" : ""}{pairStats.change24h.toFixed(2)}% (24h)
+                    <span className={`launch-selected-pair-stat ${change === null || change === undefined ? "" : isUp ? "is-up" : "is-down"}`}>
+                      {change === null || change === undefined ? "24h —" : `${isUp ? "+" : ""}${change.toFixed(2)}% (24h)`}
                     </span>
                     <span className="launch-selected-pair-badge">
                       <span className="launch-pulse-dot" /> Verified stock
@@ -923,37 +1004,10 @@ export function LaunchClient() {
               );
             })()}
 
-            {/* Pair Availability & Fallback */}
+            {/* Pair availability against the selected xStock */}
             {selectedPair && (
               <div className="launch-badge-section">
-                {activeQuoteOverride ? (
-                  <div className="launch-badge-card is-fallback">
-                    <div className="launch-badge-row">
-                      <span className="launch-badge-pill is-verified">
-                        ✓ Paired with {activeQuoteOverride.symbol}
-                      </span>
-                      <span className="launch-badge-index-tag">
-                        Reference stock: {selectedPair.symbol}
-                      </span>
-                    </div>
-                    <p className="launch-badge-note">
-                      Pairing with <strong>{activeQuoteOverride.label}</strong>. <strong>{selectedPair.symbol}</strong> remains your reference stock.
-                    </p>
-                    <button
-                      type="button"
-                      className="launch-badge-reset-btn"
-                      onClick={() => {
-                        setActiveQuoteOverride(null);
-                        fetch(`/api/launch/venues?symbol=${selectedPair.symbol}&mint=${selectedPair.mint}`)
-                          .then((r) => r.json())
-                          .then((d) => setStockBadgeStatus(d.isBadged ? "badged" : "unbadged"))
-                          .catch(() => setStockBadgeStatus("unbadged"));
-                      }}
-                    >
-                      ↺ Reset to {selectedPair.symbol}
-                    </button>
-                  </div>
-                ) : quoteBadgeStatus === "checking" ? (
+                {quoteBadgeStatus === "checking" ? (
                   <div className="launch-badge-checking">
                     <span className="launch-pulse-dot" /> Checking pair availability...
                   </div>
@@ -963,54 +1017,26 @@ export function LaunchClient() {
                       ✓ Ready to pair
                     </span>
                     <span className="launch-badge-note">
-                      {selectedPair.symbol} is ready for pair creation.
+                      {selectedPair.symbol} is ready for pair creation on Pump.fun and Meteora DBC.
                     </span>
                   </div>
                 ) : (
                   <div className="launch-badge-card is-unbadged">
                     <div className="launch-badge-row">
                       <span className="launch-badge-pill is-unbadged">
-                        ⚠️ This stock can’t be the pair yet. Use SOL or USDC instead.
+                        {selectedPair.symbol} is not badged on Meteora DBC yet
                       </span>
                     </div>
-                    <div className="launch-fallback-actions" style={{ marginTop: 12 }}>
-                      <button
-                        type="button"
-                        className="launch-fallback-btn"
-                        onClick={() => {
-                          setActiveQuoteOverride({
-                            mint: SOL_MINT,
-                            symbol: "SOL",
-                            label: "Wrapped SOL",
-                          });
-                          setStockBadgeStatus("badged");
-                        }}
-                      >
-                        <span className="launch-fallback-btn-icon">⚡</span>
-                        <div className="launch-fallback-btn-copy">
-                          <strong>Use SOL</strong>
-                          <small>Instant liquidity</small>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        className="launch-fallback-btn"
-                        onClick={() => {
-                          setActiveQuoteOverride({
-                            mint: USDC_MINT,
-                            symbol: "USDC",
-                            label: "Circle USDC",
-                          });
-                          setStockBadgeStatus("badged");
-                        }}
-                      >
-                        <span className="launch-fallback-btn-icon">💵</span>
-                        <div className="launch-fallback-btn-copy">
-                          <strong>Use USDC</strong>
-                          <small>Dollar stable</small>
-                        </div>
-                      </button>
-                    </div>
+                    <p className="launch-badge-note">
+                      Launch against this stock on Pump.fun, or pick a badged xStock for Meteora. OpenStock does not pair against SOL or USDC.
+                    </p>
+                    <button
+                      type="button"
+                      className="launch-badge-reset-btn"
+                      onClick={() => setSelectedVenue("pumpfun")}
+                    >
+                      Launch {selectedPair.symbol} on Pump.fun
+                    </button>
                   </div>
                 )}
               </div>
@@ -1071,7 +1097,8 @@ export function LaunchClient() {
                   {visiblePairs.map((pair) => {
                     const isSelected = selectedPair?.mint === pair.mint;
                     const stats = getAssetMarketStats(pair.symbol);
-                    const isUp = stats.change24h >= 0;
+                    const change = stats.change24h;
+                    const isUp = change === null || change === undefined ? true : change >= 0;
                     return (
                       <button
                         type="button"
@@ -1092,8 +1119,8 @@ export function LaunchClient() {
                               <span className="launch-pulse-dot" /> Active
                             </span>
                           ) : (
-                            <span className={`launch-pair-stat-tag ${isUp ? "is-up" : "is-down"}`}>
-                              {isUp ? "+" : ""}{stats.change24h.toFixed(1)}%
+                            <span className={`launch-pair-stat-tag ${change === null || change === undefined ? "" : isUp ? "is-up" : "is-down"}`}>
+                              {change === null || change === undefined ? "—" : `${isUp ? "+" : ""}${change.toFixed(1)}%`}
                             </span>
                           )}
                         </div>
@@ -1155,7 +1182,7 @@ export function LaunchClient() {
                     </button>
                   ) : null}
 
-                  {/* Meteora Curve Venue Option */}
+                  {/* Meteora — selectable only when badge + PoolConfig ready */}
                   {venueSupport.meteora ? (
                     <button
                       type="button"
@@ -1180,6 +1207,17 @@ export function LaunchClient() {
                         </div>
                       </div>
                     </button>
+                  ) : venueSupport.meteoraBadged ? (
+                    <div className="launch-venue-card is-disabled" aria-disabled="true">
+                      <div className="launch-venue-head">
+                        <span className="launch-venue-title">Meteora curve</span>
+                        <span className="launch-venue-badge">Needs PoolConfig</span>
+                      </div>
+                      <p className="launch-venue-desc">
+                        This xStock is badged on Meteora, but <code>METEORA_DBC_CONFIG</code> is empty.
+                        Use Pump.fun for live launches until you add one Equity Standard PoolConfig (xStock quote).
+                      </p>
+                    </div>
                   ) : null}
                 </div>
 
@@ -1327,7 +1365,7 @@ export function LaunchClient() {
                 {/* SOL Input + Live Readout */}
                 <div className="launch-devbuy-inputs-grid">
                   <div className="launch-devbuy-input-wrap">
-                    <label htmlFor="dev-buy-sol" className="launch-devbuy-input-label">SOL Amount</label>
+                    <label htmlFor="dev-buy-sol" className="launch-devbuy-input-label">Genesis buy (SOL gas, not quote)</label>
                     <div className="launch-input-with-suffix">
                       <input
                         id="dev-buy-sol"
@@ -1445,7 +1483,7 @@ export function LaunchClient() {
                   stepState === "quoting" ||
                   stepState === "paying" ||
                   stepState === "confirming" ||
-                  (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride)
+                  (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged")
                 }
                 onClick={handleLaunch}
               >
@@ -1457,8 +1495,8 @@ export function LaunchClient() {
                   "Approve in Wallet..."
                 ) : stepState === "confirming" ? (
                   "Creating Market on Solana..."
-                ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" && !activeQuoteOverride ? (
-                  "This stock can’t be the pair yet. Use SOL or USDC instead."
+                ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" ? (
+                  "This xStock is not on Meteora DBC yet"
                 ) : (
                   <>
                     Launch {tokenSymbol || "TOKEN"} × {effectiveQuoteSymbol || "xStock"}
@@ -1591,9 +1629,7 @@ export function LaunchClient() {
                 <div className="launch-holo-spec-row">
                   <span>Quote Asset</span>
                   <strong>
-                    {activeQuoteOverride
-                      ? `${activeQuoteOverride.symbol} (${selectedPair?.symbol} reference)`
-                      : selectedPair
+                    {selectedPair
                       ? `${selectedPair.name.replace(/ xStock$/, "")} (${selectedPair.symbol})`
                       : "Stock"}
                   </strong>
@@ -1629,6 +1665,7 @@ export function LaunchClient() {
           </div>
         </div>
       </div>
+      ) : null}
 
       {/* Feature #3: Viral Share to X Modal */}
       {showShareModal && launchReceipt && (

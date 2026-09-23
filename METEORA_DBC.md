@@ -68,13 +68,9 @@ If a Token-2022 quote token does not have an initialized `token_badge` account c
 ### OpenStock Implementation Policy
 1. **Never Invent Badges**: OpenStock never fakes badge accounts or uses mock verification.
 2. **On-Chain Preflight Badge Check**: Before transaction construction, OpenStock calls `checkMeteoraDbcBadgeSupport(quoteMint)` against the Solana mainnet RPC:
-   - If the `token_badge` PDA exists on-chain: Displays **"Verified Meteora DBC badged quote"** with native pool creation enabled.
-   - If no badge exists: Displays **"This xStock is not badged on DBC"** and disables signing any transaction that would revert.
-3. **One-Tap Permissionless Fallback**: When an unbadged xStock is selected, the user is offered a single-tap fallback to pair natively with standard SPL tokens:
-   - **`⚡ Pair with SOL`** (`So11111111111111111111111111111111111111112`)
-   - **`💵 Pair with USDC`** (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`)
-   - Standard SPL tokens are **fully permissionless** and require no token badge.
-   - **Context Preservation**: The underlying stock (`NVDAx`, `AAPLx`) remains permanently anchored as the community index, thematic context, and Pyth Price Oracle benchmark.
+   - If the `token_badge` PDA exists on-chain: Meteora DBC launch against that **xStock** is enabled.
+   - If no badge exists: Meteora DBC is disabled for that stock. The user launches against the same xStock on Pump.fun, or picks a badged xStock.
+3. **Quote asset is always an xStock**: OpenStock does not pair community tokens against SOL or USDC. The product is tokenized-stock pairs (`YOUR_TOKEN × NVDAx`), not SOL/USDC markets.
 
 ---
 
@@ -84,9 +80,9 @@ OpenStock exposes 3 distinct curve presets mapped to Meteora mainnet bonding cur
 
 | Preset | Curve Type | Target Cap | Creator Fee | Description |
 |---|---|---|---|---|
-| **Linear Standard** *(Default)* | Linear Constant Product | $69,000 | 1.5% | Balanced price discovery curve with standard graduation threshold, ideal for mega-cap equities like AAPLx and NVDAx. |
-| **Exponential Growth** | Exponential Curve | $85,000 | 2.0% | Steeper price escalation that rewards early community participants and accelerates migration into DAMM v2. |
-| **Flat Deep Liquidity** | Flat / Concentrated | $100,000 | 1.0% | Low-slippage, deep liquidity curve tailored for broad-market indices (SPY, QQQ) and institutional allocations. |
+| **Equity Standard** *(Default)* | Linear | $69,000 | 1.5% | Balanced TOKEN×xStock discovery for mega-caps (NVDAx, AAPLx). Fees quote in the paired stock. |
+| **Equity Momentum** | Exponential | $85,000 | 2.0% | Steeper early discovery for high-attention stock pairs; accelerates DAMM graduation. |
+| **Equity Deep Book** | Flat | $100,000 | 1.0% | Lower-slippage curve for broad names (SPYx, QQQx) where depth matters more than speed. |
 
 > [!NOTE]
 > Curve preset selection is **strictly displayed only when Meteora DBC is selected** (`selectedVenue === "meteora"`). It is never displayed on Pump.fun / ClawPump. PoolConfig accounts are resolved from on-chain configurations initialized via `@meteora-ag/dynamic-bonding-curve-sdk`.
@@ -98,7 +94,7 @@ OpenStock exposes 3 distinct curve presets mapped to Meteora mainnet bonding cur
 - [`lib/meteora-dbc.ts`](file:///C:/Users/DELL/Downloads/openstock/lib/meteora-dbc.ts): SDK client initialization, curve preset dictionary, on-chain token badge PDA validation, pool PDA derivation, transaction preparation, and DAMM v2 migration helpers.
 - [`app/api/launch/meteora/route.ts`](file:///C:/Users/DELL/Downloads/openstock/app/api/launch/meteora/route.ts): Next.js route handling `prepare` and `confirm` modes, enforces badge checking, passes selected curve preset, and writes confirmed pools to the community registry.
 - [`app/api/launch/venues/route.ts`](file:///C:/Users/DELL/Downloads/openstock/app/api/launch/venues/route.ts): Evaluates quote token badge status on-chain and returns venue capabilities.
-- [`app/launch/launch-client.tsx`](file:///C:/Users/DELL/Downloads/openstock/app/launch/launch-client.tsx): Interactive Launch Studio with DBC preset selector, badge status pill, one-tap SOL/USDC fallback, preflight compute budget simulation, and wallet signing.
+- [`app/launch/launch-client.tsx`](file:///C:/Users/DELL/Downloads/openstock/app/launch/launch-client.tsx): Interactive Launch Studio with DBC preset selector, xStock badge status, Pump.fun fallback for unbadged stocks, preflight compute budget simulation, and wallet signing.
 - [`app/launch/launch.css`](file:///C:/Users/DELL/Downloads/openstock/app/launch/launch.css): Responsive UI styling for DBC curve cards, badge pills, and fallback controls.
 
 ---
@@ -108,8 +104,8 @@ OpenStock exposes 3 distinct curve presets mapped to Meteora mainnet bonding cur
 ### Option A: Via the Web UI
 1. Navigate to `/launch` on OpenStock.
 2. Under **Step 02**, select any stock quote (e.g. `NVDAx`). Notice the badge verification pill checks on-chain.
-3. If unbadged, tap **"Pair with SOL"** or **"Pair with USDC"** for instant permissionless DBC pairing with NVDAx as index context.
-4. Under **Step 03**, select **Meteora DBC**. Notice the 3 DBC Curve Presets appear (**Linear Standard**, **Exponential Growth**, **Flat Deep Liquidity**).
+3. If unbadged, Meteora DBC is unavailable for that stock. Launch against the same xStock on Pump.fun, or pick a badged stock.
+4. Under **Step 03**, select **Meteora DBC** when the stock is badged. Notice the 3 equity-tuned DBC Curve Presets appear (**Equity Standard**, **Equity Momentum**, **Equity Deep Book**).
 5. Connect your Phantom or Solflare wallet.
 6. Click **Launch on Meteora DBC**. Inspect the transaction in your wallet:
    - Notice the program invoked is `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN`.
@@ -128,13 +124,15 @@ curl -X POST http://localhost:3000/api/launch/meteora \
     "symbol": "JUDGE",
     "description": "Verification test for Meteora Crypto Worlds Fair sidetrack",
     "imageUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200",
-    "quoteMint": "So11111111111111111111111111111111111111112",
+    "quoteMint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
     "creatorWallet": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
     "creatorFeeBps": 150,
     "supply": 1000000000,
     "curvePreset": "linear"
   }'
 ```
+
+> `quoteMint` must be a verified xStock (example above = NVDAx). SOL/USDC quote mints are rejected by the API.
 
 The response contains:
 - `transactionBase64`: Serialized transaction containing the authentic `createPool` instruction.

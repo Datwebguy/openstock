@@ -32,3 +32,19 @@ services:
         sync: false
       - key: NEXT_PUBLIC_PRIVY_APP_ID
         sync: false
+      - key: CLAWPUMP_API_KEY
+        sync: false
+      - key: PLATFORM_TREASURY_WALLET
+        sync: false
+      - key: NEXT_PUBLIC_PLATFORM_TREASURY_WALLET
+        sync: false
+      - key: METEORA_DBC_CONFIG
+        sync: false
+      - key: METEORA_DBC_CONFIG_LINEAR
+        sync: false
+      - key: METEORA_DBC_CONFIG_NVDAx
+        sync: false
+      - key: METEORA_DBC_CONFIG_AAPLx
+        sync: false
+      - key: METEORA_DBC_CONFIG_BY_MINT
+        sync: false

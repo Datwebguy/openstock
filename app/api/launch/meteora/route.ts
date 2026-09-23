@@ -7,6 +7,8 @@ import {
   prepareMeteoraDbcPoolTx,
   type DbcCurvePresetKey,
 } from "@/lib/meteora-dbc";
+import { resolvePublicImageUrl } from "@/lib/safe-image-url";
+import { isSolanaAddress } from "@/lib/solana";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,14 +29,19 @@ export async function POST(req: NextRequest) {
       poolAddress,
     } = body;
 
-    if (!creatorWallet) {
+    if (!creatorWallet || typeof creatorWallet !== "string" || !isSolanaAddress(creatorWallet)) {
       return NextResponse.json({ error: "Missing creator wallet address." }, { status: 400 });
     }
-    if (!quoteMint) {
+    if (!quoteMint || typeof quoteMint !== "string" || !isSolanaAddress(quoteMint)) {
       return NextResponse.json({ error: "Missing quote mint." }, { status: 400 });
     }
-    if (!name || !symbol) {
+    if (!name || typeof name !== "string" || !symbol || typeof symbol !== "string") {
       return NextResponse.json({ error: "Missing token name or symbol." }, { status: 400 });
+    }
+
+    const pairedStock = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === quoteMint);
+    if (!pairedStock) {
+      return NextResponse.json({ error: "Choose a verified xStock pair. OpenStock launches against tokenized stocks, not SOL or USDC." }, { status: 400 });
     }
 
     // Never let user sign or create a DBC pool that will fail on-chain with InvalidTokenBadge
@@ -42,18 +49,14 @@ export async function POST(req: NextRequest) {
     if (!isBadgeSupported) {
       return NextResponse.json(
         {
-          error: "This stock can’t be the pair yet. Use SOL or USDC instead.",
+          error: "This xStock is not badged on Meteora DBC yet. Launch against it on Pump.fun, or pick a badged stock.",
           unbadged: true,
         },
         { status: 400 }
       );
     }
 
-    let resolvedImageUrl = imageUrl;
-    if (resolvedImageUrl && typeof resolvedImageUrl === "string" && resolvedImageUrl.startsWith("/uploads/")) {
-      const origin = req.nextUrl.origin || "http://localhost:3000";
-      resolvedImageUrl = `${origin}${resolvedImageUrl}`;
-    }
+    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000") ?? "";
 
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1_000_000_000;
     const launchPayload = {
@@ -66,6 +69,7 @@ export async function POST(req: NextRequest) {
       creatorFeeBps: Number(creatorFeeBps) || 150,
       supply: tokenSupply,
       curvePreset: (curvePreset as DbcCurvePresetKey) || "linear",
+      pairedStockSymbol: pairedStock.symbol,
     };
 
     // Mode 1: Prepare the authentic on-chain Meteora DBC transaction
@@ -94,10 +98,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Record the newly created community stock-pair token in the live registry
-    const pairedAsset = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === quoteMint) || {
-      symbol: "NVDAx",
-      name: "NVIDIA Corporation",
-    };
+    const pairedAsset = pairedStock;
 
     try {
       await addCommunityToken({
@@ -105,18 +106,18 @@ export async function POST(req: NextRequest) {
         name: launchPayload.name,
         symbol: launchPayload.symbol,
         description: launchPayload.description || `Community token paired with ${pairedAsset.symbol} on Meteora DBC`,
-        imageUrl: resolvedImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80",
+        imageUrl: resolvedImageUrl,
         pairedStockSymbol: pairedAsset.symbol,
         pairedStockName: pairedAsset.name.replace(/ xStock$/, ""),
         creatorWallet,
         supply: tokenSupply,
         creatorFeeBps: Number(creatorFeeBps) || 150,
-        priceSol: 0.000065,
-        priceUsd: 0.0098,
-        marketCapUsd: 98000,
-        volume24hUsd: 18500,
-        change24h: 15.0,
-        bondingCurveProgress: 5.2,
+        priceSol: 0,
+        priceUsd: 0,
+        marketCapUsd: 0,
+        volume24hUsd: 0,
+        change24h: 0,
+        bondingCurveProgress: 0,
         status: "new",
         holdersCount: 1,
         txSignature: launchResult.txHash,
@@ -136,8 +137,7 @@ export async function POST(req: NextRequest) {
       ...launchResult,
     });
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : "Meteora DBC launch failed";
     console.error("Meteora DBC launch error:", error);
-    return NextResponse.json({ error: errMessage }, { status: 500 });
+    return NextResponse.json({ error: "Meteora DBC launch failed" }, { status: 500 });
   }
 }

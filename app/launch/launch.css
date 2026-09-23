@@ -1364,6 +1364,88 @@ html[data-theme="dark"] .launch-checkout-header {
   gap: 12px;
 }
 
+.launch-quick-panel,
+.launch-quick-success {
+  margin: 0 0 22px;
+  padding: 20px 18px;
+  border-radius: 22px;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+  background: var(--os-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+html[data-theme="dark"] .launch-quick-panel,
+html[data-theme="dark"] .launch-quick-success {
+  background: rgba(18, 16, 26, 0.92);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.launch-quick-pair {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.launch-quick-pair strong {
+  display: block;
+  font-size: 16px;
+}
+
+.launch-quick-pair span {
+  display: block;
+  font-size: 12px;
+  color: var(--os-muted, #6e6782);
+}
+
+.launch-quick-fields {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 12px;
+}
+
+.launch-quick-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.launch-quick-fields input {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--os-line, rgba(22, 19, 33, 0.12));
+  padding: 0 12px;
+  background: transparent;
+  color: inherit;
+}
+
+.launch-quick-error {
+  color: #f43f5e;
+  font-size: 13px;
+  margin: 0;
+}
+
+.launch-quick-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--os-muted, #6e6782);
+}
+
+.launch-quick-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .launch-quick-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 html[data-theme="dark"] .launch-action-bar {
   border-top-color: rgba(255, 255, 255, 0.08);
 }
@@ -1705,6 +1787,8 @@ html[data-theme="dark"] .launch-priority-pill strong {
   .launch-container {
     padding-top: 84px;
     padding-inline: 14px;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    overflow-x: clip;
   }
 
   .launch-intro {
@@ -1749,6 +1833,24 @@ html[data-theme="dark"] .launch-priority-pill strong {
 
   .launch-checkout-card {
     border-radius: 20px;
+  }
+
+  .launch-action-bar {
+    position: sticky;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin-top: 16px;
+    padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+    border-radius: 18px;
+    border: 1px solid var(--os-line, rgba(22, 19, 33, 0.1));
+    background: color-mix(in srgb, var(--os-surface, #fff) 92%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 32px rgba(7, 5, 16, 0.14);
+  }
+
+  html[data-theme="dark"] .launch-action-bar {
+    background: color-mix(in srgb, #12101a 92%, transparent);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }
 

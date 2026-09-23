@@ -531,6 +531,13 @@ html[data-theme="dark"] .claim-history-table-wrap {
    Mobile & Tablet Responsive Adjustments (320px - 768px)
    ========================================================================== */
 @media (max-width: 768px) {
+  .portfolio-desk,
+  .portfolio-page,
+  .app-page.portfolio-page {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    overflow-x: clip;
+  }
+
   .portfolio-container {
     padding-top: 88px;
   }

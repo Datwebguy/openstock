@@ -1,5 +1,5 @@
 export function formatTokenPrice(price: number): string {
-  if (!price || isNaN(price) || price <= 0) return "$0.00";
+  if (!price || Number.isNaN(price) || price <= 0) return "$0.00";
   if (price >= 1000) {
     return `$${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
@@ -19,7 +19,7 @@ export function formatTokenPrice(price: number): string {
 }
 
 export function formatTokenVolume(volume: number): string {
-  if (!volume || isNaN(volume) || volume <= 0) return "$0";
+  if (!volume || Number.isNaN(volume) || volume <= 0) return "$0";
   if (volume >= 1_000_000) {
     return `$${(volume / 1_000_000).toFixed(2)}M`;
   }

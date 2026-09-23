@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
+import { isSolanaAddress } from "@/lib/solana";
 
 type Challenge = { message: string; expiresAt: string };
 type Account = { wallet: string; createdAt: string; verifiedAt: string };
@@ -11,7 +12,7 @@ type Store = { version: 1; accounts: Record<string, Account>; challenges: Record
 const STORE_PATH = process.env.OPENSTOCK_ACCOUNT_STORE_PATH ?? path.join(process.cwd(), ".data", "accounts.json");
 const EMPTY: Store = { version: 1, accounts: {}, challenges: {}, sessions: {} };
 
-function validWallet(wallet: string) { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet); }
+function validWallet(wallet: string) { return isSolanaAddress(wallet); }
 async function read(): Promise<Store> { try { const data = JSON.parse(await fs.readFile(STORE_PATH, "utf8")) as Partial<Store>; return { version: 1, accounts: data.accounts ?? {}, challenges: data.challenges ?? {}, sessions: data.sessions ?? {} }; } catch { return EMPTY; } }
 async function write(store: Store) { await fs.mkdir(path.dirname(STORE_PATH), { recursive: true }); const temporary = STORE_PATH + "." + process.pid + ".tmp"; await fs.writeFile(temporary, JSON.stringify(store, null, 2), "utf8"); await fs.rename(temporary, STORE_PATH); }
 

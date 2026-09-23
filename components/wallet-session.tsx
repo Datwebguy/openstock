@@ -22,6 +22,8 @@ export type WalletSession = {
   address: string | null;
   connecting: boolean;
   emailEnabled: boolean;
+  /** True when an injected Solana wallet can sign (Phantom/Solflare). Email/Google alone cannot. */
+  canSign: boolean;
   connect: () => Promise<string | null>;
   connectEmail: () => Promise<string | null>;
   disconnect: () => Promise<void>;
@@ -52,13 +54,21 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [canSign, setCanSign] = useState(false);
   const emailEnabled = privyConfigured();
+
+  const refreshCanSign = useCallback(() => {
+    const provider = injectedProvider();
+    const live = provider?.publicKey?.toString?.() ?? null;
+    setCanSign(Boolean(live && provider?.signTransaction));
+  }, []);
 
   const apply = useCallback((next: string | null) => {
     setAddress(next);
     writeStored(next);
+    refreshCanSign();
     if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGE_EVENT));
-  }, []);
+  }, [refreshCanSign]);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,9 +89,13 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
         const live = provider.publicKey?.toString() ?? null;
         if (!cancelled) apply(live ?? stored);
       } else if (!cancelled) {
+        // Stored address without an injected signer = browse identity only
         apply(stored);
       }
-      if (!cancelled) setReady(true);
+      if (!cancelled) {
+        refreshCanSign();
+        setReady(true);
+      }
     }
 
     void restore();
@@ -95,6 +109,7 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     const onChange = () => {
       const live = injectedProvider()?.publicKey?.toString() ?? readStored();
       setAddress(live);
+      refreshCanSign();
     };
     provider?.on?.("accountChanged", onAccount);
     provider?.on?.("disconnect", onDisconnect);
@@ -105,7 +120,7 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
       provider?.off?.("disconnect", onDisconnect);
       window.removeEventListener(CHANGE_EVENT, onChange);
     };
-  }, [apply]);
+  }, [apply, refreshCanSign]);
 
   const connect = useCallback(async () => {
     const provider = injectedProvider();
@@ -127,30 +142,39 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     const login = (window as Window & { __openstockPrivyLogin?: () => void }).__openstockPrivyLogin;
     if (!login) throw new Error("Email login is still starting. Try again in a moment.");
     login();
-    return address;
-  }, [address, emailEnabled]);
+    // PrivyBridge writes openstock:wallet only when a Solana-linked account exists.
+    return readStored();
+  }, [emailEnabled]);
 
   const disconnect = useCallback(async () => {
     try { await injectedProvider()?.disconnect?.(); } catch { /* wallet may already be closed */ }
+    try {
+      (window as Window & { __openstockPrivyLogout?: () => void }).__openstockPrivyLogout?.();
+    } catch { /* privy optional */ }
+    try { localStorage.removeItem("openstock:email"); } catch { /* private mode */ }
     apply(null);
   }, [apply]);
 
   const signTransaction = useCallback(async (transaction: VersionedTransaction) => {
     const provider = injectedProvider();
-    if (!provider?.signTransaction) throw new Error("This wallet cannot approve versioned orders. Open Phantom or Solflare and try again.");
+    if (!provider?.signTransaction) {
+      throw new Error("Connect Phantom or Solflare to sign. Email/Google login alone cannot approve Solana transactions.");
+    }
     return provider.signTransaction(transaction);
   }, []);
 
   const signMessage = useCallback(async (message: Uint8Array) => {
     const provider = injectedProvider();
-    if (!provider?.signMessage) throw new Error("This wallet cannot verify.");
+    if (!provider?.signMessage) {
+      throw new Error("Connect Phantom or Solflare to verify. Email/Google login alone cannot sign messages.");
+    }
     const signed = await provider.signMessage(message);
     return signed instanceof Uint8Array ? signed : signed.signature;
   }, []);
 
   const value = useMemo<WalletSession>(() => ({
-    ready, address, connecting, emailEnabled, connect, connectEmail, disconnect, signTransaction, signMessage,
-  }), [address, connect, connectEmail, connecting, disconnect, emailEnabled, ready, signMessage, signTransaction]);
+    ready, address, connecting, emailEnabled, canSign, connect, connectEmail, disconnect, signTransaction, signMessage,
+  }), [address, canSign, connect, connectEmail, connecting, disconnect, emailEnabled, ready, signMessage, signTransaction]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
