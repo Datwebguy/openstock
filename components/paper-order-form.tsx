@@ -160,38 +160,24 @@ export function PaperOrderForm({
       return;
     }
 
-    // If order is Limit or DCA, record in active automation and navigate to /app/orders
+    // Limit and DCA are not executed from here. There is no engine on this screen that can
+    // ever fire them — the only real trigger/DCA pipeline is the automation desk (draft ->
+    // review -> funding -> Jupiter Trigger/DCA order). Hand off to that flow instead of
+    // writing a fake "active" row that nothing will ever execute.
     if (orderMode === "limit" || orderMode === "dca") {
-      setSubmitting(true);
-      setMessage(null);
-      try {
-        const orderId = crypto.randomUUID();
-        const newOrder = {
-          id: orderId,
-          symbol,
-          name,
-          kind: orderMode,
-          side,
-          shares: numericShares,
-          trigger: orderMode === "limit" ? Number(limitPrice) : undefined,
-          cadence: orderMode === "dca" ? cadence : undefined,
-          rounds: orderMode === "dca" ? roundCount : undefined,
-          targetPrice: orderMode === "limit" ? Number(limitPrice) : undefined,
-          marketPriceAtCreation: price,
-          multiplier,
-          wallet,
-          createdAt: new Date().toISOString(),
-          status: "active",
-        };
-        const existing = JSON.parse(localStorage.getItem("openstock:automation-orders") ?? "[]");
-        localStorage.setItem("openstock:automation-orders", JSON.stringify([newOrder, ...existing]));
-        setShowSlipModal(false);
-        window.location.assign("/app/orders");
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "The order could not be activated.");
-      } finally {
-        setSubmitting(false);
+      setShowSlipModal(false);
+      const target = new URLSearchParams({
+        asset: symbol,
+        kind: orderMode,
+        side,
+        shares: String(numericShares),
+      });
+      if (orderMode === "limit" && limitPrice) target.set("trigger", limitPrice);
+      if (orderMode === "dca") {
+        target.set("cadence", cadence);
+        target.set("rounds", String(roundCount));
       }
+      window.location.assign("/app/automation?" + target.toString());
       return;
     }
 
