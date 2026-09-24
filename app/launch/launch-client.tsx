@@ -153,6 +153,7 @@ export function LaunchClient() {
     venue: "pumpfun" | "meteora";
   } | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Stats cache for pair cards
   const [pairStatsCache, setPairStatsCache] = useState<Record<string, Awaited<ReturnType<typeof getAssetMarketStats>>>>({});
@@ -251,20 +252,14 @@ export function LaunchClient() {
     }
   }, [initialSymbol, pairs]);
 
-  // Automatically switch stock to NVDA or Apple whenever Meteora venue is active and current stock is incompatible.
-  // Never leave SPY or any non-Meteora stock selected on the Meteora route.
+  // If Meteora venue is active and selected pair does not support Meteora, fall back to pumpfun
   useEffect(() => {
-    if (selectedVenue === "meteora" && pairs.length > 0) {
-      if (!selectedPair || !isMeteoraCompatibleStock(selectedPair.symbol)) {
-        const nvda = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "NVDA");
-        const aapl = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "AAPL");
-        const target = nvda || aapl || pairs.find((p) => isMeteoraCompatibleStock(p.symbol));
-        if (target) {
-          setSelectedPair(target);
-        }
+    if (selectedVenue === "meteora" && pairs.length > 0 && selectedPair) {
+      if (!isMeteoraCompatibleStock(selectedPair.symbol)) {
+        setSelectedVenue("pumpfun");
       }
     }
-  }, [selectedVenue, pairs, selectedPair]);
+  }, [selectedPair, pairs, selectedVenue]);
 
   // Check venue availability whenever selectedPair changes
   // RULE: Hide a venue if that stock is not a supported quote
@@ -435,6 +430,27 @@ export function LaunchClient() {
     ? pairs.filter((p) => isMeteoraCompatibleStock(p.symbol))
     : pairs;
   const isFewStocks = availableStocksForVenue.length < 8 && availableStocksForVenue.length > 0;
+
+  const isMeteoraAvailable = Boolean(selectedPair && isMeteoraCompatibleStock(selectedPair.symbol));
+
+  const cleanTokenSymbol = tokenSymbol.trim()
+    ? tokenSymbol.trim().startsWith("$")
+      ? tokenSymbol.trim().slice(1).toUpperCase()
+      : tokenSymbol.trim().toUpperCase()
+    : tokenName.trim()
+    ? tokenName.trim().slice(0, 6).toUpperCase()
+    : "PAIR";
+
+  const displayStockSymbol = selectedPair?.symbol
+    ? selectedPair.symbol.toUpperCase().replace(/X$/, "")
+    : "STOCK";
+
+  const speedLabel =
+    priorityTier === "turbo"
+      ? "Instant speed"
+      : priorityTier === "fast"
+      ? "Fast speed"
+      : "Normal speed";
 
   // Handle One-Click Launch Action with Hardened Preflight Simulator & Priority Fees
   async function handleLaunch() {
@@ -1114,7 +1130,10 @@ export function LaunchClient() {
 
                 <div className="launch-stock-search-wrap">
                   <div className="launch-search-input-box">
-                    <span className="launch-search-icon" aria-hidden="true">🔍</span>
+                    <svg className="launch-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="11" cy="11" r="7" />
+                      <line x1="21" y1="21" x2="16.5" y2="16.5" />
+                    </svg>
                     <input
                       type="text"
                       placeholder="Search stocks (NVDA, Apple, Tesla, SPY...)"
@@ -1208,425 +1227,530 @@ export function LaunchClient() {
             </div>
           </section>
 
-          {/* Step 03: Venue & Economics (2-Column Internal Grid) */}
-          <section className="launch-panel" aria-labelledby="step-3-heading">
-            <div className="launch-panel-head">
+          {/* Step 03: Venue & Economics (Single Column, Unified Spacing & Selection) */}
+          <section className="launch-panel launch-step-3-panel" aria-labelledby="step-3-heading">
+            <div className="launch-step-header-clean">
               <div className="launch-step-pill">03</div>
-              <div>
+              <div className="launch-step-title-group">
                 <h2 id="step-3-heading">Venue &amp; Economics</h2>
-                <p>Select your execution bonding curve and configure supply &amp; creator fee.</p>
+                <p>Select your execution venue and configure supply &amp; creator fee.</p>
               </div>
             </div>
 
-            <div className="launch-step-3-grid">
-              {/* Left Sub-Column: Venue Selection (Pump.fun vs Meteora DBC) */}
-              <div className="launch-venue-subcol">
-                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 10 }}>
-                  Execution Venue {loadingVenues ? "(Verifying...)" : ""}
-                </label>
+            <div className="launch-step-3-single-col">
+              {/* 1. Execution Venue */}
+              <div className="launch-section">
+                <div className="launch-section-header">
+                  <label className="launch-section-label">
+                    Execution Venue {loadingVenues ? "(Verifying...)" : ""}
+                  </label>
+                  <span className="launch-section-hint">Choose where your token bonding curve launches</span>
+                </div>
 
-                <div className="launch-venue-grid" role="radiogroup" aria-label="Execution Venue">
+                <div className="launch-venue-grid-2col" role="radiogroup" aria-label="Execution Venue">
                   {/* Pump Venue Option */}
                   <button
                     type="button"
                     className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""}`}
                     onClick={() => {
                       setSelectedVenue("pumpfun");
-                      setSelectedCategory("all"); // Reset category to show all stocks
+                      setSelectedCategory("all");
                     }}
                     role="radio"
                     aria-checked={selectedVenue === "pumpfun"}
                   >
-                    <div className="launch-venue-head">
-                      <span className="launch-venue-title">Pump</span>
-                      <span className="launch-venue-badge">Instant</span>
-                    </div>
-                    <p className="launch-venue-desc">
-                      Pairs against all 32 curated xStocks. Moves to full pool upon reaching target.
-                    </p>
-                    <div className="launch-venue-foot">
-                      <span>75% Creator Fee</span>
-                      <div className="launch-venue-radio">
-                        <span className="launch-venue-radio-dot" />
+                    <div className="launch-venue-card-header">
+                      <div className="launch-venue-card-title-wrap">
+                        <span className="launch-venue-card-title">Pump</span>
+                        <span className="launch-venue-card-badge">Instant</span>
                       </div>
+                      {selectedVenue === "pumpfun" && (
+                        <span className="launch-card-check" aria-hidden="true">✓</span>
+                      )}
+                    </div>
+                    <p className="launch-venue-card-desc">
+                      Bonding curve paired against 32 curated stock tokens.
+                    </p>
+                    <div className="launch-venue-card-foot">
+                      <span>75% creator share of curve trading fees</span>
                     </div>
                   </button>
 
-                  {/* Meteora — always clickable, filters stocks to compatible ones */}
+                  {/* Meteora Curve Venue Option */}
                   <button
                     type="button"
-                    className={`launch-venue-card ${selectedVenue === "meteora" ? "is-selected" : ""}`}
+                    className={`launch-venue-card ${selectedVenue === "meteora" ? "is-selected" : ""} ${!isMeteoraAvailable ? "is-disabled" : ""}`}
+                    disabled={!isMeteoraAvailable}
+                    aria-disabled={!isMeteoraAvailable}
                     onClick={() => {
+                      if (!isMeteoraAvailable) return;
                       setSelectedVenue("meteora");
-                      setSelectedCategory("all"); // Reset category to show all compatible stocks
-                      setPairFilter(""); // Clear search so NVDA and Apple pop up immediately
-                      // ALWAYS auto-select NVDA (or Apple) when switching to Meteora
-                      const nvda = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "NVDA");
-                      const aapl = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "AAPL");
-                      const target = nvda || aapl || pairs.find((p) => isMeteoraCompatibleStock(p.symbol));
-                      if (target) {
-                        setSelectedPair(target);
-                      }
+                      setSelectedCategory("all");
+                      setPairFilter("");
                     }}
                     role="radio"
                     aria-checked={selectedVenue === "meteora"}
                   >
-                    <div className="launch-venue-head">
-                      <span className="launch-venue-title">Meteora curve</span>
-                      <span className="launch-venue-badge" style={{ color: "var(--solana-cyan, #03e1ff)", borderColor: "rgba(3, 225, 255, 0.3)" }}>
-                        Full Pool Target
-                      </span>
-                    </div>
-                    <p className="launch-venue-desc">
-                      Bonding curve with automatic move to full trading pool upon graduation. Available for NVDA and Apple (AAPLx).
-                    </p>
-                    <div className="launch-venue-foot">
-                      <span>Move to full pool</span>
-                      <div className="launch-venue-radio">
-                        <span className="launch-venue-radio-dot" />
+                    <div className="launch-venue-card-header">
+                      <div className="launch-venue-card-title-wrap">
+                        <span className="launch-venue-card-title">Meteora curve</span>
+                        <span className="launch-venue-card-badge">Dynamic Curve</span>
                       </div>
+                      {selectedVenue === "meteora" && (
+                        <span className="launch-card-check" aria-hidden="true">✓</span>
+                      )}
+                    </div>
+                    <p className="launch-venue-card-desc">
+                      Dynamic bonding curve with graduation to full liquidity pool.
+                    </p>
+                    <div className="launch-venue-card-foot">
+                      {isMeteoraAvailable ? (
+                        <span>Graduation to full pool</span>
+                      ) : (
+                        <span className="launch-venue-card-note">
+                          Supports NVDA and Apple (AAPLx) only. Select NVDA or AAPLx in Step 1 to enable.
+                        </span>
+                      )}
                     </div>
                   </button>
                 </div>
+              </div>
 
-                {/* Curve Preset Selector - Visible ONLY when selectedVenue === "meteora" */}
-                {selectedVenue === "meteora" && (
-                  <div className="launch-curve-box">
-                    <div className="launch-curve-head">
-                      <label className="launch-curve-label">
-                        Curve style
-                      </label>
-                      <span className="launch-curve-badge">
-                        Options
-                      </span>
+              {/* 2. Curve Style (Meteora Only) */}
+              {selectedVenue === "meteora" && (
+                <div className="launch-section">
+                  <div className="launch-section-header">
+                    <label className="launch-section-label">Curve style</label>
+                    <span className="launch-section-hint">Select bonding curve dynamics and graduation liquidity</span>
+                  </div>
+
+                  <div className="launch-curve-rows" role="radiogroup" aria-label="Curve style">
+                    {(Object.keys(METEORA_DBC_CURVE_PRESETS) as DbcCurvePresetKey[]).map((presetKey) => {
+                      const preset = METEORA_DBC_CURVE_PRESETS[presetKey];
+                      const isChosen = selectedCurvePreset === presetKey;
+                      return (
+                        <button
+                          type="button"
+                          key={presetKey}
+                          className={`launch-curve-row ${isChosen ? "is-selected" : ""}`}
+                          onClick={() => setSelectedCurvePreset(presetKey)}
+                          role="radio"
+                          aria-checked={isChosen}
+                        >
+                          <div className="launch-curve-row-icon" aria-hidden="true">
+                            {presetKey === "linear" ? (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <path d="M4 20L20 4" />
+                              </svg>
+                            ) : presetKey === "exponential" ? (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <path d="M4 20C12 20 16 16 20 4" />
+                              </svg>
+                            ) : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <path d="M4 20C8 12 14 8 20 4" />
+                              </svg>
+                            )}
+                          </div>
+
+                          <div className="launch-curve-row-main">
+                            <div className="launch-curve-row-title-line">
+                              <strong className="launch-curve-row-name">{preset.name}</strong>
+                              <span className="launch-curve-row-sub">
+                                {presetKey === "linear"
+                                  ? "Balanced price growth for community tokens"
+                                  : presetKey === "exponential"
+                                  ? "Fast price appreciation for high-momentum launches"
+                                  : "Deep liquidity with lower price impact"}
+                              </span>
+                            </div>
+                            <div className="launch-curve-row-values">
+                              <span className="launch-curve-row-stat">
+                                Curve trading fee: <strong>{(preset.baseFeeBps / 100).toFixed(1)}%</strong>
+                              </span>
+                              <span className="launch-curve-row-stat-sep">·</span>
+                              <span className="launch-curve-row-stat">
+                                Graduation to full pool at <strong>{preset.targetMarketCap}</strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="launch-curve-row-check">
+                            {isChosen && <span className="launch-card-check" aria-hidden="true">✓</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Total Supply */}
+              <div className="launch-section">
+                <div className="launch-section-header">
+                  <label htmlFor="token-supply" className="launch-section-label">Total Supply</label>
+                  <span className="launch-section-hint">Total mint quantity created at genesis</span>
+                </div>
+
+                <div className="launch-supply-controls">
+                  <div className="launch-preset-chips" role="group" aria-label="Supply presets">
+                    {[
+                      { label: "100M", val: 100_000_000 },
+                      { label: "500M", val: 500_000_000 },
+                      { label: "1B", val: 1_000_000_000 },
+                      { label: "10B", val: 10_000_000_000 },
+                    ].map((tier) => {
+                      const isTierSelected = tokenSupply === tier.val;
+                      return (
+                        <button
+                          type="button"
+                          key={tier.val}
+                          className={`launch-preset-chip ${isTierSelected ? "is-selected" : ""}`}
+                          onClick={() => handleSupplySelect(tier.val)}
+                        >
+                          <span>{tier.label}</span>
+                          {isTierSelected && <span className="launch-chip-check" aria-hidden="true">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <input
+                    id="token-supply"
+                    type="text"
+                    placeholder="1,000,000,000"
+                    value={customSupplyInput}
+                    onChange={(e) => handleCustomSupplyChange(e.target.value)}
+                    className="launch-supply-input-formatted"
+                  />
+                </div>
+              </div>
+
+              {/* 4. Creator Fee */}
+              <div className="launch-section">
+                <div className="launch-section-header">
+                  <label className="launch-section-label">
+                    Creator Fee
+                  </label>
+                  <span className="launch-section-hint">Per-trade royalty on secondary market volume</span>
+                </div>
+
+                <div className="launch-fee-live-banner">
+                  Total fee: <strong>{((creatorFeeBps + 100) / 100).toFixed(2)}% per trade</strong>
+                  <span className="launch-fee-live-sep">·</span>
+                  <span>Creator share: <strong>{(creatorFeeBps / 100).toFixed(2)}%</strong></span>
+                  <span className="launch-fee-live-sep">·</span>
+                  <span>Platform share: <strong>1.00%</strong></span>
+                </div>
+
+                <div className="launch-fee-chips" role="radiogroup" aria-label="Creator fee presets">
+                  {[
+                    { label: "0.5%", bps: 50 },
+                    { label: "1.0%", bps: 100 },
+                    { label: "1.5%", bps: 150 },
+                    { label: "2.0%", bps: 200 },
+                    { label: "2.5%", bps: 250 },
+                    { label: "3.0%", bps: 300 },
+                    { label: "4.0%", bps: 400 },
+                    { label: "5.0%", bps: 500 },
+                  ].map((tier) => {
+                    const isFeeActive = creatorFeeBps === tier.bps;
+                    return (
+                      <button
+                        type="button"
+                        key={tier.bps}
+                        className={`launch-fee-chip ${isFeeActive ? "is-selected" : ""}`}
+                        onClick={() => setCreatorFeeBps(tier.bps)}
+                        role="radio"
+                        aria-checked={isFeeActive}
+                      >
+                        <span>{tier.label}</span>
+                        {isFeeActive && <span className="launch-chip-check" aria-hidden="true">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 5. Deployer Initial Buy (Dev Buy, Pump Only) */}
+              {selectedVenue === "pumpfun" && (
+                <div className="launch-section launch-devbuy-section">
+                  <div className="launch-section-header">
+                    <div className="launch-section-title-wrap">
+                      <label className="launch-section-label">Deployer Initial Buy</label>
+                      <span className="launch-devbuy-badge">Anti-Snipe Protection</span>
                     </div>
-                    <div className="launch-curve-cards" role="radiogroup" aria-label="Curve Preset">
-                      {(Object.keys(METEORA_DBC_CURVE_PRESETS) as DbcCurvePresetKey[]).map((presetKey) => {
-                        const preset = METEORA_DBC_CURVE_PRESETS[presetKey];
-                        const isChosen = selectedCurvePreset === presetKey;
+                    <span className="launch-section-hint">
+                      Buy a percentage of your token in the same genesis transaction before anyone else
+                    </span>
+                  </div>
+
+                  <div className="launch-preset-chips" role="group" aria-label="Genesis buy preset">
+                    {[0, 1, 2, 5, 10, 15, 20].map((pct) => {
+                      const isPctActive = devBuyPercent === pct;
+                      return (
+                        <button
+                          key={pct}
+                          type="button"
+                          className={`launch-preset-chip ${isPctActive ? "is-selected" : ""}`}
+                          onClick={() => handleDevBuyPercentSelect(pct)}
+                        >
+                          <span>{pct === 0 ? "Skip" : `${pct}%`}</span>
+                          {isPctActive && <span className="launch-chip-check" aria-hidden="true">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="launch-devbuy-inputs-grid">
+                    <div className="launch-devbuy-input-wrap">
+                      <label htmlFor="dev-buy-sol" className="launch-devbuy-input-label">
+                        Genesis buy (SOL gas, not quote)
+                      </label>
+                      <div className="launch-input-with-suffix">
+                        <input
+                          id="dev-buy-sol"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={devBuySolInput === "0" ? "" : devBuySolInput}
+                          onChange={(e) => handleDevBuySolChange(e.target.value)}
+                          className="launch-devbuy-sol-input"
+                        />
+                        <span className="launch-input-suffix">SOL</span>
+                      </div>
+                    </div>
+
+                    <div className="launch-devbuy-input-wrap">
+                      <label className="launch-devbuy-input-label">Supply %</label>
+                      <div className="launch-input-with-suffix">
+                        <input
+                          type="number"
+                          readOnly
+                          value={devBuyPercent > 0 ? devBuyPercent.toFixed(2) : ""}
+                          placeholder="0.00"
+                          className="launch-devbuy-pct-input"
+                        />
+                        <span className="launch-input-suffix">%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {devBuyPercent > 0 && (
+                    <div className="launch-devbuy-summary-card">
+                      <div className="launch-devbuy-summary-row">
+                        <span>You receive</span>
+                        <strong>
+                          ≈ {new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(estimateTokensForSol(Number(devBuySolInput)))} ${cleanTokenSymbol}
+                        </strong>
+                      </div>
+                      <div className="launch-devbuy-summary-row">
+                        <span>Supply share</span>
+                        <strong>{devBuyPercent.toFixed(2)}% of {new Intl.NumberFormat("en-US", { notation: "compact" }).format(tokenSupply)}</strong>
+                      </div>
+                      <div className="launch-devbuy-summary-row">
+                        <span>Extra SOL cost</span>
+                        <strong>+{Number(devBuySolInput).toFixed(3)} SOL</strong>
+                      </div>
+                      <p className="launch-devbuy-note">
+                        Atomic genesis buy — tokens sent directly to your wallet in the same block as token creation.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 6. Advanced Settings (Transaction Speed) */}
+              <div className="launch-section">
+                <button
+                  type="button"
+                  className="launch-advanced-toggle-btn"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  aria-expanded={showAdvanced}
+                >
+                  <span className="launch-advanced-toggle-text">Advanced: {speedLabel}</span>
+                  <svg
+                    className={`launch-advanced-toggle-icon ${showAdvanced ? "is-open" : ""}`}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {showAdvanced && (
+                  <div className="launch-advanced-panel">
+                    <div className="launch-section-header" style={{ marginBottom: 12 }}>
+                      <label className="launch-section-label">Transaction Speed</label>
+                      <span className="launch-section-hint">Priority fee tier for rapid Solana block confirmation</span>
+                    </div>
+
+                    <div className="launch-priority-pills" role="radiogroup" aria-label="Transaction Speed">
+                      {[
+                        { id: "standard" as const, label: "Normal", desc: "Standard priority" },
+                        { id: "fast" as const, label: "Fast", desc: "High priority" },
+                        { id: "turbo" as const, label: "Instant", desc: "Maximum priority" },
+                      ].map((tier) => {
+                        const isTierActive = priorityTier === tier.id;
                         return (
                           <button
                             type="button"
-                            key={presetKey}
-                            className={`launch-curve-card ${isChosen ? "is-selected" : ""}`}
-                            onClick={() => setSelectedCurvePreset(presetKey)}
+                            key={tier.id}
+                            className={`launch-priority-pill ${isTierActive ? "is-active" : ""}`}
+                            onClick={() => setPriorityTier(tier.id)}
                             role="radio"
-                            aria-checked={isChosen}
+                            aria-checked={isTierActive}
                           >
-                            <div className="launch-curve-card-top">
-                              <span className="launch-curve-name">{preset.name}</span>
-                              <span className="launch-curve-pill">{preset.curveType}</span>
+                            <div className="launch-priority-pill-copy">
+                              <strong>{tier.label}</strong>
+                              <span>{tier.desc}</span>
                             </div>
-                            <span className="launch-curve-subtitle">{preset.subtitle}</span>
-                            <p className="launch-curve-desc">{preset.description}</p>
-                            <div className="launch-curve-meta">
-                              <span>Fee: {(preset.baseFeeBps / 100).toFixed(1)}%</span>
-                              <span>Target: {preset.targetMarketCap}</span>
-                            </div>
+                            {isTierActive && <span className="launch-chip-check" aria-hidden="true">✓</span>}
                           </button>
                         );
                       })}
                     </div>
                   </div>
                 )}
-
-                {!venueSupport.pumpfun && !venueSupport.meteora && (
-                  <p style={{ color: "#f87171", fontSize: 12, marginTop: 8 }}>
-                    Neither Pump.fun nor Meteora DBC currently supports {selectedPair?.symbol} as a quote asset. Please select another stock.
-                  </p>
-                )}
               </div>
 
-              {/* Right Sub-Column: Supply & Creator Fee (strictly 1%–3%) */}
-              <div className="launch-economics-subcol">
-                {/* Token Supply Selector */}
-                <div className="launch-field" style={{ marginBottom: 16 }}>
-                  <label htmlFor="token-supply">
-                    Total Supply
-                  </label>
-                  <div className="launch-supply-controls">
-                    <div className="launch-preset-chips" style={{ marginBottom: 8 }}>
-                      {[
-                        { label: "100M", val: 100_000_000 },
-                        { label: "500M", val: 500_000_000 },
-                        { label: "1B", val: 1_000_000_000 },
-                        { label: "10B", val: 10_000_000_000 },
-                      ].map((tier) => (
-                        <button
-                          type="button"
-                          key={tier.val}
-                          className={`launch-preset-btn ${tokenSupply === tier.val ? "is-selected" : ""}`}
-                          onClick={() => handleSupplySelect(tier.val)}
-                        >
-                          {tier.label}
-                        </button>
-                      ))}
+              {/* 7. Summary & Launch Action */}
+              <div className="launch-section launch-action-section">
+                {/* Summary Card */}
+                <div className="launch-summary-card" aria-label="Launch Summary">
+                  <div className="launch-summary-row">
+                    <span>Pair</span>
+                    <strong>${cleanTokenSymbol} × {displayStockSymbol}</strong>
+                  </div>
+                  <div className="launch-summary-row">
+                    <span>Venue</span>
+                    <strong>{selectedVenue === "pumpfun" ? "Pump" : "Meteora curve"}</strong>
+                  </div>
+                  {selectedVenue === "meteora" && (
+                    <div className="launch-summary-row">
+                      <span>Curve style</span>
+                      <strong>{METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Equity Standard"}</strong>
                     </div>
-                    <input
-                      id="token-supply"
-                      type="text"
-                      placeholder="e.g. 1,000,000,000"
-                      value={customSupplyInput}
-                      onChange={(e) => handleCustomSupplyChange(e.target.value)}
-                      className="launch-supply-input"
-                    />
+                  )}
+                  <div className="launch-summary-row">
+                    <span>Total supply</span>
+                    <strong>{new Intl.NumberFormat("en-US").format(tokenSupply)}</strong>
+                  </div>
+                  <div className="launch-summary-row">
+                    <span>Creator fee</span>
+                    <strong>
+                      {(creatorFeeBps / 100).toFixed(2)}% (Total: {((creatorFeeBps + 100) / 100).toFixed(2)}%)
+                    </strong>
+                  </div>
+                  <div className="launch-summary-row">
+                    <span>Estimated cost</span>
+                    <strong>
+                      ~0.02 SOL platform fee
+                      {devBuyPercent > 0 && selectedVenue === "pumpfun" ? (
+                        <> + {Number(devBuySolInput).toFixed(3)} SOL dev buy</>
+                      ) : null}
+                    </strong>
+                  </div>
+                  <div className="launch-summary-row">
+                    <span>Signing wallet</span>
+                    <strong>{address ? shortWallet(address) : "Wallet not connected"}</strong>
                   </div>
                 </div>
 
-                {/* Creator Fee Selector: 0.5% to 5% */}
-                <div className="launch-field">
-                  <label htmlFor="creator-fee">
-                    Creator Fee <span>(0.5%–5% in {selectedPair?.symbol || "xStock"})</span>
-                  </label>
-                  <div className="launch-fee-breakdown" style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
-                    Total: {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(2) + '%'} (Creator: {feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(2) + '%')} + Platform: {feeBreakdown?.platformFeePercent || '1%'})
+                {/* Error Message Banner */}
+                {errorMessage && (
+                  <div className="launch-error-banner" role="alert">
+                    {errorMessage}
                   </div>
-                  <div className="launch-fee-pills" role="group" aria-label="Creator fee">
-                    {[
-                      { label: "0.5%", bps: 50 },
-                      { label: "1.0%", bps: 100 },
-                      { label: "1.5%", bps: 150 },
-                      { label: "2.0%", bps: 200 },
-                      { label: "2.5%", bps: 250 },
-                      { label: "3.0%", bps: 300 },
-                      { label: "4.0%", bps: 400 },
-                      { label: "5.0%", bps: 500 },
-                    ].map((tier) => (
+                )}
+
+                {/* Status Message Pill */}
+                {stepState !== "idle" && stepState !== "error" && stepState !== "success" && (
+                  <div className="launch-status-pill">
+                    <span className="launch-pulse-dot" />
+                    <span>{statusMessage}</span>
+                  </div>
+                )}
+
+                {/* Launch CTA Button */}
+                <button
+                  type="button"
+                  className="launch-execute-btn"
+                  disabled={
+                    stepState === "quoting" ||
+                    stepState === "paying" ||
+                    stepState === "confirming" ||
+                    (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged")
+                  }
+                  onClick={handleLaunch}
+                >
+                  {!address ? (
+                    "Connect Wallet to Launch"
+                  ) : stepState === "quoting" ? (
+                    "Calculating Terms..."
+                  ) : stepState === "paying" ? (
+                    "Approve in Wallet..."
+                  ) : stepState === "confirming" ? (
+                    "Creating Market on Solana..."
+                  ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" ? (
+                    "This stock is not on Meteora DBC yet"
+                  ) : (
+                    `Launch $${cleanTokenSymbol} × ${displayStockSymbol}`
+                  )}
+                </button>
+
+                <p className="launch-checkout-disclaimer">
+                  Wallet signs and pays directly on OpenStock
+                </p>
+
+                {/* Success Receipt Card */}
+                {launchReceipt && (
+                  <div className="launch-success-card" role="status">
+                    <div className="launch-success-title">
+                      <span className="launch-success-badge-icon" aria-hidden="true">✓</span>
+                      <h3>{tokenName || "Token"} is Live!</h3>
+                    </div>
+                    <p>
+                      Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump" : "Meteora curve"}.
+                    </p>
+                    <div className="launch-receipt-grid">
+                      <div className="launch-receipt-item">
+                        <span>Market Pairing</span>
+                        <strong>${cleanTokenSymbol} × {selectedPair?.symbol}</strong>
+                      </div>
+                      <div className="launch-receipt-item">
+                        <span>Status</span>
+                        <strong style={{ color: "var(--solana-green, #14f195)" }}>
+                          Live
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="launch-success-actions">
+                      <a href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer" className="launch-btn-solscan">
+                        View transaction ↗
+                      </a>
+                      <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
+                        View market ↗
+                      </Link>
                       <button
                         type="button"
-                        key={tier.bps}
-                        className={`launch-fee-pill ${creatorFeeBps === tier.bps ? "is-active" : ""}`}
-                        onClick={() => setCreatorFeeBps(tier.bps)}
+                        className="launch-btn-share-x"
+                        onClick={() => setShowShareModal(true)}
                       >
-                        {tier.label}
+                        <span>Share to X</span>
                       </button>
-                    ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-
-            {/* Step 04: Deployer Initial Buy (Dev Buy) */}
-            {selectedVenue === "pumpfun" && (
-              <section className="launch-devbuy-container" aria-label="Deployer Initial Buy">
-                <div className="launch-devbuy-header">
-                  <div className="launch-step-pill">04</div>
-                  <div>
-                    <h2>Deployer Initial Buy</h2>
-                    <p>Buy a percentage of your token in the same genesis transaction — before anyone else can snipe.</p>
-                  </div>
-                  {devBuyPercent > 0 && (
-                    <span className="launch-devbuy-antilabel">
-                      🛡️ Sniper-proof
-                    </span>
-                  )}
-                </div>
-
-                {/* Percent Preset Buttons */}
-                <div className="launch-devbuy-presets">
-                  {[0, 1, 2, 5, 10, 15, 20].map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      className={`launch-devbuy-preset-btn ${devBuyPercent === pct ? "is-active" : ""}`}
-                      onClick={() => handleDevBuyPercentSelect(pct)}
-                    >
-                      {pct === 0 ? "Skip" : `${pct}%`}
-                    </button>
-                  ))}
-                </div>
-
-                {/* SOL Input + Live Readout */}
-                <div className="launch-devbuy-inputs-grid">
-                  <div className="launch-devbuy-input-wrap">
-                    <label htmlFor="dev-buy-sol" className="launch-devbuy-input-label">Genesis buy (SOL gas, not quote)</label>
-                    <div className="launch-input-with-suffix">
-                      <input
-                        id="dev-buy-sol"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={devBuySolInput === "0" ? "" : devBuySolInput}
-                        onChange={(e) => handleDevBuySolChange(e.target.value)}
-                        className="launch-devbuy-sol-input"
-                      />
-                      <span className="launch-input-suffix">SOL</span>
-                    </div>
-                  </div>
-
-                  <div className="launch-devbuy-input-wrap">
-                    <label className="launch-devbuy-input-label">Supply %</label>
-                    <div className="launch-input-with-suffix">
-                      <input
-                        type="number"
-                        readOnly
-                        value={devBuyPercent > 0 ? devBuyPercent.toFixed(2) : ""}
-                        placeholder="0.00"
-                        className="launch-devbuy-pct-input"
-                      />
-                      <span className="launch-input-suffix">%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Summary Card */}
-                {devBuyPercent > 0 && (
-                  <div className="launch-devbuy-summary-card">
-                    <div className="launch-devbuy-summary-row">
-                      <span>You receive</span>
-                      <strong>≈ {new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(estimateTokensForSol(Number(devBuySolInput)))} {tokenSymbol || "TOKEN"}</strong>
-                    </div>
-                    <div className="launch-devbuy-summary-row">
-                      <span>Supply share</span>
-                      <strong>{devBuyPercent.toFixed(2)}% of {new Intl.NumberFormat("en-US", { notation: "compact" }).format(tokenSupply)}</strong>
-                    </div>
-                    <div className="launch-devbuy-summary-row">
-                      <span>Extra SOL cost</span>
-                      <strong>+{Number(devBuySolInput).toFixed(3)} SOL</strong>
-                    </div>
-                    <p className="launch-devbuy-note">
-                      Atomic genesis buy — tokens sent directly to your wallet in the same block as token creation.
-                    </p>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* Launch Execution Console (Naturally placed at the bottom of the multi-step form) */}
-            <div className="launch-action-bar">
-              {/* Wallet Bar */}
-              {ready && address ? (
-                <div className="launch-connected-bar">
-                  <span className="launch-pulse-dot" />
-                  <span>Signing Wallet: <strong>{shortWallet(address)}</strong></span>
-                </div>
-              ) : null}
-
-              {/* Error Message Banner */}
-              {errorMessage && (
-                <div className="launch-error-banner" role="alert">
-                  {errorMessage}
-                </div>
-              )}
-
-              {/* Status Message Pill */}
-              {stepState !== "idle" && stepState !== "error" && stepState !== "success" && (
-                <div className="launch-status-pill">
-                  <span className="launch-pulse-dot" />
-                  <span>{statusMessage}</span>
-                </div>
-              )}
-
-              {/* Priority Speed Selector */}
-              <div className="launch-priority-box">
-                <div className="launch-priority-head">
-                  <span className="launch-priority-title">
-                    <span>⚡</span> Transaction Speed
-                  </span>
-                  <span className="launch-priority-badge">
-                    Auto-tuned
-                  </span>
-                </div>
-                <div className="launch-priority-pills" role="radiogroup" aria-label="Transaction Speed">
-                  {[
-                    { id: "standard" as const, label: "Normal", desc: "Standard", note: "Standard speed" },
-                    { id: "fast" as const, label: "Fast", desc: "High priority", note: "Fast confirmation" },
-                    { id: "turbo" as const, label: "Instant", desc: "Maximum priority", note: "Instant confirmation" },
-                  ].map((tier) => (
-                    <button
-                      type="button"
-                      key={tier.id}
-                      className={`launch-priority-pill ${priorityTier === tier.id ? "is-active" : ""}`}
-                      onClick={() => setPriorityTier(tier.id)}
-                      role="radio"
-                      aria-checked={priorityTier === tier.id}
-                    >
-                      <strong>{tier.label}</strong>
-                      <span>{tier.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Launch CTA Button */}
-              <button
-                type="button"
-                className="launch-execute-btn"
-                disabled={
-                  stepState === "quoting" ||
-                  stepState === "paying" ||
-                  stepState === "confirming" ||
-                  (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged")
-                }
-                onClick={handleLaunch}
-              >
-                {!address ? (
-                  "Connect Wallet to Launch"
-                ) : stepState === "quoting" ? (
-                  "Calculating Terms..."
-                ) : stepState === "paying" ? (
-                  "Approve in Wallet..."
-                ) : stepState === "confirming" ? (
-                  "Creating Market on Solana..."
-                ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" ? (
-                  "This xStock is not on Meteora DBC yet"
-                ) : (
-                  <>
-                    Launch {tokenSymbol || "TOKEN"} × {effectiveQuoteSymbol || "xStock"}
-                  </>
-                )}
-              </button>
-
-              <p className="launch-checkout-disclaimer">
-                Estimated cost: ~0.02 SOL platform fee
-                {devBuyPercent > 0 && selectedVenue === "pumpfun" ? (
-                  <> + {Number(devBuySolInput).toFixed(3)} SOL initial buy = <strong>{(0.02 + Number(devBuySolInput)).toFixed(3)} SOL total</strong></>
-                ) : (
-                  <> · Wallet signs and pays directly on OpenStock</>
-                )}
-              </p>
-
-              {/* Success Receipt Card */}
-              {launchReceipt && (
-                <div className="launch-success-card" role="status">
-                  <div className="launch-success-title">
-                    <span style={{ fontSize: 20 }}>🎉</span>
-                    <h3>{tokenName || "Token"} is Live!</h3>
-                  </div>
-                  <p>
-                    Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump" : "Meteora curve"}.
-                  </p>
-                  <div className="launch-receipt-grid">
-                    <div className="launch-receipt-item">
-                      <span>Market Pairing</span>
-                      <strong>{tokenSymbol} × {selectedPair?.symbol}</strong>
-                    </div>
-                    <div className="launch-receipt-item">
-                      <span>Status</span>
-                      <strong style={{ color: "var(--solana-green, #14f195)" }}>
-                        Live
-                      </strong>
-                    </div>
-                  </div>
-                  <div className="launch-success-actions">
-                    <a href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer" className="launch-btn-solscan">
-                      View transaction ↗
-                    </a>
-                    <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
-                      View market ↗
-                    </Link>
-                    <button
-                      type="button"
-                      className="launch-btn-share-x"
-                      onClick={() => setShowShareModal(true)}
-                    >
-                      <span>Share</span>
-                      <span>🚀</span>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </section>
         </div>

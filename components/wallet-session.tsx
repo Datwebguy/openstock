@@ -1,16 +1,37 @@
 "use client";
 
-import { VersionedTransaction } from "@solana/web3.js";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import {
+  useWallet as useSolanaAdapterWallet,
+  type Wallet,
+} from "@solana/wallet-adapter-react";
+import type { WalletName } from "@solana/wallet-adapter-base";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { privyConfigured } from "@/components/privy-root";
-import { isMobile, connectPhantomMobile, connectSolflareMobile, detectMobileWallet } from "@/components/wallet-deeplink";
+import {
+  isInAppBrowser,
+  isMobile,
+  openPhantomMobile,
+  openSolflareMobile,
+  openMobileWallet,
+} from "@/components/wallet-deeplink";
 
 const STORAGE_KEY = "openstock:wallet";
 const CHANGE_EVENT = "openstock:wallet-change";
 
 type InjectedWallet = {
-  publicKey?: { toString: () => string } | null;
-  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey?: { toString: () => string } | null }>;
+  publicKey?: { toString: () => string; toBase58?: () => string } | null;
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{
+    publicKey?: { toString: () => string; toBase58?: () => string } | null;
+  }>;
   disconnect?: () => Promise<void>;
   signTransaction?: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
   signMessage?: (message: Uint8Array) => Promise<Uint8Array | { signature: Uint8Array }>;
@@ -25,157 +46,313 @@ export type WalletSession = {
   emailEnabled: boolean;
   /** True when an injected Solana wallet can sign (Phantom/Solflare). Email/Google alone cannot. */
   canSign: boolean;
-  connect: () => Promise<string | null>;
+  connect: (walletName?: string) => Promise<string | null>;
   connectEmail: () => Promise<string | null>;
   disconnect: () => Promise<void>;
   signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
   signMessage: (message: Uint8Array) => Promise<Uint8Array>;
+
+  // Rich Solana Wallet Adapter properties
+  connected: boolean;
+  publicKey: PublicKey | null;
+  wallet: Wallet | null;
+  wallets: Wallet[];
+  select: (walletName: WalletName | null) => void;
+  isWalletModalOpen: boolean;
+  openWalletModal: () => void;
+  closeWalletModal: () => void;
+  switchAccount: () => Promise<void>;
 };
 
 const WalletContext = createContext<WalletSession | null>(null);
 
 function injectedProvider(): InjectedWallet | null {
   if (typeof window === "undefined") return null;
-  const current = window as Window & { solana?: InjectedWallet; phantom?: { solana?: InjectedWallet }; solflare?: InjectedWallet };
-  return current.solana ?? current.phantom?.solana ?? current.solflare ?? null;
+  const current = window as unknown as {
+    solana?: InjectedWallet;
+    phantom?: { solana?: InjectedWallet };
+    solflare?: InjectedWallet;
+    backpack?: InjectedWallet;
+  };
+  return current.solana ?? current.phantom?.solana ?? current.solflare ?? current.backpack ?? null;
 }
 
-function readStored() {
-  try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
+function readStored(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
 
-function writeStored(address: string | null) {
+function writeStored(address: string | null): void {
   try {
     if (address) localStorage.setItem(STORAGE_KEY, address);
     else localStorage.removeItem(STORAGE_KEY);
-  } catch { /* private mode */ }
+  } catch {
+    /* private mode */
+  }
 }
 
 export function WalletSessionProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [address, setAddress] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [canSign, setCanSign] = useState(false);
+  const adapter = useSolanaAdapterWallet();
+  const [mounted, setMounted] = useState(false);
+  const [storedAddress, setStoredAddress] = useState<string | null>(null);
+  const [localConnecting, setLocalConnecting] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+
   const emailEnabled = privyConfigured();
 
-  const refreshCanSign = useCallback(() => {
-    const provider = injectedProvider();
-    const live = provider?.publicKey?.toString?.() ?? null;
-    setCanSign(Boolean(live && provider?.signTransaction));
+  // Track client hydration
+  useEffect(() => {
+    setMounted(true);
+    setStoredAddress(readStored());
   }, []);
 
-  const apply = useCallback((next: string | null) => {
-    setAddress(next);
-    writeStored(next);
-    refreshCanSign();
-    if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGE_EVENT));
-  }, [refreshCanSign]);
+  // Compute live active address: preference is active adapter public key, then fallback to stored
+  const adapterAddress = useMemo(() => {
+    return adapter.publicKey?.toBase58() ?? null;
+  }, [adapter.publicKey]);
 
+  const activeAddress = adapterAddress || storedAddress;
+
+  // Persist active address to localStorage and dispatch change event
   useEffect(() => {
-    let cancelled = false;
-    const provider = injectedProvider();
-
-    async function restore() {
-      const stored = readStored();
-      if (provider) {
-        try {
-          const trusted = await provider.connect({ onlyIfTrusted: true });
-          const key = trusted.publicKey?.toString() ?? provider.publicKey?.toString() ?? null;
-          if (!cancelled && key) {
-            apply(key);
-            setReady(true);
-            return;
-          }
-        } catch { /* site is not yet trusted */ }
-        const live = provider.publicKey?.toString() ?? null;
-        if (!cancelled) apply(live ?? stored);
-      } else if (!cancelled) {
-        // Stored address without an injected signer = browse identity only
-        apply(stored);
-      }
-      if (!cancelled) {
-        refreshCanSign();
-        setReady(true);
-      }
+    if (!mounted) return;
+    if (adapterAddress) {
+      writeStored(adapterAddress);
+      setStoredAddress(adapterAddress);
+      window.dispatchEvent(new Event(CHANGE_EVENT));
     }
+  }, [adapterAddress, mounted]);
 
-    void restore();
+  // Listen to external wallet changes & native accountChanged event
+  useEffect(() => {
+    if (!mounted) return;
 
+    const onStorageOrCustomChange = () => {
+      const stored = readStored();
+      setStoredAddress(stored);
+    };
+
+    const provider = injectedProvider();
     const onAccount = (value?: { toString?: () => string } | string | null) => {
-      if (value == null) { apply(null); return; }
-      const key = typeof value === "string" ? value : value.toString?.() ?? injectedProvider()?.publicKey?.toString() ?? null;
-      apply(key);
+      if (value == null) {
+        setStoredAddress(null);
+        writeStored(null);
+      } else {
+        const key = typeof value === "string" ? value : value.toString?.() ?? null;
+        setStoredAddress(key);
+        writeStored(key);
+      }
+      window.dispatchEvent(new Event(CHANGE_EVENT));
     };
-    const onDisconnect = () => apply(null);
-    const onChange = () => {
-      const live = injectedProvider()?.publicKey?.toString() ?? readStored();
-      setAddress(live);
-      refreshCanSign();
+
+    const onDisconnect = () => {
+      setStoredAddress(null);
+      writeStored(null);
+      window.dispatchEvent(new Event(CHANGE_EVENT));
     };
+
     provider?.on?.("accountChanged", onAccount);
     provider?.on?.("disconnect", onDisconnect);
-    window.addEventListener(CHANGE_EVENT, onChange);
+    window.addEventListener(CHANGE_EVENT, onStorageOrCustomChange);
+    window.addEventListener("storage", onStorageOrCustomChange);
+
     return () => {
-      cancelled = true;
       provider?.off?.("accountChanged", onAccount);
       provider?.off?.("disconnect", onDisconnect);
-      window.removeEventListener(CHANGE_EVENT, onChange);
+      window.removeEventListener(CHANGE_EVENT, onStorageOrCustomChange);
+      window.removeEventListener("storage", onStorageOrCustomChange);
     };
-  }, [apply, refreshCanSign]);
+  }, [mounted]);
 
-  const connect = useCallback(async () => {
+  // Determine if the user can sign transactions
+  const canSign = useMemo(() => {
+    if (!activeAddress) return false;
+    if (adapter.connected && Boolean(adapter.signTransaction)) return true;
     const provider = injectedProvider();
-    if (!provider) throw new Error("Install Phantom or Solflare to connect.");
-    setConnecting(true);
-    try {
-      const result = await provider.connect();
-      const key = result.publicKey?.toString() ?? provider.publicKey?.toString() ?? null;
-      if (!key) throw new Error("Choose an account and retry.");
-      apply(key);
-      return key;
-    } finally {
-      setConnecting(false);
-    }
-  }, [apply]);
+    return Boolean(provider?.publicKey && provider?.signTransaction);
+  }, [activeAddress, adapter.connected, adapter.signTransaction]);
 
-  const connectEmail = useCallback(async () => {
+  const openWalletModal = useCallback(() => {
+    setIsWalletModalOpen(true);
+  }, []);
+
+  const closeWalletModal = useCallback(() => {
+    setIsWalletModalOpen(false);
+  }, []);
+
+  // Universal Connect handler
+  const connect = useCallback(async (walletName?: string): Promise<string | null> => {
+    setLocalConnecting(true);
+    try {
+      if (walletName) {
+        // Find matching wallet in adapter
+        const matched = adapter.wallets.find(
+          (w) => w.adapter.name.toLowerCase() === walletName.toLowerCase()
+        );
+        if (matched) {
+          adapter.select(matched.adapter.name);
+          await adapter.connect();
+          const key = adapter.publicKey?.toBase58() ?? null;
+          if (key) {
+            writeStored(key);
+            setStoredAddress(key);
+            return key;
+          }
+        }
+      }
+
+      // If adapter already has a selected wallet, attempt connect
+      if (adapter.wallet) {
+        await adapter.connect();
+        const key = adapter.publicKey?.toBase58() ?? null;
+        if (key) {
+          writeStored(key);
+          setStoredAddress(key);
+          return key;
+        }
+      }
+
+      // Try injected provider directly
+      const provider = injectedProvider();
+      if (provider) {
+        const res = await provider.connect();
+        const key = res.publicKey?.toString?.() ?? provider.publicKey?.toString?.() ?? null;
+        if (key) {
+          writeStored(key);
+          setStoredAddress(key);
+          window.dispatchEvent(new Event(CHANGE_EVENT));
+          return key;
+        }
+      }
+
+      // If not connected and no direct provider, pop up modal to choose
+      setIsWalletModalOpen(true);
+      return null;
+    } finally {
+      setLocalConnecting(false);
+    }
+  }, [adapter]);
+
+  const connectEmail = useCallback(async (): Promise<string | null> => {
     if (!emailEnabled) throw new Error("Email login needs NEXT_PUBLIC_PRIVY_APP_ID.");
     const login = (window as Window & { __openstockPrivyLogin?: () => void }).__openstockPrivyLogin;
     if (!login) throw new Error("Email login is still starting. Try again in a moment.");
     login();
-    // PrivyBridge writes openstock:wallet only when a Solana-linked account exists.
     return readStored();
   }, [emailEnabled]);
 
-  const disconnect = useCallback(async () => {
-    try { await injectedProvider()?.disconnect?.(); } catch { /* wallet may already be closed */ }
+  const disconnect = useCallback(async (): Promise<void> => {
+    try {
+      if (adapter.connected) {
+        await adapter.disconnect();
+      }
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      const provider = injectedProvider();
+      await provider?.disconnect?.();
+    } catch {
+      /* ignore */
+    }
+
     try {
       (window as Window & { __openstockPrivyLogout?: () => void }).__openstockPrivyLogout?.();
-    } catch { /* privy optional */ }
-    try { localStorage.removeItem("openstock:email"); } catch { /* private mode */ }
-    apply(null);
-  }, [apply]);
-
-  const signTransaction = useCallback(async (transaction: VersionedTransaction) => {
-    const provider = injectedProvider();
-    if (!provider?.signTransaction) {
-      throw new Error("Connect Phantom or Solflare to sign. Email/Google login alone cannot approve Solana transactions.");
+    } catch {
+      /* ignore */
     }
-    return provider.signTransaction(transaction);
-  }, []);
 
-  const signMessage = useCallback(async (message: Uint8Array) => {
-    const provider = injectedProvider();
-    if (!provider?.signMessage) {
-      throw new Error("Connect Phantom or Solflare to verify. Email/Google login alone cannot sign messages.");
+    writeStored(null);
+    setStoredAddress(null);
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }, [adapter]);
+
+  // Switch Account handler: prompts the user to select another address
+  const switchAccount = useCallback(async (): Promise<void> => {
+    await disconnect();
+    // Re-open wallet selection modal so user can choose or re-authenticate
+    setIsWalletModalOpen(true);
+  }, [disconnect]);
+
+  const signTransaction = useCallback(async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
+    if (adapter.connected && adapter.signTransaction) {
+      return adapter.signTransaction(transaction);
     }
-    const signed = await provider.signMessage(message);
-    return signed instanceof Uint8Array ? signed : signed.signature;
-  }, []);
+
+    const provider = injectedProvider();
+    if (provider?.signTransaction) {
+      return provider.signTransaction(transaction);
+    }
+
+    throw new Error(
+      "Connect a Solana wallet (Phantom, Solflare, etc.) to approve transactions. Email or guest sessions cannot sign."
+    );
+  }, [adapter.connected, adapter.signTransaction]);
+
+  const signMessage = useCallback(async (message: Uint8Array): Promise<Uint8Array> => {
+    if (adapter.connected && adapter.signMessage) {
+      return adapter.signMessage(message);
+    }
+
+    const provider = injectedProvider();
+    if (provider?.signMessage) {
+      const res = await provider.signMessage(message);
+      return res instanceof Uint8Array ? res : res.signature;
+    }
+
+    throw new Error(
+      "Connect a Solana wallet (Phantom, Solflare, etc.) to verify signature. Email or guest sessions cannot sign."
+    );
+  }, [adapter.connected, adapter.signMessage]);
 
   const value = useMemo<WalletSession>(() => ({
-    ready, address, connecting, emailEnabled, canSign, connect, connectEmail, disconnect, signTransaction, signMessage,
-  }), [address, canSign, connect, connectEmail, connecting, disconnect, emailEnabled, ready, signMessage, signTransaction]);
+    ready: mounted,
+    address: activeAddress,
+    connecting: adapter.connecting || localConnecting,
+    emailEnabled,
+    canSign,
+    connect,
+    connectEmail,
+    disconnect,
+    signTransaction,
+    signMessage,
+
+    // Rich Solana Wallet Adapter features
+    connected: adapter.connected || Boolean(activeAddress),
+    publicKey: adapter.publicKey,
+    wallet: adapter.wallet,
+    wallets: adapter.wallets,
+    select: adapter.select,
+    isWalletModalOpen,
+    openWalletModal,
+    closeWalletModal,
+    switchAccount,
+  }), [
+    mounted,
+    activeAddress,
+    adapter.connecting,
+    adapter.connected,
+    adapter.publicKey,
+    adapter.wallet,
+    adapter.wallets,
+    adapter.select,
+    localConnecting,
+    emailEnabled,
+    canSign,
+    connect,
+    connectEmail,
+    disconnect,
+    signTransaction,
+    signMessage,
+    isWalletModalOpen,
+    openWalletModal,
+    closeWalletModal,
+    switchAccount,
+  ]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
@@ -186,6 +363,6 @@ export function useWallet(): WalletSession {
   return session;
 }
 
-export function shortWallet(address: string | null) {
+export function shortWallet(address: string | null): string | null {
   return address ? address.slice(0, 4) + "…" + address.slice(-4) : null;
 }

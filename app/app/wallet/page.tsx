@@ -51,6 +51,9 @@ export default function WalletPage() {
         {address ? (
           <div className="settings-panel__actions">
             <span className="settings-panel__state">Connected</span>
+            <button className="button button--light" type="button" onClick={() => setShowWalletModal(true)} title="Switch wallet account or address">
+              Switch Address
+            </button>
             <button className="button button--light" type="button" onClick={copyAddress} title="Copy wallet address">
               {copied ? "Copied!" : "Copy address"}
             </button>
