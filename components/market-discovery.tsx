@@ -70,14 +70,35 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
 
   useEffect(() => {
     // Load stats for all assets
-    assets.forEach(async (asset) => {
-      try {
-        const stats = await getAssetMarketStats(asset.symbol, asset.price);
-        setAssetStats(prev => ({ ...prev, [asset.symbol]: stats }));
-      } catch {
-        // Skip assets that fail to load
-      }
-    });
+    let cancelled = false;
+    
+    async function loadStats() {
+      const statsPromises = assets.map(async (asset) => {
+        try {
+          const stats = await getAssetMarketStats(asset.symbol, asset.price);
+          return { symbol: asset.symbol, stats };
+        } catch {
+          return null;
+        }
+      });
+      
+      const results = await Promise.all(statsPromises);
+      if (cancelled) return;
+      
+      const statsMap: Record<string, AssetMarketStats> = {};
+      results.forEach((result) => {
+        if (result) {
+          statsMap[result.symbol] = result.stats;
+        }
+      });
+      setAssetStats(statsMap);
+    }
+    
+    loadStats();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [assets]);
 
   function toggleWatchlist(symbol: string) {
