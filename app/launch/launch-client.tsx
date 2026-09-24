@@ -148,6 +148,9 @@ export function LaunchClient() {
   } | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // Stats cache for pair cards
+  const [pairStatsCache, setPairStatsCache] = useState<Record<string, Awaited<ReturnType<typeof getAssetMarketStats>>>>({});
+
   const [, startTransition] = useTransition();
   const holoCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -213,6 +216,18 @@ export function LaunchClient() {
 
         const matched = assetList.find((p) => p.symbol.toLowerCase() === initialSymbol.toLowerCase()) || assetList[0];
         setSelectedPair(matched || null);
+
+        // Fetch stats for all pairs
+        const statsPromises = assetList.map(async (asset) => {
+          const stats = await getAssetMarketStats(asset.symbol);
+          return { symbol: asset.symbol, stats };
+        });
+        const statsResults = await Promise.all(statsPromises);
+        const statsMap: Record<string, Awaited<ReturnType<typeof getAssetMarketStats>>> = {};
+        statsResults.forEach(({ symbol, stats }) => {
+          statsMap[symbol] = stats;
+        });
+        setPairStatsCache(statsMap);
       } catch (err) {
         console.error("Failed to load pairs:", err);
       } finally {
@@ -989,8 +1004,13 @@ export function LaunchClient() {
 
             {/* Active Selected Stock Banner */}
             {selectedPair && (() => {
-              const pairStats = getAssetMarketStats(selectedPair.symbol);
-              const change = pairStats.change24h;
+              const [pairStats, setPairStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
+              
+              useEffect(() => {
+                getAssetMarketStats(selectedPair.symbol).then(setPairStats);
+              }, [selectedPair.symbol]);
+              
+              const change = pairStats?.change24h;
               const isUp = change === null || change === undefined ? true : change >= 0;
               return (
                 <div className="launch-selected-pair-banner">
@@ -1105,8 +1125,8 @@ export function LaunchClient() {
                 <div className="launch-pairs-grid" role="radiogroup" aria-label="Stock assets">
                   {visiblePairs.map((pair) => {
                     const isSelected = selectedPair?.mint === pair.mint;
-                    const stats = getAssetMarketStats(pair.symbol);
-                    const change = stats.change24h;
+                    const stats = pairStatsCache[pair.symbol];
+                    const change = stats?.change24h;
                     const isUp = change === null || change === undefined ? true : change >= 0;
                     return (
                       <button

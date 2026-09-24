@@ -111,6 +111,8 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
     volume24h: number | null;
   } | null>(null);
 
+  const [assetStats, setAssetStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
+
   useEffect(() => {
     let active = true;
     async function fetchStream() {
@@ -142,8 +144,11 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
 
   const benchmarkPrice = VERIFIED_PRICES[selected] ?? 166.01;
   const currentPrice = streamData?.price ?? benchmarkPrice;
-  const stats = getAssetMarketStats(selected, currentPrice);
   const dlmmBins = useMemo(() => generateDlmmBins(currentPrice), [currentPrice]);
+
+  useEffect(() => {
+    getAssetMarketStats(selected, currentPrice).then(setAssetStats);
+  }, [selected, currentPrice]);
   const maxBinDepth = Math.max(...dlmmBins.map((b) => b.depth)) || 1;
 
   // Genuine Oracle values: Pyth reference benchmark vs Meteora DLMM executable pool quote
@@ -186,9 +191,9 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
         price={currentPrice}
         officialReady={true}
         priceFormatted={`$${currentPrice.toFixed(2)}`}
-        change24h={stats.change24h}
-        liquidityUsd={stats.liquidity}
-        volume24h={stats.volume24h}
+        change24h={assetStats?.change24h}
+        liquidityUsd={assetStats?.liquidity}
+        volume24h={assetStats?.volume24h}
         oraclePrice={`$${pythPrice.toFixed(2)}`}
         reserveCoverage="Reserve from issuer feed"
         mintAddress={meta.mint}

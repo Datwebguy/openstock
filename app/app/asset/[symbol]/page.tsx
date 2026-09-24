@@ -96,7 +96,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
     { label: "Shares", value: multiplier(asset.multiplier?.currentMultiplier) },
   ];
 
-      const stats = getAssetMarketStats(asset.symbol, priceForTrade ?? asset.price);
+      const stats = await getAssetMarketStats(asset.symbol, priceForTrade ?? asset.price);
       return <main className="page">
         <AppNav ctaHref="/app" ctaLabel="Market" />
         <div className="app-page container asset-workspace">

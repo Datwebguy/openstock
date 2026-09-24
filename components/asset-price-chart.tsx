@@ -150,6 +150,7 @@ export function AssetPriceChart({
   const initialPrice = referencePrice ?? 166.01;
   const [livePrice, setLivePrice] = useState<number>(initialPrice);
   const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
+  const [assetMarketStats, setAssetMarketStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
 
   // Sync livePrice immediately whenever referencePrice or symbol changes
   useEffect(() => {
@@ -158,6 +159,11 @@ export function AssetPriceChart({
       setDrawings([]);
       setTrendStart(null);
     }
+  }, [symbol, referencePrice]);
+
+  // Fetch market stats asynchronously
+  useEffect(() => {
+    getAssetMarketStats(symbol, referencePrice ?? undefined).then(setAssetMarketStats);
   }, [symbol, referencePrice]);
 
   // Drawing state
@@ -202,15 +208,10 @@ export function AssetPriceChart({
     };
   }, [symbol]);
 
-  // Benchmark market stats for asset to determine realistic trend direction
-  const assetMarketStats = useMemo(() => {
-    return getAssetMarketStats(symbol, referencePrice ?? undefined);
-  }, [symbol, referencePrice]);
-
   // Generate candles dynamically for current timeframe and anchor to livePrice
   const candles = useMemo(() => {
-    return generateCandlesForTimeframe(livePrice, timeframe, assetMarketStats.change24h);
-  }, [symbol, timeframe, assetMarketStats.change24h, Math.floor(livePrice * 10)]);
+    return generateCandlesForTimeframe(livePrice, timeframe, assetMarketStats?.change24h);
+  }, [symbol, timeframe, assetMarketStats?.change24h, Math.floor(livePrice * 10)]);
 
   // Keep last candle close synced with livePrice
   useEffect(() => {
@@ -240,9 +241,9 @@ export function AssetPriceChart({
   const currentY = Math.max(5, Math.min(95, 90 - ((livePrice - minPrice) / priceRange) * 80));
 
   const change24h = useMemo(() => {
-    if (candles.length < 2 || candles[0].open <= 0) return assetMarketStats.change24h;
+    if (candles.length < 2 || candles[0].open <= 0) return assetMarketStats?.change24h;
     return ((livePrice - candles[0].open) / candles[0].open) * 100;
-  }, [candles, livePrice, assetMarketStats.change24h]);
+  }, [candles, livePrice, assetMarketStats?.change24h]);
 
   const isUp = change24h === null || change24h === undefined ? true : change24h >= 0;
 
@@ -1089,11 +1090,11 @@ export function AssetPriceChart({
       <div className="asset-chart-foot pro-chart-foot">
         <div className="pro-chart-foot__stat">
           <span>Pool Liquidity</span>
-          <strong>{getAssetMarketStats(symbol, livePrice).liquidity}</strong>
+          <strong>{assetMarketStats?.liquidity}</strong>
         </div>
         <div className="pro-chart-foot__stat">
           <span>24h DEX Volume</span>
-          <strong>{getAssetMarketStats(symbol, livePrice).volume24h}</strong>
+          <strong>{assetMarketStats?.volume24h}</strong>
         </div>
         <div className="pro-chart-foot__stat">
           <span>Oracle Engine</span>

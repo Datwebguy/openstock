@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StockLogo } from "@/components/stock-logo";
 import { displayPrice, type OpenStockAsset } from "@/lib/xstocks";
-import { getAssetMarketStats } from "@/lib/market-stats";
+import { getAssetMarketStats, type AssetMarketStats } from "@/lib/market-stats";
 
 type Filter = "all" | "tech" | "fintech" | "macro" | "consumer" | "watchlist";
 type Sort = "alphabetical" | "price-high" | "price-low" | "change-high" | "volume-high";
@@ -46,8 +46,8 @@ function ticker(asset: OpenStockAsset) {
   return asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "").toUpperCase();
 }
 
-function getAssetStats(symbol: string, currentPrice?: number) {
-  return getAssetMarketStats(symbol, currentPrice);
+async function getAssetStats(symbol: string, currentPrice?: number) {
+  return await getAssetMarketStats(symbol, currentPrice);
 }
 
 export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
@@ -57,6 +57,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [storageMessage, setStorageMessage] = useState("");
+  const [assetStats, setAssetStats] = useState<Record<string, AssetMarketStats>>({});
 
   useEffect(() => {
     try {
@@ -66,6 +67,18 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
       setWatchlist([]);
     }
   }, []);
+
+  useEffect(() => {
+    // Load stats for all assets
+    assets.forEach(async (asset) => {
+      try {
+        const stats = await getAssetMarketStats(asset.symbol, asset.price);
+        setAssetStats(prev => ({ ...prev, [asset.symbol]: stats }));
+      } catch {
+        // Skip assets that fail to load
+      }
+    });
+  }, [assets]);
 
   function toggleWatchlist(symbol: string) {
     const next = watchlist.includes(symbol) ? watchlist.filter((item) => item !== symbol) : [...watchlist, symbol];
@@ -100,18 +113,18 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           return sort === "price-high" ? rightPrice - leftPrice : leftPrice - rightPrice;
         }
         if (sort === "change-high") {
-          const leftChange = getAssetStats(left.symbol).change24h ?? Number.NEGATIVE_INFINITY;
-          const rightChange = getAssetStats(right.symbol).change24h ?? Number.NEGATIVE_INFINITY;
+          const leftChange = assetStats[left.symbol]?.change24h ?? Number.NEGATIVE_INFINITY;
+          const rightChange = assetStats[right.symbol]?.change24h ?? Number.NEGATIVE_INFINITY;
           return rightChange - leftChange;
         }
         if (sort === "volume-high") {
-          const leftVol = parseFloat(getAssetStats(left.symbol).volume24h.replace(/[^0-9.]/g, "")) || -1;
-          const rightVol = parseFloat(getAssetStats(right.symbol).volume24h.replace(/[^0-9.]/g, "")) || -1;
+          const leftVol = parseFloat(assetStats[left.symbol]?.volume24h.replace(/[^0-9.]/g, "") || "0") || -1;
+          const rightVol = parseFloat(assetStats[right.symbol]?.volume24h.replace(/[^0-9.]/g, "") || "0") || -1;
           return rightVol - leftVol;
         }
         return issuerName(left).localeCompare(issuerName(right));
       });
-  }, [assets, filter, query, sort, watchlist]);
+  }, [assets, filter, query, sort, watchlist, assetStats]);
 
   const tabs: Array<{ key: Filter; label: string }> = [
     { key: "all", label: `All (${assets.length})` },
@@ -338,7 +351,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
             </thead>
             <tbody>
               {filtered.map((asset, index) => {
-                const stats = getAssetStats(asset.symbol);
+                const stats = assetStats[asset.symbol] ?? { volume24h: "Loading...", liquidity: "Loading...", change24h: null };
                 const change = stats.change24h;
                 const isPositive = change === null || change === undefined ? true : change >= 0;
                 const isSaved = watchlist.includes(asset.symbol);
@@ -369,8 +382,8 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                         {change === null || change === undefined ? "—" : `${isPositive ? "+" : ""}${change.toFixed(2)}%`}
                       </span>
                     </td>
-                    <td className="trends-td--volume">{stats.volume24h}</td>
-                    <td className="trends-td--liquidity">{stats.liquidity}</td>
+                    <td className="trends-td--volume">{assetStats[asset.symbol]?.volume24h ?? "Loading..."}</td>
+                    <td className="trends-td--liquidity">{assetStats[asset.symbol]?.liquidity ?? "Loading..."}</td>
                     <td className="trends-td--backing">
                       <span className="trends-backing-pill">Issuer PoR</span>
                     </td>
@@ -413,7 +426,7 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
       {filtered.length > 0 && viewMode === "grid" && (
         <div className="stock-grid" aria-label="Tokenized stocks cards">
           {filtered.map((asset) => {
-            const stats = getAssetStats(asset.symbol);
+            const stats = assetStats[asset.symbol] ?? { volume24h: "Loading...", liquidity: "Loading...", change24h: null };
             const change = stats.change24h;
             const isPositive = change === null || change === undefined ? true : change >= 0;
             const isSaved = watchlist.includes(asset.symbol);
@@ -440,8 +453,8 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
                   <h2>{issuerName(asset)}</h2>
                   <span className="stock-card__price">{displayPrice(asset.price)}</span>
                   <div className="stock-card__stats-row">
-                    <span>Vol: {stats.volume24h}</span>
-                    <span>TVL: {stats.liquidity}</span>
+                    <span>Vol: {assetStats[asset.symbol]?.volume24h ?? "Loading..."}</span>
+                    <span>TVL: {assetStats[asset.symbol]?.liquidity ?? "Loading..."}</span>
                   </div>
                 </Link>
                 <div className="stock-card__footer">
