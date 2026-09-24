@@ -74,6 +74,12 @@ function matchesCategory(symbol: string, categoryId: string): boolean {
   return false;
 }
 
+export function isMeteoraCompatibleStock(symbol: string): boolean {
+  if (!symbol) return false;
+  const sym = symbol.toUpperCase().replace(/X$/, "");
+  return sym === "NVDA" || sym === "AAPL";
+}
+
 export function LaunchClient() {
   const searchParams = useSearchParams();
   const initialSymbol = searchParams.get("symbol") || "AAPLx";
@@ -245,6 +251,21 @@ export function LaunchClient() {
     }
   }, [initialSymbol, pairs]);
 
+  // Automatically switch stock to NVDA or Apple whenever Meteora venue is active and current stock is incompatible.
+  // Never leave SPY or any non-Meteora stock selected on the Meteora route.
+  useEffect(() => {
+    if (selectedVenue === "meteora" && pairs.length > 0) {
+      if (!selectedPair || !isMeteoraCompatibleStock(selectedPair.symbol)) {
+        const nvda = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "NVDA");
+        const aapl = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "AAPL");
+        const target = nvda || aapl || pairs.find((p) => isMeteoraCompatibleStock(p.symbol));
+        if (target) {
+          setSelectedPair(target);
+        }
+      }
+    }
+  }, [selectedVenue, pairs, selectedPair]);
+
   // Check venue availability whenever selectedPair changes
   // RULE: Hide a venue if that stock is not a supported quote
   useEffect(() => {
@@ -392,14 +413,17 @@ export function LaunchClient() {
   const visiblePairs = pairs.filter((p) => {
     // Filter by venue support FIRST (before category and search)
     if (selectedVenue === "meteora") {
-      // Only show stocks that support Meteora DBC (NVDAx, AAPLx)
-      const meteoraSupportedSymbols = ["NVDAx", "AAPLx"];
-      if (!meteoraSupportedSymbols.includes(p.symbol)) return false;
-      // Skip category filtering for Meteora to show all compatible stocks regardless of category
-    } else {
-      const matchesCat = matchesCategory(p.symbol, selectedCategory);
-      if (!matchesCat) return false;
+      // In Meteora mode, ONLY show stocks that support Meteora DBC (NVDA and Apple)
+      if (!isMeteoraCompatibleStock(p.symbol)) return false;
+      // If user typed a search query, filter within compatible Meteora stocks; otherwise show both
+      if (!pairFilter.trim()) return true;
+      const q = pairFilter.toLowerCase();
+      return p.symbol.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
     }
+
+    // In Pump mode, apply category tabs and search
+    const matchesCat = matchesCategory(p.symbol, selectedCategory);
+    if (!matchesCat) return false;
     
     if (!pairFilter.trim()) return true;
     const q = pairFilter.toLowerCase();
@@ -1031,38 +1055,99 @@ export function LaunchClient() {
             {/* Pair availability against the selected xStock */}
             {selectedPair && (
               <div className="launch-badge-section">
-                {quoteBadgeStatus === "checking" ? (
+                {selectedVenue === "meteora" ? (
+                  isMeteoraCompatibleStock(selectedPair.symbol) ? (
+                    <div className="launch-badge-card is-verified">
+                      <span className="launch-badge-pill is-verified">
+                        ✓ Ready to pair on Meteora
+                      </span>
+                      <span className="launch-badge-note">
+                        {selectedPair.symbol} is fully configured for Meteora DBC with automatic migration to full liquidity pool.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="launch-badge-card is-unbadged">
+                      <div className="launch-badge-row">
+                        <span className="launch-badge-pill is-unbadged">
+                          {selectedPair.symbol} not available on Meteora DBC
+                        </span>
+                      </div>
+                      <p className="launch-badge-note">
+                        Meteora DBC currently supports NVDA and Apple. Switch to Pump to pair against {selectedPair.symbol}, or select NVDA / Apple below.
+                      </p>
+                      <button
+                        type="button"
+                        className="launch-badge-reset-btn"
+                        onClick={() => setSelectedVenue("pumpfun")}
+                      >
+                        Launch {selectedPair.symbol} on Pump
+                      </button>
+                    </div>
+                  )
+                ) : quoteBadgeStatus === "checking" ? (
                   <div className="launch-badge-checking">
                     <span className="launch-pulse-dot" /> Checking pair availability...
                   </div>
-                ) : quoteBadgeStatus === "badged" ? (
+                ) : (
                   <div className="launch-badge-card is-verified">
                     <span className="launch-badge-pill is-verified">
                       ✓ Ready to pair
                     </span>
                     <span className="launch-badge-note">
-                      {selectedPair.symbol} is ready for pair creation on Pump.fun and Meteora DBC.
+                      {selectedPair.symbol} is ready for pair creation on Pump.fun bonding curve.
                     </span>
                   </div>
-                ) : (
-                  <div className="launch-badge-card is-unbadged">
-                    <div className="launch-badge-row">
-                      <span className="launch-badge-pill is-unbadged">
-                        {selectedPair.symbol} is not badged on Meteora DBC yet
-                      </span>
-                    </div>
-                    <p className="launch-badge-note">
-                      Launch against this stock on Pump.fun, or pick a badged xStock for Meteora. OpenStock does not pair against SOL or USDC.
-                    </p>
-                    <button
-                      type="button"
-                      className="launch-badge-reset-btn"
-                      onClick={() => setSelectedVenue("pumpfun")}
-                    >
-                      Launch {selectedPair.symbol} on Pump.fun
-                    </button>
-                  </div>
                 )}
+              </div>
+            )}
+
+            {/* Meteora Dedicated Stock Selector Notice */}
+            {selectedVenue === "meteora" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  padding: "10px 16px",
+                  background: "rgba(3, 225, 255, 0.06)",
+                  border: "1px solid rgba(3, 225, 255, 0.22)",
+                  borderRadius: "12px",
+                  marginBottom: "14px",
+                  fontSize: "13px",
+                  color: "var(--os-ink, #161321)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ color: "var(--solana-cyan, #03e1ff)", fontWeight: 700 }}>⚡ Meteora Curve</span>
+                  <span>Meteora DBC pairs exclusively against <strong>NVDA</strong> and <strong>Apple</strong>. Tap either stock below:</span>
+                </div>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {pairs.filter((p) => isMeteoraCompatibleStock(p.symbol)).map((p) => {
+                    const isCur = selectedPair?.mint === p.mint || (selectedPair?.symbol && selectedPair.symbol.toUpperCase() === p.symbol.toUpperCase());
+                    return (
+                      <button
+                        key={p.mint}
+                        type="button"
+                        onClick={() => setSelectedPair(p)}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          borderRadius: "8px",
+                          border: "1px solid",
+                          borderColor: isCur ? "var(--solana-cyan, #03e1ff)" : "rgba(3, 225, 255, 0.3)",
+                          background: isCur ? "rgba(3, 225, 255, 0.2)" : "rgba(255, 255, 255, 0.5)",
+                          color: "var(--os-ink, #161321)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {p.symbol} {isCur ? "✓" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1105,7 +1190,9 @@ export function LaunchClient() {
                   ) : null}
                 </div>
                 <span className="launch-pair-count-pill">
-                  {visiblePairs.length} / {pairs.length} pairs
+                  {selectedVenue === "meteora"
+                    ? `${visiblePairs.length} Meteora stocks (NVDA & Apple)`
+                    : `${visiblePairs.length} / ${pairs.length} pairs`}
                 </span>
               </div>
             </div>
@@ -1119,7 +1206,7 @@ export function LaunchClient() {
               ) : (
                 <div className="launch-pairs-grid" role="radiogroup" aria-label="Stock assets">
                   {visiblePairs.map((pair) => {
-                    const isSelected = selectedPair?.mint === pair.mint;
+                    const isSelected = selectedPair?.mint === pair.mint || (Boolean(selectedPair?.symbol) && selectedPair?.symbol.toUpperCase() === pair.symbol.toUpperCase());
                     const stats = pairStatsCache[pair.symbol];
                     const change = stats?.change24h;
                     const isUp = change === null || change === undefined ? true : change >= 0;
@@ -1197,7 +1284,7 @@ export function LaunchClient() {
                       <span className="launch-venue-badge">Instant</span>
                     </div>
                     <p className="launch-venue-desc">
-                      Pairs against all 25+ xStocks. Moves to full pool upon reaching target.
+                      Pairs against all 32 curated xStocks. Moves to full pool upon reaching target.
                     </p>
                     <div className="launch-venue-foot">
                       <span>75% Creator Fee</span>
@@ -1214,12 +1301,13 @@ export function LaunchClient() {
                     onClick={() => {
                       setSelectedVenue("meteora");
                       setSelectedCategory("all"); // Reset category to show all compatible stocks
-                      // ALWAYS auto-select first compatible stock when switching to Meteora
-                      const meteoraCompatibleStock = pairs.find(p => 
-                        ["NVDAx", "AAPLx"].includes(p.symbol)
-                      );
-                      if (meteoraCompatibleStock) {
-                        setSelectedPair(meteoraCompatibleStock);
+                      setPairFilter(""); // Clear search so NVDA and Apple pop up immediately
+                      // ALWAYS auto-select NVDA (or Apple) when switching to Meteora
+                      const nvda = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "NVDA");
+                      const aapl = pairs.find((p) => p.symbol.toUpperCase().replace(/X$/, "") === "AAPL");
+                      const target = nvda || aapl || pairs.find((p) => isMeteoraCompatibleStock(p.symbol));
+                      if (target) {
+                        setSelectedPair(target);
                       }
                     }}
                     role="radio"
@@ -1232,7 +1320,7 @@ export function LaunchClient() {
                       </span>
                     </div>
                     <p className="launch-venue-desc">
-                      Bonding curve with automatic move to full trading pool upon graduation. Available for NVDAx and AAPLx.
+                      Bonding curve with automatic move to full trading pool upon graduation. Available for NVDA and Apple (AAPLx).
                     </p>
                     <div className="launch-venue-foot">
                       <span>Move to full pool</span>
