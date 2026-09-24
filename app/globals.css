@@ -160,4 +160,19 @@ button { font: inherit; }
   .footer-nav { position: fixed; z-index: 40; display: grid; grid-template-columns: repeat(5,1fr); bottom: 12px; left: 12px; right: 12px; padding: 9px; color: var(--ink); background: var(--nav-bg); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 15px 38px rgba(31,50,100,.16); backdrop-filter: blur(18px); }
   .footer-nav a { padding: 8px 2px; color: var(--muted); text-align: center; font-size: 10px; font-weight: 800; }
   .footer-nav a:first-child { color: var(--solana-purple); }
+  
+  /* Touch-friendly improvements */
+  button, .button, a.button {
+    min-height: 44px;
+    min-width: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button:active, .button:active, a.button:active {
+    transform: scale(0.97);
+  }
+  
+  input, select, textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
 }

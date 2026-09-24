@@ -2385,6 +2385,18 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
     padding: 16px;
     border-radius: 16px;
   }
+  
+  /* Touch-friendly improvements */
+  .community-card__swap-btn,
+  .community-card__bubble-btn {
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .community-card__swap-btn:active,
+  .community-card__bubble-btn:active {
+    transform: scale(0.97);
+  }
 
   /* Modals Touch & Viewport Fit */
   .os-modal-backdrop {
@@ -2399,6 +2411,11 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
     padding: 18px 16px;
     border-radius: 20px;
     margin: 0;
+  }
+  
+  .os-modal-close {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .migration-modal-overlay {
@@ -2431,6 +2448,16 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
   .migration-cta-btn {
     width: 100%;
     justify-content: center;
+    min-height: 48px;
+  }
+  
+  /* Touch-friendly inputs */
+  .community-swap-input {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  .community-swap-execute-btn {
+    min-height: 48px;
   }
 
   /* Bubblemaps Modal */

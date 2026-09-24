@@ -3,6 +3,7 @@
 import { VersionedTransaction } from "@solana/web3.js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { privyConfigured } from "@/components/privy-root";
+import { isMobile, connectPhantomMobile, connectSolflareMobile, detectMobileWallet } from "@/components/wallet-deeplink";
 
 const STORAGE_KEY = "openstock:wallet";
 const CHANGE_EVENT = "openstock:wallet-change";
@@ -123,6 +124,21 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   }, [apply, refreshCanSign]);
 
   const connect = useCallback(async () => {
+    // Check if mobile first - use deep links for mobile wallet apps
+    if (isMobile()) {
+      const detectedWallet = detectMobileWallet();
+      if (detectedWallet === "phantom") {
+        connectPhantomMobile();
+        return null;
+      } else if (detectedWallet === "solflare") {
+        connectSolflareMobile();
+        return null;
+      }
+      // Default to Phantom deep link if no specific wallet detected
+      connectPhantomMobile();
+      return null;
+    }
+    
     const provider = injectedProvider();
     if (!provider) throw new Error("Install Phantom or Solflare to connect.");
     setConnecting(true);

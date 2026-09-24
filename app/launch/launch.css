@@ -1787,6 +1787,45 @@ html[data-theme="dark"] .launch-priority-pill strong {
   .launch-container {
     padding-top: 84px;
     padding-inline: 14px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  /* Touch-friendly button sizing */
+  .launch-panel {
+    padding: 18px;
+  }
+  
+  .launch-pair-card {
+    padding: 16px;
+    min-height: 88px;
+  }
+  
+  .launch-venue-card {
+    padding: 16px;
+    min-height: 72px;
+  }
+  
+  /* Better touch targets for inputs */
+  .launch-field input,
+  .launch-field textarea {
+    padding: 14px 16px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Touch-friendly buttons */
+  .launch-panel button,
+  .launch-panel .button {
+    min-height: 48px;
+    min-width: 48px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .launch-panel button:active,
+  .launch-panel .button:active {
+    transform: scale(0.97);
+  }
+  
+  .launch-page {
     padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
     overflow-x: clip;
   }
