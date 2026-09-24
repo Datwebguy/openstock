@@ -241,10 +241,11 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
     }
 
     // Token has no verified DexScreener pair (e.g. unlisted / pre-graduated curve)
-    // NEVER invent volume: set volume24hUsd to 0, mark unlisted
+    // NEVER invent volume or carry forward a stale market cap: zero both, mark unlisted
     return {
       ...t,
       volume24hUsd: 0,
+      marketCapUsd: 0,
       isStale: false,
       marketStatus: "unlisted",
     };
@@ -445,4 +446,11 @@ export async function getCommunityMarketKPIs() {
     avgChange24h,
     lastUpdated: new Date().toISOString(),
   };
+}
+
+export async function getCommunityTokenByMint(mint: string): Promise<CommunityToken | null> {
+  if (!mint) return null;
+  const tokens = await getCommunityTokens();
+  const cleanMint = mint.trim().toLowerCase();
+  return tokens.find((t) => t.mint.toLowerCase() === cleanMint) ?? null;
 }
