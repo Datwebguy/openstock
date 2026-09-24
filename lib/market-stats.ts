@@ -1,4 +1,4 @@
-// Market stats helper. Use Jupiter and available Solana sources for market data.
+// Market stats helper. Use Jupiter and Solana data sources for market data.
 export type AssetMarketStats = {
   price: number;
   change24h: number | null;
@@ -13,6 +13,8 @@ export type AssetMarketStats = {
 import { getMarketEvidence } from "@/lib/market-evidence";
 import { getHydratedAsset } from "@/lib/xstocks";
 
+const JUPITER_PRICE_URL = process.env.JUPITER_PRICE_URL ?? "https://api.jup.ag/price/v3";
+
 export async function getAssetMarketStats(symbol: string, currentPrice?: number | null): Promise<AssetMarketStats> {
   const price = typeof currentPrice === "number" && Number.isFinite(currentPrice) && currentPrice > 0
     ? currentPrice
@@ -24,13 +26,34 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
     
     // Use Jupiter price data as primary source
     const jupiterPrice = evidence.jupiter.data?.executablePrice;
-    const pool = evidence.meteora.data?.[0];
-    const tvl = pool?.tvl;
-    const volume24h = pool?.volume24h;
+    
+    // Try to get additional Jupiter data for volume/liquidity
+    const mint = asset.solanaDeployment?.address;
+    let jupiterVolume: number | null = null;
+    let jupiterLiquidity: number | null = null;
+    
+    if (mint) {
+      try {
+        const response = await fetch(`${JUPITER_PRICE_URL}?ids=${mint}`, {
+          headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
+          signal: AbortSignal.timeout(5000),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const tokenData = data[mint] || data.data?.[mint];
+          if (tokenData) {
+            jupiterVolume = typeof tokenData.volume24h === "number" ? tokenData.volume24h : null;
+            jupiterLiquidity = typeof tokenData.liquidity === "number" ? tokenData.liquidity : null;
+          }
+        }
+      } catch {
+        // Jupiter volume fetch failed, continue without it
+      }
+    }
     
     const formatDollars = (value: number | null | undefined) => {
-      if (value === null || value === undefined || !Number.isFinite(value) || value < 0) {
-        return "N/A";
+      if (value === null || value === undefined || !Number.isFinite(value) || value <= 0) {
+        return "—";
       }
       if (value >= 1_000_000) {
         return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -38,22 +61,16 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
       if (value >= 1_000) {
         return `$${(value / 1_000).toFixed(2)}K`;
       }
-      if (value > 0) {
-        return `$${value.toFixed(2)}`;
-      }
-      return "N/A";
+      return `$${value.toFixed(2)}`;
     };
-
-    // Show pool data if available, otherwise indicate no pool
-    const hasPool = pool && pool.address;
     
     return {
       price: jupiterPrice && jupiterPrice > 0 ? jupiterPrice : price,
       change24h: null,
-      volume24h: hasPool ? formatDollars(volume24h) : "N/A",
-      liquidity: hasPool ? formatDollars(tvl) : "N/A",
-      marketCap: "N/A",
-      holders: "N/A",
+      volume24h: formatDollars(jupiterVolume),
+      liquidity: formatDollars(jupiterLiquidity),
+      marketCap: "—",
+      holders: "—",
       high24h: null,
       low24h: null,
     };
@@ -63,10 +80,10 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
     return {
       price,
       change24h: null,
-      volume24h: "N/A",
-      liquidity: "N/A",
-      marketCap: "N/A",
-      holders: "N/A",
+      volume24h: "—",
+      liquidity: "—",
+      marketCap: "—",
+      holders: "—",
       high24h: null,
       low24h: null,
     };
