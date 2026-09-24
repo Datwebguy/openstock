@@ -270,21 +270,7 @@ export function LaunchClient() {
     evaluateVenues();
   }, [selectedPair]);
 
-  // Force stock switch when venue changes to Meteora (only if current stock is incompatible)
-  useEffect(() => {
-    if (selectedVenue === "meteora" && selectedPair) {
-      const isCompatible = ["NVDAx", "AAPLx"].includes(selectedPair.symbol);
-      if (!isCompatible) {
-        const meteoraCompatibleStock = pairs.find(p => 
-          ["NVDAx", "AAPLx"].includes(p.symbol)
-        );
-        if (meteoraCompatibleStock) {
-          setSelectedPair(meteoraCompatibleStock);
-        }
-      }
-      // If current stock is already compatible (NVDAx or AAPLx), keep it and show both options
-    }
-  }, [selectedVenue, pairs, selectedPair]);
+
 
   // Supply handlers
   function handleSupplySelect(amount: number) {
@@ -1213,15 +1199,12 @@ export function LaunchClient() {
                     onClick={() => {
                       setSelectedVenue("meteora");
                       setSelectedCategory("all"); // Reset category to show all compatible stocks
-                      // Only auto-select if current stock is not compatible
-                      const isCurrentCompatible = selectedPair && ["NVDAx", "AAPLx"].includes(selectedPair.symbol);
-                      if (!isCurrentCompatible) {
-                        const meteoraCompatibleStock = pairs.find(p => 
-                          ["NVDAx", "AAPLx"].includes(p.symbol)
-                        );
-                        if (meteoraCompatibleStock) {
-                          setSelectedPair(meteoraCompatibleStock);
-                        }
+                      // ALWAYS auto-select first compatible stock when switching to Meteora
+                      const meteoraCompatibleStock = pairs.find(p => 
+                        ["NVDAx", "AAPLx"].includes(p.symbol)
+                      );
+                      if (meteoraCompatibleStock) {
+                        setSelectedPair(meteoraCompatibleStock);
                       }
                     }}
                     role="radio"
