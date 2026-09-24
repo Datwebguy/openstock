@@ -430,6 +430,12 @@ export function LaunchClient() {
     return p.symbol.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
   });
 
+  // Available stocks for current venue (before user category/search filters)
+  const availableStocksForVenue = selectedVenue === "meteora"
+    ? pairs.filter((p) => isMeteoraCompatibleStock(p.symbol))
+    : pairs;
+  const isFewStocks = availableStocksForVenue.length < 8 && availableStocksForVenue.length > 0;
+
   // Handle One-Click Launch Action with Hardened Preflight Simulator & Priority Fees
   async function handleLaunch() {
     if (!address) {
@@ -1026,179 +1032,118 @@ export function LaunchClient() {
               </div>
             </div>
 
-            {/* Active Selected Stock Banner */}
-            {selectedPair && (() => {
-              const pairStats = pairStatsCache[selectedPair.symbol];
-              const change = pairStats?.change24h;
-              const isUp = change === null || change === undefined ? true : change >= 0;
-              return (
-                <div className="launch-selected-pair-banner">
-                  <div className="launch-selected-pair-info">
-                    <StockLogo symbol={selectedPair.symbol} logo={selectedPair.imageUrl ?? undefined} size={42} />
-                    <div>
-                      <span className="launch-selected-pair-label">Active Market Quote</span>
-                      <strong>{selectedPair.symbol} · {selectedPair.name.replace(/ xStock$/, "")}</strong>
-                    </div>
-                  </div>
-                  <div className="launch-selected-pair-meta">
-                    <span className={`launch-selected-pair-stat ${change === null || change === undefined ? "" : isUp ? "is-up" : "is-down"}`}>
-                      {change === null || change === undefined ? "24h —" : `${isUp ? "+" : ""}${change.toFixed(2)}% (24h)`}
-                    </span>
-                    <span className="launch-selected-pair-badge">
-                      <span className="launch-pulse-dot" /> Verified stock
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Pair availability against the selected xStock */}
-            {selectedPair && (
+            {/* Pair availability warning if incompatible stock is selected */}
+            {selectedPair && selectedVenue === "meteora" && !isMeteoraCompatibleStock(selectedPair.symbol) && (
               <div className="launch-badge-section">
-                {selectedVenue === "meteora" ? (
-                  isMeteoraCompatibleStock(selectedPair.symbol) ? (
-                    <div className="launch-badge-card is-verified">
-                      <span className="launch-badge-pill is-verified">
-                        ✓ Ready to pair on Meteora
-                      </span>
-                      <span className="launch-badge-note">
-                        {selectedPair.symbol} is fully configured for Meteora DBC with automatic migration to full liquidity pool.
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="launch-badge-card is-unbadged">
-                      <div className="launch-badge-row">
-                        <span className="launch-badge-pill is-unbadged">
-                          {selectedPair.symbol} not available on Meteora DBC
-                        </span>
-                      </div>
-                      <p className="launch-badge-note">
-                        Meteora DBC currently supports NVDA and Apple. Switch to Pump to pair against {selectedPair.symbol}, or select NVDA / Apple below.
-                      </p>
-                      <button
-                        type="button"
-                        className="launch-badge-reset-btn"
-                        onClick={() => setSelectedVenue("pumpfun")}
-                      >
-                        Launch {selectedPair.symbol} on Pump
-                      </button>
-                    </div>
-                  )
-                ) : quoteBadgeStatus === "checking" ? (
-                  <div className="launch-badge-checking">
-                    <span className="launch-pulse-dot" /> Checking pair availability...
-                  </div>
-                ) : (
-                  <div className="launch-badge-card is-verified">
-                    <span className="launch-badge-pill is-verified">
-                      ✓ Ready to pair
-                    </span>
-                    <span className="launch-badge-note">
-                      {selectedPair.symbol} is ready for pair creation on Pump.fun bonding curve.
+                <div className="launch-badge-card is-unbadged">
+                  <div className="launch-badge-row">
+                    <span className="launch-badge-pill is-unbadged">
+                      {selectedPair.symbol} not available on Meteora DBC
                     </span>
                   </div>
-                )}
+                  <p className="launch-badge-note">
+                    Meteora DBC currently supports NVDA and Apple. Switch to Pump to pair against {selectedPair.symbol}, or select NVDA / Apple below.
+                  </p>
+                  <button
+                    type="button"
+                    className="launch-badge-reset-btn"
+                    onClick={() => setSelectedVenue("pumpfun")}
+                  >
+                    Launch {selectedPair.symbol} on Pump
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Meteora Dedicated Stock Selector Notice */}
-            {selectedVenue === "meteora" && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "8px",
-                  padding: "10px 16px",
-                  background: "rgba(3, 225, 255, 0.06)",
-                  border: "1px solid rgba(3, 225, 255, 0.22)",
-                  borderRadius: "12px",
-                  marginBottom: "14px",
-                  fontSize: "13px",
-                  color: "var(--os-ink, #161321)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ color: "var(--solana-cyan, #03e1ff)", fontWeight: 700 }}>⚡ Meteora Curve</span>
-                  <span>Meteora DBC pairs exclusively against <strong>NVDA</strong> and <strong>Apple</strong>. Tap either stock below:</span>
-                </div>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {pairs.filter((p) => isMeteoraCompatibleStock(p.symbol)).map((p) => {
-                    const isCur = selectedPair?.mint === p.mint || (selectedPair?.symbol && selectedPair.symbol.toUpperCase() === p.symbol.toUpperCase());
+            {/* Unified Section Header Row */}
+            <div className="launch-curve-header-row">
+              <div className="launch-curve-header-left">
+                <h3 className="launch-curve-header-title">
+                  {selectedVenue === "meteora" ? "Meteora Curve" : "Pump.fun Curve"}
+                </h3>
+                <p className="launch-curve-header-desc">
+                  {selectedVenue === "meteora"
+                    ? "Dynamic bonding curve pairing exclusively against verified equities."
+                    : "Classic bonding curve pairing natively against verified equities."}
+                </p>
+              </div>
+
+              {isFewStocks && (
+                <div className="launch-curve-segmented-toggle" role="radiogroup" aria-label="Stock quick selector">
+                  {availableStocksForVenue.map((stock) => {
+                    const isCur = selectedPair?.mint === stock.mint || (Boolean(selectedPair?.symbol) && selectedPair?.symbol.toUpperCase() === stock.symbol.toUpperCase());
                     return (
                       <button
-                        key={p.mint}
+                        key={stock.mint}
                         type="button"
-                        onClick={() => setSelectedPair(p)}
-                        style={{
-                          padding: "4px 10px",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          borderRadius: "8px",
-                          border: "1px solid",
-                          borderColor: isCur ? "var(--solana-cyan, #03e1ff)" : "rgba(3, 225, 255, 0.3)",
-                          background: isCur ? "rgba(3, 225, 255, 0.2)" : "rgba(255, 255, 255, 0.5)",
-                          color: "var(--os-ink, #161321)",
-                          cursor: "pointer",
+                        role="radio"
+                        aria-checked={isCur}
+                        className={`launch-curve-segmented-btn ${isCur ? "is-selected" : ""}`}
+                        onClick={() => {
+                          startTransition(() => {
+                            setSelectedPair(stock);
+                          });
                         }}
                       >
-                        {p.symbol} {isCur ? "✓" : ""}
+                        {isCur && <span className="launch-curve-segmented-check" aria-hidden="true">✓</span>}
+                        <span>{stock.symbol}</span>
                       </button>
                     );
                   })}
                 </div>
+              )}
+            </div>
+
+            {/* Category Filter Tabs & Search Toolbar (Auto-hidden when < 8 stocks) */}
+            {!isFewStocks && (
+              <div className="launch-stock-toolbar">
+                <div className="launch-category-tabs" role="tablist" aria-label="Stock categories">
+                  {STOCK_CATEGORIES.map((cat) => (
+                    <button
+                      type="button"
+                      key={cat.id}
+                      role="tab"
+                      aria-selected={selectedCategory === cat.id}
+                      className={`launch-category-tab ${selectedCategory === cat.id ? "is-active" : ""}`}
+                      onClick={() => setSelectedCategory(cat.id)}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="launch-stock-search-wrap">
+                  <div className="launch-search-input-box">
+                    <span className="launch-search-icon" aria-hidden="true">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Search stocks (NVDA, Apple, Tesla, SPY...)"
+                      value={pairFilter}
+                      onChange={(e) => setPairFilter(e.target.value)}
+                      className="launch-pair-search-input"
+                    />
+                    {pairFilter ? (
+                      <button
+                        type="button"
+                        className="launch-search-clear-btn"
+                        onClick={() => setPairFilter("")}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    ) : null}
+                  </div>
+                  <span className="launch-pair-count-pill">
+                    {selectedVenue === "meteora"
+                      ? `${visiblePairs.length} Meteora stocks (NVDA & Apple)`
+                      : `${visiblePairs.length} / ${pairs.length} pairs`}
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Category Filter Tabs & Search Toolbar */}
-            <div className="launch-stock-toolbar">
-              <div className="launch-category-tabs" role="tablist" aria-label="Stock categories">
-                {STOCK_CATEGORIES.map((cat) => (
-                  <button
-                    type="button"
-                    key={cat.id}
-                    role="tab"
-                    aria-selected={selectedCategory === cat.id}
-                    className={`launch-category-tab ${selectedCategory === cat.id ? "is-active" : ""}`}
-                    onClick={() => setSelectedCategory(cat.id)}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="launch-stock-search-wrap">
-                <div className="launch-search-input-box">
-                  <span className="launch-search-icon" aria-hidden="true">🔍</span>
-                  <input
-                    type="text"
-                    placeholder="Search stocks (NVDA, Apple, Tesla, SPY...)"
-                    value={pairFilter}
-                    onChange={(e) => setPairFilter(e.target.value)}
-                    className="launch-pair-search-input"
-                  />
-                  {pairFilter ? (
-                    <button
-                      type="button"
-                      className="launch-search-clear-btn"
-                      onClick={() => setPairFilter("")}
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  ) : null}
-                </div>
-                <span className="launch-pair-count-pill">
-                  {selectedVenue === "meteora"
-                    ? `${visiblePairs.length} Meteora stocks (NVDA & Apple)`
-                    : `${visiblePairs.length} / ${pairs.length} pairs`}
-                </span>
-              </div>
-            </div>
-
-            {/* Spacious Visible Stock Cards Grid */}
-            <div className="launch-pairs-container">
+            {/* Two-Column CSS Grid Filling Full Container Width */}
+            <div className={`launch-pairs-container ${isFewStocks ? "is-few-stocks" : ""}`}>
               {loadingPairs ? (
                 <div className="launch-loading-pairs">
                   <span className="launch-pulse-dot" /> Loading verified stock assets...
@@ -1209,7 +1154,11 @@ export function LaunchClient() {
                     const isSelected = selectedPair?.mint === pair.mint || (Boolean(selectedPair?.symbol) && selectedPair?.symbol.toUpperCase() === pair.symbol.toUpperCase());
                     const stats = pairStatsCache[pair.symbol];
                     const change = stats?.change24h;
-                    const isUp = change === null || change === undefined ? true : change >= 0;
+                    const hasRealChange = typeof change === "number" && Number.isFinite(change);
+                    const isUp = hasRealChange ? change >= 0 : true;
+                    const priceUsd = stats?.price;
+                    const hasRealPrice = typeof priceUsd === "number" && Number.isFinite(priceUsd) && priceUsd > 0;
+
                     return (
                       <button
                         type="button"
@@ -1224,24 +1173,33 @@ export function LaunchClient() {
                         aria-checked={isSelected}
                       >
                         <div className="launch-pair-card-top">
-                          <StockLogo symbol={pair.symbol} logo={pair.imageUrl ?? undefined} size={36} />
+                          <StockLogo symbol={pair.symbol} logo={pair.imageUrl ?? undefined} size={40} />
                           {isSelected ? (
                             <span className="launch-pair-active-dot">
                               <span className="launch-pulse-dot" /> Active
                             </span>
-                          ) : (
-                            <span className={`launch-pair-stat-tag ${change === null || change === undefined ? "" : isUp ? "is-up" : "is-down"}`}>
-                              {change === null || change === undefined ? "—" : `${isUp ? "+" : ""}${change.toFixed(1)}%`}
+                          ) : hasRealChange ? (
+                            <span className={`launch-pair-stat-tag ${isUp ? "is-up" : "is-down"}`}>
+                              {isUp ? "+" : ""}{change.toFixed(1)}%
                             </span>
+                          ) : hasRealPrice ? (
+                            <span className="launch-pair-stat-tag">
+                              ${priceUsd < 1 ? priceUsd.toFixed(4) : priceUsd.toFixed(2)}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="launch-pair-card-bottom">
+                          <div className="launch-pair-details">
+                            <strong>{pair.symbol}</strong>
+                            <span>{pair.name.replace(/ xStock$/, "")}</span>
+                          </div>
+                          {isSelected ? (
+                            <div className="launch-pair-check-icon" aria-hidden="true">✓</div>
+                          ) : (
+                            <span className="launch-pair-select-btn">Select</span>
                           )}
                         </div>
-                        <div className="launch-pair-details">
-                          <strong>{pair.symbol}</strong>
-                          <span>{pair.name.replace(/ xStock$/, "")}</span>
-                        </div>
-                        {isSelected && (
-                          <div className="launch-pair-check-icon" aria-hidden="true">✓</div>
-                        )}
                       </button>
                     );
                   })}
