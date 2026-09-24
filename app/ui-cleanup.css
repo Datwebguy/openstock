@@ -16,21 +16,6 @@
   box-sizing: border-box;
 }
 
-/* Fix navigation overlap */
-.nav {
-  padding: 12px 16px;
-  gap: 16px;
-}
-
-@media (max-width: 768px) {
-  .nav {
-    padding: 10px 12px;
-    gap: 12px;
-    top: 12px;
-    width: calc(100% - 24px);
-  }
-}
-
 /* Clean up verbose text for mobile */
 @media (max-width: 768px) {
   .hero h1 {
@@ -49,11 +34,6 @@
 
   .section-head p {
     font-size: 15px;
-  }
-
-  .nav-links {
-    gap: 16px;
-    font-size: 12px;
   }
 
   .button {

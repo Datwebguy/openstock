@@ -331,7 +331,7 @@ html[data-theme="dark"] .learn-hero {
 @media (max-width: 1000px) { .stock-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .workspace-nav .nav-links { gap: 0; } .workspace-nav .nav-links a { padding-inline: 8px; } }
 @media (max-width: 767px) {
   .workspace-nav .nav-links { display: none; }
-  .app-page { padding-top: 96px; padding-bottom: 96px; }
+  .app-page { padding-top: calc(var(--nav-offset) + 20px); padding-bottom: 96px; }
   .workspace-heading { display: block; }
   .workspace-help { display: inline-block; margin-top: 8px; }
   .stock-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
