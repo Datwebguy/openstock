@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import { AppProviders } from "@/components/app-providers";
+import { ErrorBoundary } from "@/components/error-boundary";
 import "./globals.css";
 import "./font-fix.css";
 import "./visual-overrides.css";
@@ -27,6 +28,7 @@ import "./theme.css";
 import "./design-refresh.css";
 import "./community-market.css";
 import "./wallet-modal.css";
+import "./ui-cleanup.css";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["400", "500", "600", "700"] });
 const body = Manrope({ subsets: ["latin"], variable: "--font-body", weight: ["400", "500", "600", "700", "800"] });
@@ -90,7 +92,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             __html: `(function(){try{var t=localStorage.getItem("openstock:theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`,
           }}
         />
-        <AppProviders>{children}</AppProviders>
+        <ErrorBoundary>
+          <AppProviders>{children}</AppProviders>
+        </ErrorBoundary>
       </body>
     </html>
   );

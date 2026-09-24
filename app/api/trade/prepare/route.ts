@@ -5,6 +5,7 @@ import { getMarketVerdict } from "@/lib/market-verdict";
 import { getHydratedAsset, XStocksApiError } from "@/lib/xstocks";
 import { uiToRaw } from "@/lib/scaled-amounts";
 import { USDC_DECIMALS, USDC_MINT } from "@/lib/solana";
+import { logApiError, logApiSuccess } from "@/lib/monitoring";
 
 const JUPITER_API_BASE = process.env.JUPITER_SWAP_API_BASE ?? "https://api.jup.ag/swap/v2";
 const DEFAULT_SLIPPAGE_BPS = 50;
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     const evidence = await getMarketEvidence(asset);
     const verdict = getMarketVerdict(asset, evidence);
     if (verdict.hardBlock) {
+      logApiError("/api/trade/prepare", new Error(verdict.headline), { symbol, side, verdict: verdict.label });
       return NextResponse.json({ error: verdict.headline, verdict: verdict.label }, { status: 409, headers: { "Cache-Control": "no-store" } });
     }
 
@@ -116,6 +118,7 @@ export async function POST(request: Request) {
     const order = await requestJson<OrderResponse>(JUPITER_API_BASE + "/order?" + params);
 
     if (!order.transaction || !order.requestId) {
+      logApiError("/api/trade/prepare", new Error(order.errorMessage ?? "Jupiter did not return a live route"), { symbol, side, shares });
       return NextResponse.json(
         { error: order.errorMessage ?? "Jupiter did not return a live route for this stock." },
         { status: 502 }
@@ -128,6 +131,7 @@ export async function POST(request: Request) {
       ? new Date(Date.now() + 45_000).toISOString()
       : new Date(Date.now() + 30_000).toISOString();
 
+    logApiSuccess("/api/trade/prepare", { symbol, side, shares, price });
     return NextResponse.json(
       {
         symbol: asset.symbol,
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const status = error instanceof XStocksApiError && error.status === 404 ? 404 : 502;
+    logApiError("/api/trade/prepare", error, { symbol, side, shares, status });
     return NextResponse.json(
       {
         error:

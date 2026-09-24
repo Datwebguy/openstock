@@ -1,0 +1,98 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0a2e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2d1b4e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a0a2e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#9945ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14f195;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)" />
+  
+  <!-- Building/Architecture Elements -->
+  <g opacity="0.1">
+    <rect x="50" y="100" width="80" height="200" fill="#9945ff" />
+    <rect x="200" y="80" width="60" height="180" fill="#14f195" />
+    <rect x="350" y="120" width="70" height="160" fill="#9945ff" />
+    <rect x="500" y="90" width="90" height="190" fill="#14f195" />
+    <rect x="650" y="110" width="65" height="170" fill="#9945ff" />
+    <rect x="800" y="100" width="75" height="180" fill="#14f195" />
+    <rect x="950" y="80" width="85" height="200" fill="#9945ff" />
+    <rect x="1100" y="120" width="70" height="160" fill="#14f195" />
+  </g>
+  
+  <!-- Neon Glow Effect Lines -->
+  <g opacity="0.3">
+    <line x1="0" y1="50" x2="1200" y2="50" stroke="#9945ff" stroke-width="2" />
+    <line x1="0" y1="580" x2="1200" y2="580" stroke="#14f195" stroke-width="2" />
+  </g>
+  
+  <!-- Main Title -->
+  <text x="600" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#ffffff" filter="url(#glow)">
+    OPENSTOCK
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="600" fill="#14f195">
+    TOKENIZED EQUITIES
+  </text>
+  
+  <!-- Horizontal Divider -->
+  <line x1="200" y1="360" x2="1000" y2="360" stroke="url(#accentGradient)" stroke-width="3" />
+  
+  <!-- Key Features -->
+  <g font-family="Arial, sans-serif" font-size="16" fill="#ffffff" opacity="0.9">
+    <text x="600" y="410" text-anchor="middle" font-size="20" font-weight="bold" fill="#9945ff">
+      GLOBAL STOCK EXCHANGE • ON-CHAIN
+    </text>
+    
+    <text x="600" y="445" text-anchor="middle" font-size="16">
+      25+ Tokenized Equities • Dual Venue Trading
+    </text>
+    
+    <text x="600" y="475" text-anchor="middle" font-size="16">
+      Real Market Data • Non-Custodial Trading
+    </text>
+  </g>
+  
+  <!-- Stock Tickers -->
+  <g font-family="Arial, sans-serif" font-size="14" font-weight="bold" opacity="0.7">
+    <text x="100" y="530" fill="#9945ff">AAPL</text>
+    <text x="150" y="530" fill="#14f195">TSLA</text>
+    <text x="200" y="530" fill="#9945ff">GOOGL</text>
+    <text x="260" y="530" fill="#14f195">META</text>
+    <text x="320" y="530" fill="#9945ff">NVDA</text>
+    <text x="380" y="530" fill="#14f195">MSFT</text>
+    <text x="440" y="530" fill="#9945ff">AMZN</text>
+    <text x="500" y="530" fill="#14f195">COIN</text>
+    <text x="560" y="530" fill="#9945ff">MSTR</text>
+    <text x="620" y="530" fill="#14f195">HOOD</text>
+    <text x="680" y="530" fill="#9945ff">PYPL</text>
+    <text x="740" y="530" fill="#14f195">CRCL</text>
+    <text x="800" y="530" fill="#9945ff">NFLX</text>
+text x="860" y="530" fill="#14f195">DIS</text>
+    <text x="920" y="530" fill="#9945ff">UBER</text>
+    <text x="980" y="530" fill="#14f195">ABNB</text>
+    <text x="1040" y="530" fill="#9945ff">SPY</text>
+    <text x="1090" y="530" fill="#14f195">QQQ</text>
+  </g>
+  
+  <!-- Bottom Accent Bar -->
+  <rect x="500" y="580" width="200" height="4" fill="url(#accentGradient)" rx="2" />
+  
+  <!-- Corner Accents -->
+  <circle cx="50" cy="50" r="30" fill="none" stroke="#9945ff" stroke-width="2" opacity="0.5" />
+  <circle cx="1150" cy="580" r="30" fill="none" stroke="#14f195" stroke-width="2" opacity="0.5" />
+</svg>

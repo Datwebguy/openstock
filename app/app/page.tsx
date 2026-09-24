@@ -6,35 +6,6 @@ import curated25Data from "@/lib/solana-curated-25.json";
 
 const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
 
-// Verified real-time benchmark reference quotes from Backed/xStocks issuer feed
-const VERIFIED_REFERENCE_PRICES: Record<string, number> = {
-  NVDAx: 212.33,
-  AAPLx: 331.94,
-  TSLAx: 356.27,
-  MSFTx: 498.28,
-  AMZNx: 248.24,
-  GOOGLx: 344.15,
-  METAx: 668.63,
-  COINx: 171.10,
-  MSTRx: 128.37,
-  INTCx: 97.16,
-  SPYx: 758.24,
-  QQQx: 705.03,
-  AMDx: 504.06,
-  PLTRx: 172.26,
-  NFLXx: 77.94,
-  DISx: 106.15,
-  UBERx: 71.52,
-  HOODx: 109.07,
-  ABNBx: 166.01,
-  PYPLx: 53.84,
-  AVGOx: 339.75,
-  QCOMx: 187.57,
-  ARMx: 241.42,
-  CRCLx: 84.81,
-  GLDx: 392.58,
-};
-
 async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; error: boolean }> {
   try {
     const assets: OpenStockAsset[] = await Promise.all(
@@ -55,7 +26,7 @@ async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; error: b
         const price =
           priceResult.status === "fulfilled" && typeof priceResult.value?.quote === "number" && priceResult.value.quote > 0
             ? priceResult.value.quote
-            : VERIFIED_REFERENCE_PRICES[symbol] ?? 100.0;
+            : 100.0;
 
         const multiplier =
           multResult.status === "fulfilled" && multResult.value
