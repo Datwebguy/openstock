@@ -7,6 +7,7 @@ import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 import { ShareToXModal } from "@/components/share-to-x-modal";
+import { WalletSelectModal } from "@/components/wallet-select-modal";
 import type { PumpPairAsset } from "@/lib/clawpump";
 import { getAssetMarketStats } from "@/lib/market-stats";
 import {
@@ -79,6 +80,7 @@ export function LaunchClient() {
   const quickMode = searchParams.get("quick") === "1";
 
   const { address, ready, connect, connecting, canSign } = useWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   // Supported Stock pairs
   const [pairs, setPairs] = useState<PumpPairAsset[]>([]);
@@ -396,12 +398,7 @@ export function LaunchClient() {
   // Handle One-Click Launch Action with Hardened Preflight Simulator & Priority Fees
   async function handleLaunch() {
     if (!address) {
-      try {
-        await connect();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Please connect your wallet";
-        setErrorMessage(msg);
-      }
+      setShowWalletModal(true);
       return;
     }
 
@@ -792,8 +789,8 @@ export function LaunchClient() {
             </label>
           </div>
           {!ready || !address ? (
-            <button type="button" className="button button--gradient" onClick={() => void connect()} disabled={connecting}>
-              {connecting ? "Connecting…" : "Connect Phantom / Solflare to launch"}
+            <button type="button" className="button button--gradient" onClick={() => setShowWalletModal(true)} disabled={connecting}>
+              {connecting ? "Connecting…" : "Connect Wallet to launch"}
             </button>
           ) : (
             <button
@@ -1691,6 +1688,7 @@ export function LaunchClient() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+      <WalletSelectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
     </div>
   );
 }
