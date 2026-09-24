@@ -258,15 +258,7 @@ export function LaunchClient() {
             dbcConfigReady,
           });
 
-          // Pre–Phase D: Pump is the working launch path. Only use Meteora when
-          // badge + METEORA_DBC_CONFIG are both ready (venues.supported already encodes that).
-          if (pSupported) {
-            setSelectedVenue("pumpfun");
-          } else if (mSupported) {
-            setSelectedVenue("meteora");
-          } else {
-            setSelectedVenue("pumpfun");
-          }
+          // Don't auto-switch venue - let user choose
         }
       } catch (err) {
         console.warn("Could not evaluate venue support:", err);
@@ -277,6 +269,21 @@ export function LaunchClient() {
     }
     evaluateVenues();
   }, [selectedPair]);
+
+  // Force stock switch when venue changes to Meteora
+  useEffect(() => {
+    if (selectedVenue === "meteora" && selectedPair) {
+      const isCompatible = ["NVDAx", "AAPLx"].includes(selectedPair.symbol);
+      if (!isCompatible) {
+        const meteoraCompatibleStock = pairs.find(p => 
+          ["NVDAx", "AAPLx"].includes(p.symbol)
+        );
+        if (meteoraCompatibleStock) {
+          setSelectedPair(meteoraCompatibleStock);
+        }
+      }
+    }
+  }, [selectedVenue, pairs]);
 
   // Supply handlers
   function handleSupplySelect(amount: number) {
@@ -1211,6 +1218,12 @@ export function LaunchClient() {
                       );
                       if (meteoraCompatibleStock) {
                         setSelectedPair(meteoraCompatibleStock);
+                      } else {
+                        // Fallback: if pairs aren't loaded yet, try to set NVDAx directly
+                        const nvdaFallback = pairs.find(p => p.symbol.toUpperCase().includes("NVDA"));
+                        if (nvdaFallback) {
+                          setSelectedPair(nvdaFallback);
+                        }
                       }
                     }}
                     role="radio"
