@@ -415,7 +415,163 @@ export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): 
 export async function getCommunityTokens(): Promise<CommunityToken[]> {
   const store = await readStore();
   const sorted = store.tokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  // Try to fetch real tokens from DexScreener that are paired against xStocks
+  try {
+    const dexscreenerTokens = await fetchDexScreenerMemeTokens();
+    if (dexscreenerTokens.length > 0) {
+      // Merge real tokens with seed data, avoiding duplicates
+      const existingMints = new Set(sorted.map(t => t.mint));
+      const newTokens = dexscreenerTokens.filter(t => !existingMints.has(t.mint));
+      return enrichTokensWithLiveMarketData([...newTokens, ...sorted]);
+    }
+  } catch (err) {
+    console.warn("Failed to fetch DexScreener tokens, using seed data:", err);
+  }
+  
   return enrichTokensWithLiveMarketData(sorted);
+}
+
+async function fetchDexScreenerMemeTokens(): Promise<CommunityToken[]> {
+  try {
+    // Known xStock mints to find tokens paired against them
+    const xStockMints = [
+      "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", // NVDAx
+      "BwpKWcauiC9XMNuUH2JaH3wqjYKjVDmfhWh2a6Gq8Jrw", // AAPLx
+      "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB", // TSLAx
+      "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp", // AAPLx (alternative)
+      "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu", // COINx
+      "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg", // HOODx
+      "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ", // MSTRx
+      "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX", // MSFTx
+      "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN", // GOOGLx
+      "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg", // AMZNx
+      "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu", // METAx
+    ];
+    
+    // Common tokens to EXCLUDE (not community tokens)
+    const commonMints = new Set([
+      "So11111111111111111111111111111111111111112", // SOL
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
+    ]);
+    
+    // Fetch pairs for each xStock
+    const allPairs = [];
+    for (const mint of xStockMints) {
+      try {
+        const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(5000),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const pairs = data.pairs || [];
+          allPairs.push(...pairs);
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch pairs for ${mint}:`, err);
+      }
+    }
+    
+    // Convert DexScreener pairs to CommunityToken format
+    const tokens: CommunityToken[] = allPairs
+      .filter((pair: any) => {
+        // Must be on Solana
+        if (pair.chainId !== "solana") return false;
+        
+        // Must not be an xStock itself
+        if (xStockMints.includes(pair.baseToken.address)) return false;
+        if (xStockMints.includes(pair.quoteToken.address)) return false;
+        
+        // Must not be common tokens
+        if (commonMints.has(pair.baseToken.address)) return false;
+        if (commonMints.has(pair.quoteToken.address)) return false;
+        
+        // Must have some trading activity
+        if (!pair.volume?.h24 || pair.volume.h24 < 100) return false;
+        
+        // Must have a valid price
+        if (!pair.priceUsd || pair.priceUsd <= 0) return false;
+        
+        return true;
+      })
+      .map((pair: any) => {
+        // Determine which xStock this is paired against
+        const pairedWithStock = xStockMints.includes(pair.quoteToken.address) ? pair.quoteToken.address :
+                              xStockMints.includes(pair.baseToken.address) ? pair.baseToken.address : null;
+        
+        // Map known stock mints to symbols
+        const stockSymbol = pairedWithStock === "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh" ? "NVDAx" :
+                          pairedWithStock === "BwpKWcauiC9XMNuUH2JaH3wqjYKjVDmfhWh2a6Gq8Jrw" ? "AAPLx" :
+                          pairedWithStock === "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB" ? "TSLAx" :
+                          pairedWithStock === "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu" ? "COINx" :
+                          pairedWithStock === "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg" ? "HOODx" :
+                          pairedWithStock === "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ" ? "MSTRx" :
+                          pairedWithStock === "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX" ? "MSFTx" :
+                          pairedWithStock === "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN" ? "GOOGLx" :
+                          pairedWithStock === "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg" ? "AMZNx" :
+                          pairedWithStock === "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu" ? "METAx" : "UNKNOWN";
+        
+        const stockName = stockSymbol === "NVDAx" ? "NVIDIA Corporation" :
+                        stockSymbol === "AAPLx" ? "Apple Inc." :
+                        stockSymbol === "TSLAx" ? "Tesla Inc." :
+                        stockSymbol === "COINx" ? "Coinbase Global" :
+                        stockSymbol === "HOODx" ? "Robinhood Markets" :
+                        stockSymbol === "MSTRx" ? "MicroStrategy" :
+                        stockSymbol === "MSFTx" ? "Microsoft Corporation" :
+                        stockSymbol === "GOOGLx" ? "Alphabet Inc." :
+                        stockSymbol === "AMZNx" ? "Amazon.com" :
+                        stockSymbol === "METAx" ? "Meta Platforms" : "Unknown";
+        
+        // Determine venue based on DEX
+        const venue = pair.dexId === "meteora" ? "meteora" as const : "pumpfun" as const;
+        
+        return {
+          mint: pair.baseToken.address,
+          name: pair.baseToken.name || pair.baseToken.symbol,
+          symbol: pair.baseToken.symbol,
+          description: pairedWithStock 
+            ? `Community token paired against ${stockSymbol} on ${venue === "meteora" ? "Meteora DLMM" : "Pump.fun"}`
+            : `Community token on Solana`,
+          imageUrl: pair.info?.imageUrl || "",
+          pairedStockSymbol: pairedWithStock ? stockSymbol : "NONE",
+          pairedStockName: pairedWithStock ? stockName : "None",
+          creatorWallet: pair.baseToken.address.slice(0, 8) + "..." + pair.baseToken.address.slice(-4),
+          supply: pair.fdv ? Math.round(pair.fdv / (pair.priceUsd || 1)) : 0,
+          creatorFeeBps: 100,
+          priceSol: parseFloat(pair.priceNative || "0"),
+          priceUsd: parseFloat(pair.priceUsd || "0"),
+          marketCapUsd: pair.fdv || pair.marketCap || 0,
+          volume24hUsd: pair.volume?.h24 || 0,
+          change24h: pair.priceChange?.h24 || 0,
+          bondingCurveProgress: 100,
+          status: "graduated" as const,
+          holdersCount: 0,
+          txSignature: pair.pairAddress || "",
+          pumpUrl: pair.url,
+          explorerUrl: `https://solscan.io/token/${pair.baseToken.address}`,
+          poolAddress: pair.pairAddress,
+          meteoraUrl: pair.url,
+          venue,
+          createdAt: pair.pairCreatedAt || new Date().toISOString(),
+        };
+      });
+    
+    // Remove duplicates by mint
+    const uniqueTokens = new Map<string, CommunityToken>();
+    for (const token of tokens) {
+      if (!uniqueTokens.has(token.mint)) {
+        uniqueTokens.set(token.mint, token);
+      }
+    }
+    
+    return Array.from(uniqueTokens.values());
+  } catch (err) {
+    console.warn("Error fetching DexScreener meme tokens:", err);
+    return [];
+  }
 }
 
 export async function addCommunityToken(token: CommunityToken): Promise<CommunityToken> {
