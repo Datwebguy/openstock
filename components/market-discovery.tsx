@@ -163,9 +163,22 @@ export function MarketDiscovery({
           return rightChange - leftChange;
         }
         if (sort === "volume-high") {
-          const leftVol = parseFloat(assetStats[left.symbol]?.volume24h.replace(/[^0-9.]/g, "") || "0") || -1;
-          const rightVol = parseFloat(assetStats[right.symbol]?.volume24h.replace(/[^0-9.]/g, "") || "0") || -1;
+          const leftVol = assetStats[left.symbol]?.rawVolume24h ?? 0;
+          const rightVol = assetStats[right.symbol]?.rawVolume24h ?? 0;
           return rightVol - leftVol;
+        }
+        // Default sort: Prioritize actively traded assets by 24h DEX volume, then alphabetical for pre-pool assets
+        const leftVol = assetStats[left.symbol]?.rawVolume24h ?? 0;
+        const rightVol = assetStats[right.symbol]?.rawVolume24h ?? 0;
+        if (leftVol > 0 || rightVol > 0) {
+          if (rightVol !== leftVol) {
+            return rightVol - leftVol;
+          }
+        }
+        const leftHasPool = assetStats[left.symbol]?.hasPool ?? false;
+        const rightHasPool = assetStats[right.symbol]?.hasPool ?? false;
+        if (leftHasPool !== rightHasPool) {
+          return leftHasPool ? -1 : 1;
         }
         return issuerName(left).localeCompare(issuerName(right));
       });
@@ -428,7 +441,15 @@ export function MarketDiscovery({
                       </span>
                     </td>
                     <td className="trends-td--volume">{assetStats[asset.symbol]?.volume24h ?? "Loading..."}</td>
-                    <td className="trends-td--liquidity">{assetStats[asset.symbol]?.liquidity ?? "Loading..."}</td>
+                    <td className="trends-td--liquidity">
+                      {stats.liquidity === "Pre-Pool" ? (
+                        <span className="trends-prepool-pill" title="No secondary AMM liquidity pool seeded on Solana DEXes yet">
+                          Pre-Pool
+                        </span>
+                      ) : (
+                        assetStats[asset.symbol]?.liquidity ?? "Loading..."
+                      )}
+                    </td>
                     <td className="trends-td--backing">
                       <span className="trends-backing-pill">Issuer PoR</span>
                     </td>

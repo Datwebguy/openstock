@@ -6,6 +6,9 @@ export type AssetMarketStats = {
   change24h: number | null;
   volume24h: string;
   liquidity: string;
+  rawVolume24h?: number;
+  rawLiquidity?: number;
+  hasPool?: boolean;
   marketCap: string;
   holders: string;
   high24h: number | null;
@@ -18,8 +21,11 @@ const DEXSCREENER_URL = "https://api.dexscreener.com/tokens/v1/solana";
 const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
 
 function formatDollars(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value) || value <= 0) {
+  if (value === null || value === undefined || !Number.isFinite(value) || value < 0) {
     return "—";
+  }
+  if (value === 0) {
+    return "$0";
   }
   if (value >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -51,30 +57,53 @@ export async function getAllAssetMarketStats(): Promise<Record<string, AssetMark
   }
 
   try {
-    const [jupRes, dexRes] = await Promise.allSettled([
+    // DexScreener supports up to 30 addresses per request; chunk to ensure all 32 curated tokens are queried
+    const chunkSize = 20;
+    const dexChunkPromises: Promise<Response>[] = [];
+    for (let i = 0; i < mints.length; i += chunkSize) {
+      const chunk = mints.slice(i, i + chunkSize);
+      dexChunkPromises.push(
+        fetch(`${DEXSCREENER_URL}/${chunk.join(",")}`, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(8000),
+        })
+      );
+    }
+
+    const [jupRes, ...dexResponses] = await Promise.allSettled([
       fetch(`${JUPITER_PRICE_URL}?ids=${mints.join(",")}`, {
         headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
         signal: AbortSignal.timeout(8000),
       }),
-      fetch(`${DEXSCREENER_URL}/${mints.slice(0, 30).join(",")}`, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(8000),
-      }),
+      ...dexChunkPromises,
     ]);
 
     const jupData: Record<string, any> =
       jupRes.status === "fulfilled" && jupRes.value.ok ? await jupRes.value.json() : {};
 
-    const dexPairs: any[] =
-      dexRes.status === "fulfilled" && dexRes.value.ok ? await dexRes.value.json() : [];
+    const dexPairs: any[] = [];
+    for (const res of dexResponses) {
+      if (res.status === "fulfilled" && res.value.ok) {
+        try {
+          const data = await res.value.json();
+          if (Array.isArray(data)) {
+            dexPairs.push(...data);
+          }
+        } catch {
+          // ignore chunk parse error
+        }
+      }
+    }
 
     const dexVolByMint: Record<string, number> = {};
     const dexLiqByMint: Record<string, number> = {};
     const dexChangeByMint: Record<string, number> = {};
+    const dexHasPoolByMint: Record<string, boolean> = {};
 
-    for (const pair of Array.isArray(dexPairs) ? dexPairs : []) {
+    for (const pair of dexPairs) {
       const baseMint = pair.baseToken?.address;
       if (baseMint) {
+        dexHasPoolByMint[baseMint] = true;
         if (typeof pair.volume?.h24 === "number") {
           dexVolByMint[baseMint] = (dexVolByMint[baseMint] || 0) + pair.volume.h24;
         }
@@ -91,9 +120,24 @@ export async function getAllAssetMarketStats(): Promise<Record<string, AssetMark
 
     for (const [sym, meta] of Object.entries(curated25)) {
       const j = jupData[meta.mint] || jupData.data?.[meta.mint];
+      const hasPool = dexHasPoolByMint[meta.mint] === true;
       const vol = dexVolByMint[meta.mint] || 0;
       const liq = typeof j?.liquidity === "number" ? j.liquidity : dexLiqByMint[meta.mint] || 0;
-      const price = typeof j?.usdPrice === "number" && j.usdPrice > 0 ? j.usdPrice : 0;
+
+      // Extract genuine real-world price (prefer stockData if available, fallback to usdPrice)
+      const stockPrice = typeof j?.stockData?.price === "number" && j.stockData.price > 0 ? j.stockData.price : null;
+      const rawUsdPrice = typeof j?.usdPrice === "number" && j.usdPrice > 0 ? j.usdPrice : null;
+      let price = 0;
+      if (stockPrice && rawUsdPrice) {
+        // Protect against dust pools skewing usdPrice (e.g. PYPLx)
+        if (rawUsdPrice > stockPrice * 2.5 || rawUsdPrice < stockPrice * 0.4) {
+          price = stockPrice;
+        } else {
+          price = rawUsdPrice;
+        }
+      } else {
+        price = stockPrice ?? rawUsdPrice ?? 0;
+      }
 
       let change: number | null = null;
       if (typeof j?.priceChange24h === "number" && Number.isFinite(j.priceChange24h)) {
@@ -107,8 +151,11 @@ export async function getAllAssetMarketStats(): Promise<Record<string, AssetMark
       statsMap[sym] = {
         price,
         change24h: change,
-        volume24h: vol > 0 ? formatDollars(vol) : "—",
-        liquidity: liq > 0 ? formatDollars(liq) : "—",
+        volume24h: hasPool ? formatDollars(vol) : "$0",
+        liquidity: hasPool ? formatDollars(liq) : "Pre-Pool",
+        rawVolume24h: vol,
+        rawLiquidity: liq,
+        hasPool,
         marketCap: mcap,
         holders: "—",
         high24h: null,
@@ -174,11 +221,19 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
         change = Number(dexPair.priceChange.h24.toFixed(2));
       }
 
+      const hasPool = dexPair !== null;
+      const stockPrice = typeof tokenData?.stockData?.price === "number" && tokenData.stockData.price > 0 ? tokenData.stockData.price : null;
+      const rawUsdPrice = typeof tokenData?.usdPrice === "number" && tokenData.usdPrice > 0 ? tokenData.usdPrice : null;
+      let price = stockPrice ?? rawUsdPrice ?? fallbackPrice;
+
       return {
-        price: jupPrice && jupPrice > 0 ? jupPrice : fallbackPrice,
+        price: price > 0 ? price : fallbackPrice,
         change24h: change,
-        volume24h: formatDollars(dexVol),
-        liquidity: formatDollars(jupLiq || dexLiq),
+        volume24h: hasPool ? formatDollars(dexVol) : "$0",
+        liquidity: hasPool ? formatDollars(jupLiq || dexLiq) : "Pre-Pool",
+        rawVolume24h: dexVol || 0,
+        rawLiquidity: dexLiq || jupLiq || 0,
+        hasPool,
         marketCap: tokenData?.stockData?.mcap ? formatDollars(tokenData.stockData.mcap) : "—",
         holders: "—",
         high24h: null,
@@ -192,8 +247,11 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
   return {
     price: fallbackPrice,
     change24h: null,
-    volume24h: "—",
-    liquidity: "—",
+    volume24h: "$0",
+    liquidity: "Pre-Pool",
+    rawVolume24h: 0,
+    rawLiquidity: 0,
+    hasPool: false,
     marketCap: "—",
     holders: "—",
     high24h: null,
