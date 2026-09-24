@@ -381,14 +381,15 @@ export function LaunchClient() {
 
   // Filtered list of pairs based on category tabs, search, and venue support
   const visiblePairs = pairs.filter((p) => {
-    const matchesCat = matchesCategory(p.symbol, selectedCategory);
-    if (!matchesCat) return false;
-    
-    // Filter by venue support
+    // Filter by venue support FIRST (before category and search)
     if (selectedVenue === "meteora") {
       // Only show stocks that support Meteora DBC (NVDAx, AAPLx)
       const meteoraSupportedSymbols = ["NVDAx", "AAPLx"];
       if (!meteoraSupportedSymbols.includes(p.symbol)) return false;
+      // Skip category filtering for Meteora to show all compatible stocks
+    } else {
+      const matchesCat = matchesCategory(p.symbol, selectedCategory);
+      if (!matchesCat) return false;
     }
     
     if (!pairFilter.trim()) return true;
@@ -1177,7 +1178,7 @@ export function LaunchClient() {
                     className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""}`}
                     onClick={() => {
                       setSelectedVenue("pumpfun");
-                      // No stock restriction when switching to Pump.fun
+                      setSelectedCategory("all"); // Reset category to show all stocks
                     }}
                     role="radio"
                     aria-checked={selectedVenue === "pumpfun"}
@@ -1203,6 +1204,7 @@ export function LaunchClient() {
                     className={`launch-venue-card ${selectedVenue === "meteora" ? "is-selected" : ""}`}
                     onClick={() => {
                       setSelectedVenue("meteora");
+                      setSelectedCategory("all"); // Reset category to show all compatible stocks
                       // Auto-select a Meteora-compatible stock if current one doesn't support it
                       const meteoraCompatibleStock = pairs.find(p => 
                         ["NVDAx", "AAPLx"].includes(p.symbol)
