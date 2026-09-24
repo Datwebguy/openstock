@@ -253,7 +253,7 @@ export function LaunchClient() {
           setStockBadgeStatus(isBadged ? "badged" : "unbadged");
           setVenueSupport({
             pumpfun: pSupported,
-            meteora: mSupported,
+            meteora: true, // Always show Meteora option, let filtering handle compatibility
             meteoraBadged: isBadged,
             dbcConfigReady,
           });
@@ -1172,67 +1172,65 @@ export function LaunchClient() {
 
                 <div className="launch-venue-grid" role="radiogroup" aria-label="Execution Venue">
                   {/* Pump Venue Option */}
-                  {venueSupport.pumpfun ? (
-                    <button
-                      type="button"
-                      className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""}`}
-                      onClick={() => setSelectedVenue("pumpfun")}
-                      role="radio"
-                      aria-checked={selectedVenue === "pumpfun"}
-                    >
-                      <div className="launch-venue-head">
-                        <span className="launch-venue-title">Pump</span>
-                        <span className="launch-venue-badge">Instant</span>
-                      </div>
-                      <p className="launch-venue-desc">
-                        Pairs against {selectedPair?.symbol || "xStock"}. Moves to full pool upon reaching target.
-                      </p>
-                      <div className="launch-venue-foot">
-                        <span>75% Creator Fee</span>
-                        <div className="launch-venue-radio">
-                          <span className="launch-venue-radio-dot" />
-                        </div>
-                      </div>
-                    </button>
-                  ) : null}
-
-                  {/* Meteora — selectable only when badge + PoolConfig ready */}
-                  {venueSupport.meteora ? (
-                    <button
-                      type="button"
-                      className={`launch-venue-card ${selectedVenue === "meteora" ? "is-selected" : ""}`}
-                      onClick={() => setSelectedVenue("meteora")}
-                      role="radio"
-                      aria-checked={selectedVenue === "meteora"}
-                    >
-                      <div className="launch-venue-head">
-                        <span className="launch-venue-title">Meteora curve</span>
-                        <span className="launch-venue-badge" style={{ color: "var(--solana-cyan, #03e1ff)", borderColor: "rgba(3, 225, 255, 0.3)" }}>
-                          Full Pool Target
-                        </span>
-                      </div>
-                      <p className="launch-venue-desc">
-                        Bonding curve with automatic move to full trading pool upon graduation.
-                      </p>
-                      <div className="launch-venue-foot">
-                        <span>Move to full pool</span>
-                        <div className="launch-venue-radio">
-                          <span className="launch-venue-radio-dot" />
-                        </div>
-                      </div>
-                    </button>
-                  ) : venueSupport.meteoraBadged ? (
-                    <div className="launch-venue-card is-disabled" aria-disabled="true">
-                      <div className="launch-venue-head">
-                        <span className="launch-venue-title">Meteora curve</span>
-                        <span className="launch-venue-badge">Needs PoolConfig</span>
-                      </div>
-                      <p className="launch-venue-desc">
-                        This xStock is badged on Meteora, but <code>METEORA_DBC_CONFIG</code> is empty.
-                        Use Pump.fun for live launches until you add one Equity Standard PoolConfig (xStock quote).
-                      </p>
+                  <button
+                    type="button"
+                    className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""}`}
+                    onClick={() => {
+                      setSelectedVenue("pumpfun");
+                      // No stock restriction when switching to Pump.fun
+                    }}
+                    role="radio"
+                    aria-checked={selectedVenue === "pumpfun"}
+                  >
+                    <div className="launch-venue-head">
+                      <span className="launch-venue-title">Pump</span>
+                      <span className="launch-venue-badge">Instant</span>
                     </div>
-                  ) : null}
+                    <p className="launch-venue-desc">
+                      Pairs against all 25+ xStocks. Moves to full pool upon reaching target.
+                    </p>
+                    <div className="launch-venue-foot">
+                      <span>75% Creator Fee</span>
+                      <div className="launch-venue-radio">
+                        <span className="launch-venue-radio-dot" />
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Meteora — always clickable, filters stocks to compatible ones */}
+                  <button
+                    type="button"
+                    className={`launch-venue-card ${selectedVenue === "meteora" ? "is-selected" : ""}`}
+                    onClick={() => {
+                      setSelectedVenue("meteora");
+                      // Auto-select a Meteora-compatible stock if current one doesn't support it
+                      const meteoraCompatibleStock = pairs.find(p => 
+                        ["NVDAx", "AAPLx"].includes(p.symbol)
+                      );
+                      if (meteoraCompatibleStock && 
+!["NVDAx", "AAPLx"].includes(selectedPair?.symbol || "")) {
+                        setSelectedPair(meteoraCompatibleStock);
+                      }
+                    }}
+                    role="radio"
+                    aria-checked={selectedVenue === "meteora"}
+                  >
+                    <div className="launch-venue-head">
+                      <span className="launch-venue-title">Meteora curve</span>
+                      <span className="launch-venue-badge" style={{ color: "var(--solana-cyan, #03e1ff)", borderColor: "rgba(3, 225, 255, 0.3)" }}>
+                        Full Pool Target
+                      </span>
+                    </div>
+                    <p className="launch-venue-desc">
+                      Bonding curve with automatic move to full trading pool upon graduation. Available for NVDAx and AAPLx.
+                    </p>
+                    <div className="launch-venue-foot">
+                      <span>Move to full pool</span>
+                      <div className="launch-venue-radio">
+                        <span className="launch-venue-radio-dot" />
+                      </div>
+                    </div>
+                  </button>
                 </div>
 
                 {/* Curve Preset Selector - Visible ONLY when selectedVenue === "meteora" */}
