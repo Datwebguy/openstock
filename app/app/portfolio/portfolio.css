@@ -20,7 +20,7 @@ html[data-theme="dark"] .portfolio-page {
   max-width: 1400px;
   margin-inline: auto;
   padding-inline: clamp(16px, 3vw, 36px);
-  padding-top: clamp(82px, 6vw, 102px);
+  padding-top: var(--nav-offset);
 }
 
 /* Header & Executive Balance Summary */
@@ -539,7 +539,7 @@ html[data-theme="dark"] .claim-history-table-wrap {
   }
 
   .portfolio-container {
-    padding-top: 88px;
+    padding-top: var(--nav-offset);
   }
 
   .portfolio-hero-card {

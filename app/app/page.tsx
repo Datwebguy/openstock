@@ -2,73 +2,88 @@ import Link from "next/link";
 import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { MarketDiscovery } from "@/components/market-discovery";
 import { CURATED_SYMBOLS, getMultiplier, getPrice, type OpenStockAsset } from "@/lib/xstocks";
+import { getAllAssetMarketStats, type AssetMarketStats } from "@/lib/market-stats";
 import curated25Data from "@/lib/solana-curated-25.json";
 
 const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
 
-async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; error: boolean }> {
+async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; stats: Record<string, AssetMarketStats>; error: boolean }> {
   try {
-    const assets: OpenStockAsset[] = await Promise.all(
-      CURATED_SYMBOLS.map(async (symbol) => {
-        const meta = curated25[symbol] ?? {
-          symbol,
-          name: symbol.replace(/x$/, " xStock"),
-          mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-          decimals: 6,
-          logo: `https://xstocks-metadata.backed.fi/logos/tokens/${symbol}.png`,
-        };
+    const [statsResult, assetsResult] = await Promise.allSettled([
+      getAllAssetMarketStats(),
+      Promise.all(
+        CURATED_SYMBOLS.map(async (symbol) => {
+          const meta = curated25[symbol] ?? {
+            symbol,
+            name: symbol.replace(/x$/, " xStock"),
+            mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+            decimals: 6,
+            logo: `https://xstocks-metadata.backed.fi/logos/tokens/${symbol}.png`,
+          };
 
-        const [priceResult, multResult] = await Promise.allSettled([
-          getPrice(symbol),
-          getMultiplier(symbol),
-        ]);
+          const [priceResult, multResult] = await Promise.allSettled([
+            getPrice(symbol),
+            getMultiplier(symbol),
+          ]);
 
-        const price =
-          priceResult.status === "fulfilled" && typeof priceResult.value?.quote === "number" && priceResult.value.quote > 0
-            ? priceResult.value.quote
-            : 100.0;
+          const price =
+            priceResult.status === "fulfilled" && typeof priceResult.value?.quote === "number" && priceResult.value.quote > 0
+              ? priceResult.value.quote
+              : 100.0;
 
-        const multiplier =
-          multResult.status === "fulfilled" && multResult.value
-            ? multResult.value
-            : { currentMultiplier: 1.0, newMultiplier: 0, activationDateTime: 0, reason: null };
+          const multiplier =
+            multResult.status === "fulfilled" && multResult.value
+              ? multResult.value
+              : { currentMultiplier: 1.0, newMultiplier: 0, activationDateTime: 0, reason: null };
 
-        return {
-          id: symbol,
-          name: meta.name,
-          symbol,
-          logo: meta.logo,
-          underlying: { symbol: symbol.replace(/x$/, "").toUpperCase(), type: "Equity" },
-          deployments: [
-            {
+          return {
+            id: symbol,
+            name: meta.name,
+            symbol,
+            logo: meta.logo,
+            underlying: { symbol: symbol.replace(/x$/, "").toUpperCase(), type: "Equity" as const },
+            deployments: [
+              {
+                network: "Solana",
+                address: meta.mint,
+                decimals: meta.decimals,
+                solanaTokenProgram: "Token2022Program" as const,
+              },
+            ],
+            trading: { openNow: true, currentPeriod: "market" as const },
+            price,
+            multiplier,
+            solanaDeployment: {
               network: "Solana",
               address: meta.mint,
               decimals: meta.decimals,
-              solanaTokenProgram: "Token2022Program",
+              solanaTokenProgram: "Token2022Program" as const,
             },
-          ],
-          trading: { openNow: true, currentPeriod: "market" },
-          price,
-          multiplier,
-          solanaDeployment: {
-            network: "Solana",
-            address: meta.mint,
-            decimals: meta.decimals,
-            solanaTokenProgram: "Token2022Program",
-          },
-        };
-      })
-    );
+          };
+        })
+      ),
+    ]);
 
-    return { assets, error: false };
+    const stats = statsResult.status === "fulfilled" ? statsResult.value : {};
+    let assets = assetsResult.status === "fulfilled" ? assetsResult.value : [];
+
+    // Enhance assets with live on-chain prices if available from Jupiter
+    if (Object.keys(stats).length > 0) {
+      assets = assets.map((a) => {
+        const livePrice = stats[a.symbol]?.price;
+        return livePrice && livePrice > 0 ? { ...a, price: livePrice } : a;
+      });
+    }
+
+    return { assets, stats, error: false };
   } catch (err) {
     console.error("Failed to load discover assets:", err);
-    return { assets: [], error: true };
+    return { assets: [], stats: {}, error: true };
   }
 }
 
 export default async function AppPage() {
-  const { assets, error } = await getDiscoverAssets();
+  const { assets, stats, error } = await getDiscoverAssets();
   return (
     <main className="page">
       <AppNav hideCta />
@@ -104,7 +119,7 @@ export default async function AppPage() {
               </a>
             </div>
           ) : (
-            <MarketDiscovery assets={assets} />
+            <MarketDiscovery assets={assets} initialStats={stats} />
           )}
         </section>
       </div>

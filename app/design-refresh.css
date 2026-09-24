@@ -20,7 +20,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 .skip-link { position: fixed; top: 8px; left: 16px; z-index: 60; padding: 14px 20px; transform: translateY(-160%); background: var(--surface); border: 2px solid var(--accent); border-radius: 10px; }
 .skip-link:focus { transform: none; }
-.nav, html[data-theme="dark"] .nav { min-height: 66px; top: 16px; border-radius: 18px; background: var(--nav-bg); border-color: var(--line); box-shadow: 0 8px 30px rgba(153, 69, 255, 0.08); gap: 20px; }
+.nav, html[data-theme="dark"] .nav { min-height: 66px; top: 16px; border-radius: 18px; background: var(--nav-bg); border-color: var(--line); box-shadow: 0 8px 30px rgba(153, 69, 255, 0.08); gap: 20px; z-index: 1000; }
 .nav-links, html[data-theme="dark"] .nav-links { gap: 8px; color: var(--muted); }
 .nav-links a { padding: 10px 12px; border-radius: 9px; }
 .nav-links a[aria-current="page"], .nav-links a:hover { color: var(--accent); background: var(--accent-soft); }
@@ -70,7 +70,7 @@ button.theme-toggle { color: var(--ink); border-radius: 999px; border: 1px solid
 .story-foundation div strong { font-family: var(--display); font-size: 21px; font-weight: 500; letter-spacing: -.03em; }
 .story-foundation div span { color: var(--muted); font-size: 11px; }
 .story-reading { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; padding: 130px 0; align-items: start; }
-.story-reading__intro { position: sticky; top: 150px; }
+.story-reading__intro { position: sticky; top: calc(var(--nav-offset) + 24px); }
 .story-reading__intro p { max-width: 340px; margin: 24px 0; }
 .story-reading__steps { display: grid; gap: 70px; }
 .story-reading__steps article { padding: 12px 0 34px 26px; border-left: 2px solid var(--line); }
@@ -331,7 +331,7 @@ html[data-theme="dark"] .learn-hero {
 @media (max-width: 1000px) { .stock-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .workspace-nav .nav-links { gap: 0; } .workspace-nav .nav-links a { padding-inline: 8px; } }
 @media (max-width: 767px) {
   .workspace-nav .nav-links { display: none; }
-  .app-page { padding-top: calc(var(--nav-offset) + 20px); padding-bottom: 96px; }
+  .app-page { padding-top: var(--nav-offset); padding-bottom: 96px; }
   .workspace-heading { display: block; }
   .workspace-help { display: inline-block; margin-top: 8px; }
   .stock-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }

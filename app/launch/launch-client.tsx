@@ -1004,12 +1004,7 @@ export function LaunchClient() {
 
             {/* Active Selected Stock Banner */}
             {selectedPair && (() => {
-              const [pairStats, setPairStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
-              
-              useEffect(() => {
-                getAssetMarketStats(selectedPair.symbol).then(setPairStats);
-              }, [selectedPair.symbol]);
-              
+              const pairStats = pairStatsCache[selectedPair.symbol];
               const change = pairStats?.change24h;
               const isUp = change === null || change === undefined ? true : change >= 0;
               return (

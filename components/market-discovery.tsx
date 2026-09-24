@@ -50,14 +50,20 @@ async function getAssetStats(symbol: string, currentPrice?: number) {
   return await getAssetMarketStats(symbol, currentPrice);
 }
 
-export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
+export function MarketDiscovery({
+  assets,
+  initialStats = {},
+}: {
+  assets: OpenStockAsset[];
+  initialStats?: Record<string, AssetMarketStats>;
+}) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("alphabetical");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [storageMessage, setStorageMessage] = useState("");
-  const [assetStats, setAssetStats] = useState<Record<string, AssetMarketStats>>({});
+  const [assetStats, setAssetStats] = useState<Record<string, AssetMarketStats>>(initialStats);
 
   useEffect(() => {
     try {
@@ -69,10 +75,22 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
   }, []);
 
   useEffect(() => {
-    // Load stats for all assets
     let cancelled = false;
-    
+
     async function loadStats() {
+      try {
+        const res = await fetch("/api/market/stats", { signal: AbortSignal.timeout(8000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data.stats && Object.keys(data.stats).length > 0) {
+            setAssetStats(data.stats);
+            return;
+          }
+        }
+      } catch {
+        // Fallback to direct client-side fetch if API fails
+      }
+
       const statsPromises = assets.map(async (asset) => {
         try {
           const stats = await getAssetMarketStats(asset.symbol, asset.price);
@@ -81,10 +99,10 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
           return null;
         }
       });
-      
+
       const results = await Promise.all(statsPromises);
       if (cancelled) return;
-      
+
       const statsMap: Record<string, AssetMarketStats> = {};
       results.forEach((result) => {
         if (result) {
@@ -93,11 +111,17 @@ export function MarketDiscovery({ assets }: { assets: OpenStockAsset[] }) {
       });
       setAssetStats(statsMap);
     }
-    
-    loadStats();
-    
+
+    // Refresh if initialStats was empty or periodically
+    if (Object.keys(assetStats).length === 0) {
+      loadStats();
+    }
+
+    const interval = setInterval(loadStats, 30_000);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [assets]);
 

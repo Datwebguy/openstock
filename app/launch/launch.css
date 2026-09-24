@@ -22,7 +22,7 @@ html[data-theme="dark"] .launch-page {
   max-width: 1440px;
   margin-inline: auto;
   padding-inline: clamp(16px, 3vw, 36px);
-  padding-top: clamp(82px, 6vw, 102px);
+  padding-top: var(--nav-offset);
 }
 
 /* ==========================================================================
@@ -1093,7 +1093,7 @@ html[data-theme="dark"] .launch-fee-pill.is-active {
 
 .launch-stage-sticky {
   position: sticky;
-  top: 92px;
+  top: calc(var(--nav-offset) + 16px);
 }
 
 @media (max-width: 1200px) {
@@ -1805,7 +1805,7 @@ html[data-theme="dark"] .launch-priority-pill strong {
    ========================================================================== */
 @media (max-width: 768px) {
   .launch-container {
-    padding-top: 84px;
+    padding-top: var(--nav-offset);
     padding-inline: 14px;
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }

@@ -1,356 +1,504 @@
-# OpenStock Pitch Video Demo Script
+# OpenStock Complete Platform Demo Script
+## Real Walkthrough from Homepage to Every Feature
 
-## 🎯 Video Structure Overview
-- **Total Duration**: 4-6 minutes
-- **Hook (0-10 seconds)**: Critical opening that must grab attention
-- **Problem (10-35 seconds)**: Establish the pain point
-- **Solution (35-70 seconds)**: Introduce OpenStock as comprehensive platform
-- **Market Context (70-100 seconds)**: Why now, why Solana, why this matters
-- **Product Demo (100-180 seconds)**: Show the full platform features
-- **Traction & Vision (180-220 seconds)**: Current status and future
-- **Call to Action (220-240 seconds)**: What's next
+**Video Length**: 5-7 minutes  
+**Style**: Live screen recording with voiceover walkthrough  
+**Purpose**: Demonstrate complete platform functionality from user onboarding to advanced features
 
 ---
 
-## 📱 Opening Hook (0-10 seconds) - MUST GRAB ATTENTION
-
-**[Visual: Fast-paced montage - trading desk charts, automation graphs, mobile trading, institutional analytics]**
-
-**Speaker (energetic, direct):**
-"What if you could trade Apple stock 24/7 with limit orders, DCA automation, and institutional analytics - all on-chain, all in your wallet?"
-
-**[Visual: Logo flash: OPENSTOCK - INSTITUTIONAL-GRADE TOKENIZED EQUITIES ON SOLANA]**
-
-**Speaker:**
-"I'm building OpenStock. And it's live today."
-
----
-
-## 🎯 The Problem (10-35 seconds)
-
-**[Visual: Split screen - left: traditional finance barriers, right: crypto limitations]**
-
-**Speaker:**
-"Here's the reality. Traditional finance is slow, expensive, and limited. Trading stocks takes days to settle, costs a fortune, and you're locked into market hours. No automation, no 24/7 access, no global reach."
-
-**[Visual: Clock animation showing T+2 settlement, trading hours restrictions, fee charts]**
-
-**Speaker:**
-"Crypto solves the speed problem, but most platforms are just memecoin casinos. No real assets, no real analytics, no professional tools. If you want to trade actual stocks with automation, you're stuck in TradFi. If you want crypto features, you're stuck with speculation."
-
-**[Visual: Memecoin volatility vs institutional trading tools comparison]**
-
-**Speaker:**
-"The missing piece? A platform that combines institutional-grade trading tools with blockchain speed. Real stocks, real automation, real analytics - all on-chain."
+## 🎬 Video Structure Overview
+- **0:00-0:30**: Homepage & First Impressions
+- **0:30-1:00**: Wallet Connection & Onboarding
+- **1:00-1:45**: Trading Desk & Market Discovery
+- **1:45-2:30**: Live Trading Execution
+- **2:30-3:15**: Advanced Automation Features
+- **3:15-3:45**: Institutional Analytics
+- **3:45-4:15**: Portfolio Management
+- **4:15-4:45**: Community Token Launch
+- **4:45-5:15**: Market Alerts & News
+- **5:15-5:30**: Mobile Experience & Conclusion
 
 ---
 
-## 💡 The Solution (35-70 seconds)
+## 🎬 Part 1: Homepage & First Impressions (0:00-0:30)
 
-**[Visual: OpenStock main interface showing trading desk, automation, analytics tabs]**
-
-**Speaker:**
-"OpenStock is that platform. We're a full-featured institutional-grade trading desk for tokenized equities on Solana."
-
-**[Visual: Screen recording - trading NVDAx with Jupiter routing]**
+**[Visual: Clean screen recording starting at joinopenstock.xyz homepage]**
 
 **Speaker:**
-"Trade 25+ tokenized stocks and ETFs - Apple, Tesla, Google, Meta, NVIDIA, Microsoft, Amazon, Coinbase, MicroStrategy, Robinhood, and more. Live Jupiter routing, sub-second execution, market evidence validation."
+"Welcome to OpenStock. I'm going to walk you through the complete platform, starting right from the homepage."
 
-**[Visual: Automation interface showing DCA, limit orders, OCO]**
-
-**Speaker:**
-"Advanced automation that rivals any traditional broker. Limit orders, stop orders, DCA with daily/weekly/monthly cadence, OCO with take-profit and stop-loss. Professional tools, institutional quality."
-
-**[Visual: Analytics dashboard showing DLMM depth, oracle consensus, real-time tick engine]**
+**[Visual: Scroll down the homepage showing the hero section, feature highlights, and call-to-action buttons]**
 
 **Speaker:**
-"Institutional analytics with DLMM pool depth, real-time tick engine, oracle consensus, and multi-source market validation. Not just price feeds - deep liquidity analysis and market health monitoring."
+"The homepage introduces OpenStock as a tokenized equity platform on Solana. You can see the main value proposition here - 24/7 trading of tokenized stocks. The design is clean, modern, and purpose-built for institutional-grade trading."
 
-**[Visual: Portfolio with creator royalties, community token launch interface]**
+**[Visual: Click on 'Market' button in the navigation bar]**
 
 **Speaker:**
-"Portfolio management with creator royalty tracking. Community token launches against real stocks with dual venue support - Pump.fun for instant launches, Meteora DBC for premium trading. This is a complete ecosystem."
+"Let's start exploring the platform. I'll click on Market to access the main trading interface."
 
 ---
 
-## 🌍 Why Now, Why Solana (70-100 seconds)
+## 🎬 Part 2: Wallet Connection & Onboarding (0:30-1:00)
 
-**[Visual: Timeline showing RWA growth on Solana, institutional adoption]**
-
-**Speaker:**
-"The timing couldn't be better. Real-world assets on Solana just hit $2 billion in total value - up 10X in one year. Tokenized equities alone are driving this growth, with over 177,000 holders and $3.25 billion in monthly turnover."
-
-**[Visual: Chart showing Solana RWA growth, BlackRock BUIDL, Franklin Templeton FOBXX, Kraken xStocks]**
+**[Visual: Market page loads, wallet connection button visible]**
 
 **Speaker:**
-"The institutional giants are here. BlackRock's BUIDL fund is on Solana. Franklin Templeton's FOBXX is live. Hamilton Lane tokenized their $920 billion private equity fund. Kraken and Backed launched xStocks - 60+ tokenized stocks now live on Solana. Visa, PayPal, Stripe - they're all building on Solana."
+"Before we can trade, we need to connect a wallet. OpenStock supports multiple options for maximum flexibility."
 
-**[Visual: Solana performance metrics, fee comparison, speed comparison]**
-
-**Speaker:**
-"Why Solana? Because institutional trading needs high throughput, sub-second finality, and transactions that cost less than a penny. Ethereum gas fees of $5-50 don't work for frequent equity trading. Solana's $0.01 fees and 65,000 TPS make it practical for real trading volume."
-
-**[Visual: xStocks growth chart - 1000% holder increase in 2 days]**
+**[Visual: Click on 'Connect Wallet' button - wallet selection modal appears]**
 
 **Speaker:**
-"Within 2 days of xStocks launch, tokenized stock holders increased 1000%. The infrastructure is here. The momentum is undeniable. And OpenStock is building the institutional-grade trading layer on top of it."
+"Here's the wallet selection modal. You can choose from Phantom, Solflare, or use email/Google login via Privy. This multi-wallet support ensures everyone can access the platform regardless of their preferred wallet."
+
+**[Visual: Click on Phantom wallet - Phantom wallet extension opens]**
+
+**Speaker:**
+"I'll connect with Phantom for this demo. The wallet connection is seamless and secure."
+
+**[Visual: Phantom wallet approves connection - wallet address appears in the UI]**
+
+**Speaker:**
+"Connected. Notice that the wallet address is now displayed in the navigation bar. This is a non-custodial connection - you always control your private keys. OpenStock never has access to your funds."
 
 ---
 
-## 🚀 Product Demo (100-180 seconds)
+## 🎬 Part 3: Trading Desk & Market Discovery (1:00-1:45)
 
-**[Visual: Clean screen recording of OpenStock full platform]**
-
-**Speaker:**
-"Let me show you the complete platform."
-
-**[Visual: Wallet connection modal - Phantom, Solflare, Email/Google via Privy]**
+**[Visual: Market discovery page loads showing 25+ xStocks in a table format]**
 
 **Speaker:**
-"Multi-wallet support. Phantom, Solflare, or email login via Privy. Works on desktop and mobile with wallet selection before deep-link. Non-custodial - you always control your keys."
+"Now we're in the Market discovery section. Here you can see all 25+ tokenized equities available for trading. NVDAx, AAPLx, TSLAx, GOOGLx, METAx, MSFTx, AMZNx, COINx, MSTRx, HOODx, and more."
 
-**[Visual: Main trading desk showing 25+ xStocks with real-time prices]**
-
-**Speaker:**
-"The trading desk. 25+ tokenized equities with real-time market data from issuer feeds. NVDAx, AAPLx, TSLAx, GOOGLx, METAx, MSFTx, AMZNx, COINx, MSTRx, HOODx, and more. 24/7 trading, sub-second updates."
-
-**[Visual: Trading interface - buy/sell order with Jupiter routing preparation]**
+**[Visual: Show the table columns - Asset, Price, 24H Change, 24H Volume, Liquidity/TVL, Backing, Actions]**
 
 **Speaker:**
-"Live trading with Jupiter integration. Prepare orders with market evidence validation - oracle freshness, price disagreement detection, TVL monitoring, trading halt detection. Pre-flight simulation before wallet approval. Professional-grade execution."
+"The table shows real-time market data. You can see the current price, 24-hour change, volume, liquidity, and backing information. This data comes from Jupiter and DexScreener - real Solana DEX data, not invented numbers."
 
-**[Visual: Automation interface - showing limit order setup]**
-
-**Speaker:**
-"Advanced automation. Set limit orders to buy or sell at specific prices. Stop orders for protection. Jupiter Trigger API for institutional-quality automation."
-
-**[Visual: DCA setup - recurring buys with daily/weekly/monthly cadence]**
+**[Visual: Scroll through the table showing different assets]**
 
 **Speaker:**
-"Dollar-cost averaging with customizable cadence. Daily, weekly, or monthly recurring buys. Vault funding system for automation. Full order history and management."
+"Notice that the data is live. You can see actual 24-hour volume and liquidity figures when available. For assets with active trading, you'll see real numbers. For newer assets, you might see dashes until trading activity picks up."
 
-**[Visual: OCO setup - take-profit and stop-loss protection]**
-
-**Speaker:**
-"One-Cancels-Other orders. Set take-profit and stop-loss on your positions. Automatic protection, no manual monitoring needed."
-
-**[Visual: Institutional analytics dashboard - DLMM depth, oracle consensus]**
+**[Visual: Click on the 'Trade' button for NVDAx]**
 
 **Speaker:**
-"Institutional analytics. Real-time market feed with DLMM pool depth. Oracle consensus validation. Sub-second tick engine. Multi-stock monitoring across all 25+ equities. This is the kind of analytics you'd expect from Bloomberg Terminal - but on-chain."
-
-**[Visual: Portfolio page - holdings, creator royalties, claim interface]**
-
-**Speaker:**
-"Portfolio management. Track all your tokenized equity holdings. Monitor creator royalties from tokens you've launched. Claim accumulated trading fees from token pairs. Multi-vault system with real-time valuation."
-
-**[Visual: Community market - tokens paired against xStocks, bonding curves]**
-
-**Speaker:**
-"Community token launch platform. Launch tokens against real stocks with dual venue support. Pump.fun for instant community launches, Meteora Dynamic Bonding Curve for premium trading with automatic migration. Custom creator fees, transparent fee structure."
-
-**[Visual: Market alerts - price alerts, liquidity alerts, alert inbox]**
-
-**Speaker:**
-"Market alerts system. Set price alerts above or below thresholds. Monitor liquidity changes. Alert inbox for centralized management. Server-side persistence across sessions."
-
-**[Visual: News feed - real-time headlines, issuer updates]**
-
-**Speaker:**
-"Real-time news feed. Market headlines and issuer updates. Stock-specific news filtered by your portfolio. Complete market context."
-
-**[Visual: Mobile interface - touch-friendly, wallet selection, full trading]**
-
-**Speaker:**
-"Fully mobile-optimized. Touch-friendly 44px targets, safe area insets for iPhone, wallet selection modal. Full trading capabilities on mobile. Desktop and mobile parity."
+"Let me click on Trade for NVDAx to see the detailed trading interface."
 
 ---
 
-## 📊 Traction & Vision (180-220 seconds)
+## 🎬 Part 4: Live Trading Execution (1:45-2:30)
 
-**[Visual: Platform statistics, live indicators, feature checklist]**
-
-**Speaker:**
-"We're live at joinopenstock.xyz. Full Jupiter trading integration active. ClawPump launch integration operational. Pyth oracle data flowing. Meteora DBC support live for NVDAx and AAPLx. Market evidence system operational. Automation with Jupiter Trigger API live. Institutional analytics with DLMM depth active. Mobile wallet integration complete. Creator royalty system operational."
-
-**[Visual: Animated feature map showing all 15+ feature categories]**
+**[Visual: NVDAx asset detail page loads with trading interface]**
 
 **Speaker:**
-"This isn't just a token launch platform. This is a complete institutional-grade trading ecosystem. Trading desk, automation, analytics, portfolio management, community launches, market alerts, news feed, transaction history, corporate actions tracking, market health monitoring, real-time streams - all integrated, all live."
+"This is the NVDAx trading interface. You can see the current price, market evidence, and trading options. The market evidence section shows important health indicators - oracle freshness, price disagreement detection, TVL monitoring, and trading halt status."
 
-**[Visual: Roadmap showing future expansions]**
-
-**Speaker:**
-"But this is just the beginning. We're expanding to cover more stocks, adding more institutional features, building deeper analytics, and creating a complete ecosystem for tokenized equity trading. Our vision: every institutional trading feature you'd expect from Bloomberg or TradFi - but on-chain, 24/7, globally accessible."
-
-**[Visual: Animated vision - traditional trading desk merging with blockchain, institutional tools meeting DeFi]**
+**[Visual: Show the market evidence indicators - all green/healthy]**
 
 **Speaker:**
-"Imagine a world where institutional trading meets blockchain speed. Where automation is coded, not manual. Where analytics are real-time, not delayed. Where 24/7 trading is the default, not the exception. This is the convergence of institutional finance and DeFi - and OpenStock is building it."
+"All indicators are green, which means it's safe to trade. OpenStock has built-in market health checks to protect users from unusual market conditions."
 
----
-
-## 🎯 Call to Action (220-240 seconds)
-
-**[Visual: Speaker on camera, confident and passionate]**
+**[Visual: Enter 'Buy' order - set amount to 0.1 SOL]**
 
 **Speaker:**
-"The $124 trillion equity market is coming on-chain. Solana is leading the charge. The institutional giants are already here. And OpenStock is building the institutional-grade trading layer that brings professional tools to the blockchain."
+"I'll place a buy order. I'll set the amount to 0.1 SOL. The system automatically calculates the expected output using Jupiter routing."
 
-**[Visual: joinopenstock.xyz URL, platform overview, social media handles]**
-
-**Speaker:**
-"Try it today at joinopenstock.xyz. Trade NVDAx with limit orders. Set up DCA on AAPLx. Launch a community token against TSLAx. Monitor your portfolio with institutional analytics. This is the future of institutional trading on Solana."
-
-**[Visual: Final logo: OPENSTOCK - INSTITUTIONAL-GRADE TOKENIZED EQUITIES ON SOLANA]**
+**[Visual: Click on 'Prepare Transaction' button]**
 
 **Speaker:**
-"OpenStock. Institutional trading, blockchain speed, future ready."
+"Before executing, we prepare the transaction. This runs a pre-flight simulation to ensure the transaction will succeed and shows you the exact details."
+
+**[Visual: Transaction preparation screen shows - route, price impact, fees, estimated output]**
+
+**Speaker:**
+"Here you can see the Jupiter routing details, price impact, fees, and the estimated output. This transparency helps you make informed decisions before approving any transaction."
+
+**[Visual: Click on 'Execute Trade' - Phantom wallet approval appears]**
+
+**Speaker:**
+"When I click Execute Trade, Phantom will ask for approval. This is the final security check before the transaction goes on-chain."
+
+**[Visual: Approve transaction in Phantom - success message appears]**
+
+**Speaker:**
+"Transaction approved and executed. The trade is now complete. You can see the success confirmation with transaction details."
 
 ---
 
-## 🎬 Visual Production Notes
+## 🎬 Part 5: Advanced Automation Features (2:30-3:15)
 
-### Style Guidelines:
-- **Color Scheme**: Purple (#9945ff) and green (#14f195) matching Solana brand
-- **Tone**: Professional, institutional, confident
-- **Pacing**: Fast but clear - no dead air
-- **Graphics**: Clean, modern, data-driven visualizations
+**[Visual: Navigate to Automation page via navigation bar]**
 
-### Screen Recording Requirements:
-1. **Wallet Connection**: Show Phantom, Solflare, Privy options (desktop + mobile)
-2. **Trading Desk**: Display 25+ xStocks with real-time prices
-3. **Live Trading**: Show buy/sell order with Jupiter routing and market evidence
-4. **Automation**: Demonstrate limit order, DCA, and OCO setup
-5. **Institutional Analytics**: Show DLMM depth, oracle consensus, tick engine
-6. **Portfolio**: Display holdings, creator royalties, claim interface
-7. **Community Launch**: Show token launch against NVDAx with venue selection
-8. **Market Alerts**: Demonstrate price and liquidity alerts
-9. **News Feed**: Show real-time headlines and issuer updates
-10. **Mobile Experience**: Demonstrate mobile wallet selection and trading
+**Speaker:**
+"Now let's explore the advanced automation features. I'll click on Automation in the navigation bar."
 
-### Data Points to Emphasize:
-- $2B in tokenized RWAs on Solana
-- 10X growth in one year
-- 177,000 RWA holders on Solana
-- $3.25B monthly turnover
-- $124 trillion global equity market
-- BlackRock BUIDL, Franklin Templeton FOBXX on Solana
-- Kraken xStocks: 60+ tokenized assets
-- 1000% holder growth in 2 days
-- NVDAx, AAPLx, TSLAx, GOOGLx, METAx, MSFTx, AMZNx, COINx, MSTRx, HOODx
-- Jupiter Trigger API for automation
-- DLMM pool depth analytics
-- 15+ feature categories integrated
+**[Visual: Automation page loads showing funding, orders, and history tabs]**
 
-### Story Arc:
-1. **Hook**: Institutional trading on blockchain
-2. **Problem**: TradFi limitations + crypto lack of professional tools
-3. **Solution**: Complete institutional-grade platform
-4. **Context**: Massive market opportunity, institutional validation
-5. **Proof**: Working platform with 15+ feature categories
-6. **Vision**: Future of institutional trading on-chain
-7. **Call to Action**: Try the complete platform
+**Speaker:**
+"The automation page has three main sections: Funding for vault management, Orders for setting up automated trades, and History for tracking past automation."
 
----
+**[Visual: Click on 'Funding' tab - show vault deposit interface]**
 
-## 🎤 Speaker Notes
+**Speaker:**
+"First, you need to fund your automation vault. This is separate from your main wallet balance and is used specifically for automated trading strategies."
 
-### Opening Energy:
-- Start with high energy - this is the critical 10-second window
-- Focus on institutional features, not just token launching
-- Move quickly from question to solution
+**[Visual: Deposit 1 SOL into vault - transaction executed]**
 
-### Technical Depth:
-- Balance technical details with accessible language
-- Emphasize the breadth of features (15+ categories)
-- Focus on institutional quality and completeness
-- Don't over-explain blockchain basics
+**Speaker:**
+"I'll deposit 1 SOL into the vault. This gives the automation system the funds it needs to execute your strategies automatically."
 
-### Passion & Authority:
-- Speak with conviction about the institutional opportunity
-- Show excitement about the comprehensive platform
-- Demonstrate deep understanding of both TradFi and DeFi
+**[Visual: Navigate to 'Orders' tab - show limit order setup]**
 
-### Pacing:
-- Keep each section to its allocated time
-- Don't rush the demo - let the platform features shine
-- End strong with a clear call to action
+**Speaker:**
+"Now let's set up a limit order. I'll create a buy order for AAPLx at a specific price below the current market price."
+
+**[Visual: Set limit order - AAPLx, buy at $300, 0.5 SOL amount]**
+
+**Speaker:**
+"I'll set a limit buy order for AAPLx at $300. If the price drops to this level, the system will automatically execute the buy order."
+
+**[Visual: Click on 'Create Order' - order appears in active orders list]**
+
+**Speaker:**
+"The limit order is now active. The system will monitor the price and execute automatically when the target is reached."
+
+**[Visual: Show DCA setup - recurring buy for TSLAx, weekly cadence]**
+
+**Speaker:**
+"You can also set up Dollar-Cost Averaging. I'll configure a weekly recurring buy for TSLAx. This automatically purchases a set amount every week, regardless of price."
+
+**[Visual: Show OCO setup - take-profit and stop-loss for a position]**
+
+**Speaker:**
+"For advanced protection, you can set up One-Cancels-Other orders. This allows you to set both a take-profit target and a stop-loss level. If either is hit, the other is automatically cancelled."
 
 ---
 
-## 📐 Alternative Pitch Lengths
+## 🎬 Part 6: Institutional Analytics (3:15-3:45)
 
-### 60-Second Elevator Pitch:
-"What if you could trade Apple stock 24/7 with limit orders, DCA automation, and institutional analytics - all on-chain? OpenStock makes it possible. We're a full-featured institutional-grade trading desk for 25+ tokenized equities on Solana. Live Jupiter trading, advanced automation with limit orders and DCA, institutional analytics with DLMM depth, portfolio management with creator royalties, community token launches, market alerts, and real-time news. The $2B tokenized RWA market on Solana is exploding with BlackRock, Franklin Templeton, and Kraken all building on-chain. OpenStock is live with complete institutional-grade features. Try it at joinopenstock.xyz."
+**[Visual: Navigate to Analytics page via navigation bar]**
 
-### 90-Second Investor Pitch:
-"Traditional finance is slow and limited. Crypto is fast but lacks professional tools. OpenStock bridges both. We're a complete institutional-grade trading platform for 25+ tokenized equities on Solana. Live Jupiter trading with market evidence validation. Advanced automation - limit orders, DCA, OCO - with Jupiter Trigger API. Institutional analytics with DLMM depth and oracle consensus. Portfolio management with creator royalties. Community token launches with dual venue support. Market alerts, real-time news, mobile-optimized. The $2B tokenized RWA market on Solana is exploding 10X year-over-year. BlackRock, Franklin Templeton, Kraken are all here. OpenStock is live with 15+ feature categories integrated. We're building the institutional-grade trading layer for the $124 trillion equity market coming on-chain. Try it at joinopenstock.xyz."
+**Speaker:**
+"Next, let's look at the institutional analytics. I'll click on Analytics in the navigation bar."
 
----
+**[Visual: Analytics page loads with asset selector and comprehensive dashboard]**
 
-## 🔍 Research Sources Referenced:
+**Speaker:**
+"The analytics page provides institutional-grade market data. You can select any of the 25+ assets to see detailed analytics."
 
-1. **Solana RWA Market Data**: RWA.xyz - $873.3M in Dec 2024, $2B+ in 2025
-2. **Institutional Adoption**: BlackRock BUIDL ($1.7B), Franklin Templeton FOBXX ($594M)
-3. **xStocks Launch**: Kraken + Backed partnership, 60+ assets, 1000% holder growth in 2 days
-4. **Web3 Pitch Best Practices**: TDeFi, CV Labs, Web3 Startups Guide
-5. **Global Equity Market**: $124 trillion market cap, 48,000 publicly listed companies
-6. **Solana Performance**: Sub-second finality, <$0.01 fees vs Ethereum $5-50, 65,000 TPS
-7. **Platform Features**: 15+ feature categories from actual codebase analysis
-8. **Jupiter Integration**: Trading routing, Trigger API for automation
-9. **Meteora DBC**: Dynamic Bonding Curve with premium trading
-10. **ClawPump**: Pump.fun integration for community launches
+**[Visual: Select GOOGLx from the dropdown - analytics dashboard updates]**
 
----
+**Speaker:**
+"I'll select GOOGLx. The dashboard now shows comprehensive analytics including DLMM pool depth, oracle consensus, and real-time price charts."
 
-## ✅ Pre-Flight Checklist Before Recording:
+**[Visual: Show the price chart with candlestick visualization]**
 
-- [ ] Test all screen recordings in advance
-- [ ] Verify platform is live and functioning
-- [ ] Check audio quality and lighting
-- [ ] Practice the full script multiple times
-- [ ] Prepare backup footage for each section
-- [ ] Test visual transitions and animations
-- [ ] Verify all data points are current
-- [ ] Ensure mobile demo shows correctly
-- [ ] Check wallet connection flow works smoothly
-- [ ] Have backup device ready if needed
-- [ ] Verify all 15+ feature categories are demonstrated
-- [ ] Test automation workflows (limit, DCA, OCO)
-- [ ] Verify analytics dashboard loads correctly
-- [ ] Check portfolio and royalty interfaces
+**Speaker:**
+"The price chart shows historical price data with candlestick visualization. You can see price movements over different timeframes."
+
+**[Visual: Show DLMM depth indicator and oracle consensus data]**
+
+**Speaker:**
+"Below the chart, you can see DLMM pool depth - this shows the liquidity distribution across different price levels. The oracle consensus section validates price data from multiple sources to ensure accuracy."
+
+**[Visual: Show real-time tick engine updating prices]**
+
+**Speaker:**
+"Notice that the prices are updating in real-time. The tick engine provides sub-second updates, giving you the most current market data available."
 
 ---
 
-## 🎨 Visual Asset Preparation:
+## 🎬 Part 7: Portfolio Management (3:45-4:15)
 
-**Required Screenshots/Recordings:**
-1. Wallet connection modal (Phantom, Solflare, Privy - desktop + mobile)
-2. Main trading desk with 25+ xStocks and real-time prices
-3. Live trading interface with Jupiter routing and market evidence
-4. Automation setup - limit order, DCA, OCO
-5. Institutional analytics dashboard - DLMM depth, oracle consensus
-6. Portfolio page with holdings and creator royalties
-7. Community token launch interface with venue selection
-8. Market alerts - price alerts, liquidity alerts, alert inbox
-9. Real-time news feed with issuer updates
-10. Mobile wallet selection and trading interface
-11. Transaction history and receipts
-12. Corporate actions tracking
-13. Market health monitoring interface
-14. Real-time market stream interface
+**[Visual: Navigate to Portfolio page via navigation bar]**
 
-**Optional Enhancements:**
-- Animated charts showing RWA growth
-- 3D rendering of trading platform architecture
-- Institutional partner logos (BlackRock, Franklin Templeton, Kraken)
-- Solana ecosystem map
-- Feature category map showing all 15+ systems
-- User testimonial footage
-- Before/after comparison graphics (TradFi vs OpenStock)
+**Speaker:**
+"Now let's check the portfolio management. I'll click on Portfolio in the navigation bar."
+
+**[Visual: Portfolio page loads showing holdings and creator royalties sections]**
+
+**Speaker:**
+"The portfolio page shows all your tokenized equity holdings. You can see the current value, performance, and composition of your portfolio."
+
+**[Visual: Show holdings list with NVDAx, AAPLx positions]**
+
+**Speaker:**
+"Here you can see my current holdings - NVDAx and AAPLx positions with their current values and performance."
+
+**[Visual: Navigate to Creator Royalties section]**
+
+**Speaker:**
+"If you've launched community tokens, you can track your creator royalties here. This section shows fees earned from trading activity on tokens you've created."
+
+**[Visual: Show royalty claim interface]**
+
+**Speaker:**
+"You can claim accumulated trading fees directly from this interface. The royalty system is transparent and shows exactly how much you've earned from each token pair."
 
 ---
 
-This script now accurately reflects OpenStock as a comprehensive institutional-grade trading platform with 15+ feature categories, not just a token launch platform. The pitch emphasizes the breadth and depth of features while maintaining a strong hook and compelling narrative.
+## 🎬 Part 8: Community Token Launch (4:15-4:45)
+
+**[Visual: Navigate to Launch page via navigation bar]**
+
+**Speaker:**
+"One of OpenStock's unique features is the ability to launch community tokens against real stocks. I'll click on Launch to access the launch studio."
+
+**[Visual: Launch page loads with token configuration interface]**
+
+**Speaker:**
+"The launch studio allows you to create community tokens paired against any of the 25+ xStocks. Let me walk through the launch process."
+
+**[Visual: Show venue selection - Pump.fun vs Meteora DBC]**
+
+**Speaker:**
+"First, you choose your venue. Pump.fun is available for all 25+ xStocks and provides instant community launches. Meteora Dynamic Bonding Curve is currently available for NVDAx and AAPLx, offering premium trading with automatic migration."
+
+**[Visual: Select NVDAx as the quote stock]**
+
+**Speaker:**
+"I'll select NVDAx as the quote stock. This means my community token will be paired against NVIDIA stock."
+
+**[Visual: Configure token details - name, symbol, supply, creator fee]**
+
+**Speaker:**
+"Now I'll configure the token details. I'll set the name, symbol, supply, and creator fee. Creator fees can range from 0.5% to 5% and go directly to you."
+
+**[Visual: Set creator fee to 2% - show fee breakdown]**
+
+**Speaker:**
+"I'll set the creator fee to 2%. You can see the transparent fee breakdown - 2% creator fee plus 1% platform fee equals 3% total. This structure ensures sustainable platform operations while rewarding creators."
+
+**[Visual: Upload token artwork or select preset]**
+
+**Speaker:**
+"Next, I'll upload token artwork or use one of the presets. The artwork is important for community recognition."
+
+**[Visual: Click on 'Launch Token' - wallet approval appears]**
+
+**Speaker:**
+"When I click Launch Token, the wallet will ask for approval. This is the final step before the token goes live."
+
+**[Visual: Approve transaction - success message with token address]**
+
+**Speaker:**
+"Token launched successfully. You can see the token address and it's immediately tradable on the chosen venue."
+
+---
+
+## 🎬 Part 9: Market Alerts & News (4:45-5:15)
+
+**[Visual: Navigate to Alerts page via navigation bar]**
+
+**Speaker:**
+"OpenStock also includes a market alerts system. I'll click on Alerts to set up price and liquidity monitoring."
+
+**[Visual: Alerts page loads with alert creation interface]**
+
+**Speaker:**
+"You can set price alerts to notify you when a stock crosses a specific threshold - either above or below your target price."
+
+**[Visual: Create price alert for TSLAx - alert when price goes above $400]**
+
+**Speaker:**
+"I'll create an alert for TSLAx to notify me when the price goes above $400. This helps me monitor price movements without constantly checking the market."
+
+**[Visual: Show liquidity alert setup]**
+
+**Speaker:**
+"You can also set liquidity alerts to monitor pool liquidity changes. This is useful for identifying unusual market activity."
+
+**[Visual: Navigate to News page via navigation bar]**
+
+**Speaker:**
+"Finally, let's check the news feed. I'll click on News in the navigation bar."
+
+**[Visual: News page loads with real-time headlines and issuer updates]**
+
+**Speaker:**
+"The news feed provides real-time market headlines and issuer updates. You can filter news by specific stocks in your portfolio to get relevant information."
+
+**[Visual: Show stock-specific news for AAPLx]**
+
+**Speaker:**
+"Here you can see news specifically related to AAPLx. This helps you stay informed about developments that might affect your holdings."
+
+---
+
+## 🎬 Part 10: Mobile Experience & Conclusion (5:15-5:30)
+
+**[Visual: Show mobile interface - iPhone with OpenStock loaded]**
+
+**Speaker:**
+"OpenStock is fully optimized for mobile. The interface is touch-friendly with 44px minimum touch targets, safe area insets for iPhone, and the wallet selection modal works seamlessly on mobile devices."
+
+**[Visual: Show wallet selection on mobile, trading interface on mobile]**
+
+**Speaker:**
+"You get the same full trading capabilities on mobile - wallet connection, trading, automation, analytics, portfolio management, and token launches. Desktop and mobile parity."
+
+**[Visual: Return to desktop view - show complete platform overview]**
+
+**Speaker:**
+"OpenStock is a complete institutional-grade trading ecosystem on Solana. From wallet connection to advanced automation, from institutional analytics to community token launches, from portfolio management to real-time news - everything is integrated and live."
+
+**[Visual: Final screen showing joinopenstock.xyz with call to action]**
+
+**Speaker:**
+"Try it yourself at joinopenstock.xyz. Trade NVDAx with limit orders, set up DCA on AAPLx, launch a community token against TSLAx, monitor your portfolio with institutional analytics. This is the future of institutional trading on Solana, and it's live today."
+
+---
+
+## 🎬 Detailed Screen Recording Instructions
+
+### Required Screen Recordings (in order):
+
+1. **Homepage Overview** (30 seconds)
+   - Start at joinopenstock.xyz
+   - Scroll through hero section
+   - Show feature highlights
+   - Click on 'Market' navigation
+
+2. **Wallet Connection** (30 seconds)
+   - Show wallet connection button
+   - Click to open wallet selection modal
+   - Show Phantom, Solflare, Privy options
+   - Connect with Phantom
+   - Show wallet address in navigation
+
+3. **Market Discovery** (45 seconds)
+   - Show 25+ xStocks table
+   - Scroll through different assets
+   - Show real-time data columns
+   - Click 'Trade' on NVDAx
+
+4. **Live Trading** (45 seconds)
+   - Show NVDAx trading interface
+   - Display market evidence indicators
+   - Enter buy order (0.1 SOL)
+   - Click 'Prepare Transaction'
+   - Show transaction preparation details
+   - Execute trade in Phantom
+   - Show success confirmation
+
+5. **Automation Setup** (45 seconds)
+   - Navigate to Automation page
+   - Show vault funding interface
+   - Deposit 1 SOL into vault
+   - Set up limit order for AAPLx
+   - Show DCA setup for TSLAx
+   - Show OCO setup with take-profit/stop-loss
+
+6. **Institutional Analytics** (30 seconds)
+   - Navigate to Analytics page
+   - Select GOOGLx from dropdown
+   - Show price chart with candlesticks
+   - Display DLMM depth indicator
+   - Show oracle consensus data
+   - Demonstrate real-time price updates
+
+7. **Portfolio Management** (30 seconds)
+   - Navigate to Portfolio page
+   - Show holdings list (NVDAx, AAPLx)
+   - Display creator royalties section
+   - Show royalty claim interface
+
+8. **Token Launch** (30 seconds)
+   - Navigate to Launch page
+   - Show venue selection (Pump.fun vs Meteora)
+   - Select NVDAx as quote stock
+   - Configure token details
+   - Set creator fee (2%)
+   - Upload artwork or select preset
+   - Execute launch transaction
+   - Show success with token address
+
+9. **Market Alerts** (15 seconds)
+   - Navigate to Alerts page
+   - Create price alert for TSLAx
+   - Show liquidity alert setup
+
+10. **News Feed** (15 seconds)
+    - Navigate to News page
+    - Show real-time headlines
+    - Display stock-specific news for AAPLx
+
+11. **Mobile Experience** (15 seconds)
+    - Show mobile interface on iPhone
+    - Demonstrate wallet selection on mobile
+    - Show trading interface on mobile
+    - Demonstrate mobile parity
+
+---
+
+## 🎬 Technical Recording Requirements
+
+### Screen Recording Setup:
+- **Resolution**: 1920x1080 for desktop, iPhone 14 Pro for mobile
+- **Frame Rate**: 30fps minimum
+- **Audio**: Clear voiceover with no background noise
+- **Cursor**: Show cursor movements for desktop recordings
+- **Timing**: Allow each screen to load completely before proceeding
+
+### Browser Settings:
+- **Browser**: Chrome or Firefox (latest version)
+- **Zoom Level**: 100% (no zoom)
+- **Extensions**: Disable all browser extensions except Phantom/Solflare
+- **DevTools**: Keep closed during recording
+
+### Wallet Setup:
+- **Phantom**: Pre-connected with test SOL
+- **Network**: Solana Mainnet
+- **Balance**: Ensure sufficient SOL for demonstrations
+
+### Platform State:
+- **Environment**: Production (joinopenstock.xyz)
+- **Data**: Ensure real market data is flowing
+- **API Keys**: All integrations should be active (Jupiter, Pyth, etc.)
+
+---
+
+## 🎬 Post-Recording Checklist
+
+### Video Editing:
+- [ ] Add intro/outro transitions
+- [ ] Include OpenStock logo at start
+- [ ] Add text overlays for key features
+- [ ] Ensure smooth cuts between sections
+- [ ] Add background music (subtle, professional)
+- [ ] Include call-to-action at end
+
+### Quality Check:
+- [ ] Audio is clear and understandable
+- [ ] Screen recordings are sharp and readable
+- [ ] All features are clearly demonstrated
+- [ ] No dead air or awkward pauses
+- [ ] Professional pacing throughout
+- [ ] Call-to-action is clear and compelling
+
+### Final Review:
+- [ ] Video length is 5-7 minutes
+- [ ] All 15+ feature categories are shown
+- [ ] Platform demonstration is accurate
+- [ ] No technical errors or glitches
+- [ ] Brand colors (purple/green) are consistent
+- [ ] joinopenstock.xyz URL is prominently displayed
+
+---
+
+## 🎬 Alternative Short Demo (3 minutes)
+
+For shorter video needs, follow this condensed flow:
+
+1. **Homepage** (15s) - Quick overview
+2. **Wallet Connect** (15s) - Phantom connection
+3. **Market Discovery** (30s) - Show table and NVDAx trade
+4. **Live Trading** (30s) - Execute buy order
+5. **Automation** (30s) - Show limit order setup
+6. **Analytics** (20s) - Quick analytics overview
+7. **Token Launch** (30s) - Fast launch demo
+8. **Conclusion** (20s) - Call to action
+
+This condensed version hits the key features while maintaining a complete platform overview.
