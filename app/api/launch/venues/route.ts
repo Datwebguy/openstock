@@ -38,12 +38,15 @@ export async function GET(req: NextRequest) {
     // 2. Check Meteora DBC support via on-chain token badge check
     const meteoraBadged = await checkMeteoraDbcBadgeSupport(mint);
     // 3. Per-stock PoolConfig (quote mint is fixed on each config account)
-    const dbcConfigAddress = resolveDbcConfigAddress({
+    // Only consider config ready if there's an explicit symbol-based config, not just fallback
+    const symbolKey = symbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const explicitConfig = process.env[`METEORA_DBC_CONFIG_${symbolKey}`]?.trim();
+    const dbcConfigAddress = explicitConfig || resolveDbcConfigAddress({
       quoteMint: mint,
       pairedStockSymbol: symbol,
       symbol,
     });
-    const dbcConfigReady = Boolean(dbcConfigAddress);
+    const dbcConfigReady = Boolean(explicitConfig); // Only ready if explicitly configured
     const meteoraLaunchReady = meteoraBadged && dbcConfigReady;
 
     return NextResponse.json({

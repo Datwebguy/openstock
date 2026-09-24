@@ -113,18 +113,14 @@ export function resolveDbcConfigAddress(opts: {
 
   // 3) Global fallback only in single-stock mode (no BY_MINT map configured).
   // Never reuse NVDAx's config for TSLAx — quote mint is fixed on-chain.
-  // Only use preset fallback if explicitly requested via curvePreset parameter
   if (mintMap && Object.keys(mintMap).length > 0) {
     return null;
   }
 
-  // Only use preset config fallback if curvePreset is explicitly provided
-  // This prevents unintended Meteora support for stocks without explicit config
-  if (!opts.curvePreset) {
-    return null;
-  }
-
-  const curvePresetKey = opts.curvePreset as DbcCurvePresetKey;
+  // Use preset config fallback
+  // If curvePreset is provided, use that specific preset
+  // If not provided (venue checking), use linear preset to check if ANY config exists
+  const curvePresetKey = (opts.curvePreset || "linear") as DbcCurvePresetKey;
   const selectedPreset = METEORA_DBC_CURVE_PRESETS[curvePresetKey] || METEORA_DBC_CURVE_PRESETS.linear;
   return selectedPreset.configAddress || process.env.METEORA_DBC_CONFIG || null;
 }
