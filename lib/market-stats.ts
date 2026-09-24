@@ -10,15 +10,15 @@ export type AssetMarketStats = {
   low24h: number | null;
 };
 
+import { getMarketEvidence } from "@/lib/market-evidence";
+import { getHydratedAsset } from "@/lib/xstocks";
+
 export async function getAssetMarketStats(symbol: string, currentPrice?: number | null): Promise<AssetMarketStats> {
   const price = typeof currentPrice === "number" && Number.isFinite(currentPrice) && currentPrice > 0
     ? currentPrice
     : 0;
 
   try {
-    const { getMarketEvidence } = await import("@/lib/market-evidence");
-    const { getHydratedAsset } = await import("@/lib/xstocks");
-    
     const asset = await getHydratedAsset(symbol);
     const evidence = await getMarketEvidence(asset);
     
