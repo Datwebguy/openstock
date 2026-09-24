@@ -1,4 +1,4 @@
-// Market stats helper. Prefer live price; never invent pool volume/liquidity.
+// Market stats helper. Use Jupiter and available Solana sources for market data.
 export type AssetMarketStats = {
   price: number;
   change24h: number | null;
@@ -22,13 +22,15 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
     const asset = await getHydratedAsset(symbol);
     const evidence = await getMarketEvidence(asset);
     
+    // Use Jupiter price data as primary source
+    const jupiterPrice = evidence.jupiter.data?.executablePrice;
     const pool = evidence.meteora.data?.[0];
     const tvl = pool?.tvl;
     const volume24h = pool?.volume24h;
     
     const formatDollars = (value: number | null | undefined) => {
-      if (value === null || value === undefined || !Number.isFinite(value) || value <= 0) {
-        return "Unavailable";
+      if (value === null || value === undefined || !Number.isFinite(value) || value < 0) {
+        return "N/A";
       }
       if (value >= 1_000_000) {
         return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -36,28 +38,35 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
       if (value >= 1_000) {
         return `$${(value / 1_000).toFixed(2)}K`;
       }
-      return `$${value.toFixed(2)}`;
+      if (value > 0) {
+        return `$${value.toFixed(2)}`;
+      }
+      return "N/A";
     };
 
+    // Show pool data if available, otherwise indicate no pool
+    const hasPool = pool && pool.address;
+    
     return {
-      price,
+      price: jupiterPrice && jupiterPrice > 0 ? jupiterPrice : price,
       change24h: null,
-      volume24h: formatDollars(volume24h),
-      liquidity: formatDollars(tvl),
-      marketCap: "Unavailable",
-      holders: "Unavailable",
+      volume24h: hasPool ? formatDollars(volume24h) : "N/A",
+      liquidity: hasPool ? formatDollars(tvl) : "N/A",
+      marketCap: "N/A",
+      holders: "N/A",
       high24h: null,
       low24h: null,
     };
-  } catch {
-    // Fallback to hardcoded values if fetch fails
+  } catch (error) {
+    console.error(`Failed to fetch market stats for ${symbol}:`, error);
+    // Fallback to current price if fetch fails
     return {
       price,
       change24h: null,
-      volume24h: "Unavailable",
-      liquidity: "Unavailable",
-      marketCap: "Unavailable",
-      holders: "Unavailable",
+      volume24h: "N/A",
+      liquidity: "N/A",
+      marketCap: "N/A",
+      holders: "N/A",
       high24h: null,
       low24h: null,
     };
