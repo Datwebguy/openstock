@@ -20,7 +20,7 @@
 .multiplier-callout { display: grid; grid-template-columns: 1fr auto; gap: 7px 14px; max-width: 430px; margin: 22px 0 17px; padding: 16px; border-radius: 17px; background: linear-gradient(135deg,rgba(153,69,255,.1),rgba(20,241,149,.12)); }
 .multiplier-callout span,.multiplier-callout small { color: var(--muted); font-size: 11px; }
 .multiplier-callout strong { color: var(--solana-purple); font-size: 20px; }
-.multiplier-callout small { grid-column: 1/-1; }
+.multiplier-callout small { grid-column: 1/-1; display: none; }
 .text-link { color: var(--solana-purple); font-size: 13px; font-weight: 900; }
 .paper-order { padding: 22px; border: 1px solid rgba(153,69,255,.22); border-radius: 22px; background: var(--surface); }
 .paper-order__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }

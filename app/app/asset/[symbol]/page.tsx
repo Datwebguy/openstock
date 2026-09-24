@@ -87,13 +87,13 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
     !verdict.hardBlock;
   const liveTrading = liveTradingEnabled();
   const facts = [
-    { label: "Issuer", value: officialReady ? displayPrice(asset.price) : "Unavailable" },
-    { label: "On-chain", value: onchainPrice !== null ? "$" + number(onchainPrice) : "Unavailable" },
-    { label: "Oracle", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "Unavailable" },
-    { label: "Liquidity", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Unavailable" },
-    { label: "Pool fee", value: pool && pool.feePct !== null && pool.feePct !== undefined ? number(pool.feePct, 2) + "%" : "Unavailable" },
-    { label: "Reserve", value: coverage !== null ? number(coverage * 100) + "%" : "Unavailable" },
-    { label: "Multiplier", value: multiplier(asset.multiplier?.currentMultiplier) },
+    { label: "Market Price", value: officialReady ? displayPrice(asset.price) : "Unavailable" },
+    { label: "Trading Price", value: onchainPrice !== null ? "$" + number(onchainPrice) : "Unavailable" },
+    { label: "Price Source", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "Unavailable" },
+    { label: "Available", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Unavailable" },
+    { label: "Trading Fee", value: pool && pool.feePct !== null && pool.feePct !== undefined ? number(pool.feePct, 2) + "%" : "Unavailable" },
+    { label: "Backed", value: coverage !== null ? number(coverage * 100) + "%" : "Unavailable" },
+    { label: "Shares", value: multiplier(asset.multiplier?.currentMultiplier) },
   ];
 
       const stats = getAssetMarketStats(asset.symbol, priceForTrade ?? asset.price);
@@ -134,7 +134,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
       <div className="asset-trade-grid"><div className="asset-analysis-stack"><AssetPriceChart symbol={asset.symbol} name={asset.name.replace(/ xStock$/, "")} referencePrice={asset.price} /><div id="news"><MarketNewsFeed compact symbol={asset.symbol} symbols={[{ symbol: asset.symbol, name: asset.name.replace(/ xStock$/, "") }]} /></div></div><section className="asset-order-card" id="trade"><PaperOrderForm symbol={asset.symbol} name={asset.name} price={priceForTrade} solPriceUsd={evidence.solPriceUsd} priceIsIndicative={priceIsIndicative} multiplier={asset.multiplier?.currentMultiplier ?? null} decimals={decimals} halted={halted} ready={reviewReady} liveTrading={liveTrading} hardBlock={verdict.hardBlock} hardBlockReason={verdict.hardBlock ? verdict.headline : null} pythPrice={evidence.pyth.data?.price ?? null} poolPrice={pool?.priceUsd ?? null} mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"} underlyingSymbol={asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "")} /></section></div>
       <section className="asset-overview" id="overview"><div className="asset-fact-grid">{facts.map((fact) => <article className="asset-fact" key={fact.label}><span>{fact.label}</span><strong>{fact.value}</strong></article>)}</div></section>
       <AssetStockPairs symbol={asset.symbol} />
-      {nextMultiplier ? <section className="asset-event-card" id="events"><div><h2>Share adjustment</h2><p>{multiplier(asset.multiplier?.currentMultiplier)} → {multiplier(nextMultiplier)}</p></div><Link className="button button--dark" href="/app/actions">View events</Link></section> : null}
+      {nextMultiplier ? <section className="asset-event-card" id="events"><div><h2>Share Update</h2><p>{multiplier(asset.multiplier?.currentMultiplier)} → {multiplier(nextMultiplier)}</p></div><Link className="button button--dark" href="/app/actions">View events</Link></section> : null}
     </div>
     <AppFooterNav />
   </main>;

@@ -310,22 +310,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Multiplier — share adjustments & Token-2022 amounts */}
+      {/* Multiplier — share adjustments & accurate amounts */}
       <section id="multiplier" className="os-section os-section-tint">
         <div className="os-shell">
           <div className="os-section-head os-head-center" data-reveal>
-            <span className="os-micro os-micro-green">Multiplier</span>
+            <span className="os-micro os-micro-green">Accurate</span>
             <h2>
               <span className="os-lines">
                 <span className="os-line" style={{ "--i": 0 } as React.CSSProperties}>
-                  <span>UI shares stay honest.</span>
+                  <span>What you see.</span>
                 </span>
                 <span className="os-line" style={{ "--i": 1 } as React.CSSProperties}>
-                  <span>Raw Token-2022 amounts settle.</span>
+                  <span>What you own.</span>
                 </span>
               </span>
             </h2>
-            <p>Corporate actions and multipliers are applied at display and order layers — never as a decorative afterthought.</p>
+            <p>Stock splits and share adjustments are reflected instantly in your holdings and orders.</p>
           </div>
 
           <div className="os-arch-grid" data-reveal>
