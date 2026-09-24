@@ -270,7 +270,7 @@ export function LaunchClient() {
     evaluateVenues();
   }, [selectedPair]);
 
-  // Force stock switch when venue changes to Meteora
+  // Force stock switch when venue changes to Meteora (only if current stock is incompatible)
   useEffect(() => {
     if (selectedVenue === "meteora" && selectedPair) {
       const isCompatible = ["NVDAx", "AAPLx"].includes(selectedPair.symbol);
@@ -282,8 +282,9 @@ export function LaunchClient() {
           setSelectedPair(meteoraCompatibleStock);
         }
       }
+      // If current stock is already compatible (NVDAx or AAPLx), keep it and show both options
     }
-  }, [selectedVenue, pairs]);
+  }, [selectedVenue, pairs, selectedPair]);
 
   // Supply handlers
   function handleSupplySelect(amount: number) {
@@ -393,7 +394,7 @@ export function LaunchClient() {
       // Only show stocks that support Meteora DBC (NVDAx, AAPLx)
       const meteoraSupportedSymbols = ["NVDAx", "AAPLx"];
       if (!meteoraSupportedSymbols.includes(p.symbol)) return false;
-      // Skip category filtering for Meteora to show all compatible stocks
+      // Skip category filtering for Meteora to show all compatible stocks regardless of category
     } else {
       const matchesCat = matchesCategory(p.symbol, selectedCategory);
       if (!matchesCat) return false;
@@ -1212,17 +1213,14 @@ export function LaunchClient() {
                     onClick={() => {
                       setSelectedVenue("meteora");
                       setSelectedCategory("all"); // Reset category to show all compatible stocks
-                      // ALWAYS auto-select first Meteora-compatible stock when switching to Meteora
-                      const meteoraCompatibleStock = pairs.find(p => 
-                        ["NVDAx", "AAPLx"].includes(p.symbol)
-                      );
-                      if (meteoraCompatibleStock) {
-                        setSelectedPair(meteoraCompatibleStock);
-                      } else {
-                        // Fallback: if pairs aren't loaded yet, try to set NVDAx directly
-                        const nvdaFallback = pairs.find(p => p.symbol.toUpperCase().includes("NVDA"));
-                        if (nvdaFallback) {
-                          setSelectedPair(nvdaFallback);
+                      // Only auto-select if current stock is not compatible
+                      const isCurrentCompatible = selectedPair && ["NVDAx", "AAPLx"].includes(selectedPair.symbol);
+                      if (!isCurrentCompatible) {
+                        const meteoraCompatibleStock = pairs.find(p => 
+                          ["NVDAx", "AAPLx"].includes(p.symbol)
+                        );
+                        if (meteoraCompatibleStock) {
+                          setSelectedPair(meteoraCompatibleStock);
                         }
                       }
                     }}
