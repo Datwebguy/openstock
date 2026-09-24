@@ -1027,6 +1027,26 @@ html[data-theme="dark"] .launch-venue-desc {
   flex-wrap: wrap;
 }
 
+.launch-fee-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(153, 69, 255, 0.06);
+  border: 1px solid rgba(153, 69, 255, 0.12);
+  font-family: var(--font-display, "Space Grotesk"), monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--solana-purple, #9945ff);
+}
+
+html[data-theme="dark"] .launch-fee-breakdown {
+  background: rgba(153, 69, 255, 0.12);
+  border-color: rgba(153, 69, 255, 0.24);
+  color: var(--solana-green, #14f195);
+}
+
 .launch-fee-pill {
   padding: 6px 11px;
   border-radius: 8px;

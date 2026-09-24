@@ -120,10 +120,11 @@ export function LaunchClient() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Supply & Fee Economics (Fee strictly 1%–3%)
+  // Supply & Fee Economics (Fee strictly 0.5%–5%)
   const [tokenSupply, setTokenSupply] = useState<number>(1_000_000_000); // 1 Billion default
   const [customSupplyInput, setCustomSupplyInput] = useState("1,000,000,000");
-  const [creatorFeeBps, setCreatorFeeBps] = useState(150); // 1.5% default (100–300 bps)
+  const [creatorFeeBps, setCreatorFeeBps] = useState(100); // 1% default (50–500 bps)
+  const [feeBreakdown, setFeeBreakdown] = useState<{creatorFeePercent: string; platformFeePercent: string; totalFeePercent: string} | null>(null);
 
   // Deployer Initial Buy (Dev Buy / Pre-mine) State
   const [devBuyPercent, setDevBuyPercent] = useState<number>(0); // 0% default
@@ -438,11 +439,19 @@ export function LaunchClient() {
       return;
     }
 
-    // Creator fee validation: 1% to 3%
-    if (creatorFeeBps < 100 || creatorFeeBps > 300) {
-      setErrorMessage("Creator fee must be between 1.0% and 3.0% (100–300 bps).");
+    // Creator fee validation: 0.5% to 5%
+    if (creatorFeeBps < 50 || creatorFeeBps > 500) {
+      setErrorMessage("Creator fee must be between 0.5% and 5.0% (50–500 bps).");
       return;
     }
+
+    // Calculate fee breakdown for display
+    const platformFeeBps = 100; // 1% platform surcharge
+    setFeeBreakdown({
+      creatorFeePercent: (creatorFeeBps / 100).toFixed(2) + '%',
+      platformFeePercent: (platformFeeBps / 100).toFixed(2) + '%',
+      totalFeePercent: ((creatorFeeBps + platformFeeBps) / 100).toFixed(2) + '%',
+    });
 
     setErrorMessage("");
 
@@ -765,7 +774,7 @@ export function LaunchClient() {
             <StockLogo symbol={selectedPair?.symbol || initialSymbol} logo={selectedPair?.imageUrl ?? undefined} size={40} />
             <div>
               <strong>{selectedPair?.symbol || initialSymbol}</strong>
-              <span>Quote locked · {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} · {(creatorFeeBps / 100).toFixed(1)}% fee in stock</span>
+              <span>Quote locked · {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} · {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(1) + '%'} total fee ({feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(1) + '%')} creator + {feeBreakdown?.platformFeePercent || '1%'} platform)</span>
             </div>
           </div>
           <div className="launch-quick-fields">
@@ -806,7 +815,7 @@ export function LaunchClient() {
           )}
           {errorMessage ? <p className="launch-quick-error" role="alert">{errorMessage}</p> : null}
           <p className="launch-quick-note">
-            Working path: Pump.fun against {selectedPair?.symbol || "xStock"} · 1.5% creator fee · 1B supply.
+            Working path: Pump.fun against {selectedPair?.symbol || "xStock"} · {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(1) + '%'} total fee ({feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(1) + '%')} creator + {feeBreakdown?.platformFeePercent || '1%'} platform) · 1B supply.
             Meteora DBC unlocks after one PoolConfig is set.{" "}
             <Link href={`/launch?symbol=${encodeURIComponent(initialSymbol)}`}>Open full studio</Link>
           </p>
@@ -1310,18 +1319,24 @@ export function LaunchClient() {
                   </div>
                 </div>
 
-                {/* Creator Fee Selector: strictly 1% to 3% */}
+                {/* Creator Fee Selector: 0.5% to 5% */}
                 <div className="launch-field">
                   <label htmlFor="creator-fee">
-                    Creator Fee <span>(strictly 1%–3% in {selectedPair?.symbol || "xStock"})</span>
+                    Creator Fee <span>(0.5%–5% in {selectedPair?.symbol || "xStock"})</span>
                   </label>
+                  <div className="launch-fee-breakdown" style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
+                    Total: {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(2) + '%'} (Creator: {feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(2) + '%')} + Platform: {feeBreakdown?.platformFeePercent || '1%'})
+                  </div>
                   <div className="launch-fee-pills" role="group" aria-label="Creator fee">
                     {[
+                      { label: "0.5%", bps: 50 },
                       { label: "1.0%", bps: 100 },
                       { label: "1.5%", bps: 150 },
                       { label: "2.0%", bps: 200 },
                       { label: "2.5%", bps: 250 },
                       { label: "3.0%", bps: 300 },
+                      { label: "4.0%", bps: 400 },
+                      { label: "5.0%", bps: 500 },
                     ].map((tier) => (
                       <button
                         type="button"

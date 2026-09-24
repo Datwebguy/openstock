@@ -180,6 +180,16 @@ export type PreflightResult = {
     preflightToken: string;
   };
   meta?: Record<string, unknown>;
+  feeBreakdown?: {
+    creatorFeeBps: number;
+    platformFeeBps: number;
+    totalFeeBps: number;
+    creatorFeePercent: string;
+    platformFeePercent: string;
+    totalFeePercent: string;
+  };
+  platformTreasury?: string;
+  treasury?: string;
 };
 
 /**
@@ -249,6 +259,16 @@ export type ConfirmLaunchResult = {
   pumpUrl: string;
   explorerUrl: string;
   meta?: Record<string, unknown>;
+  feeBreakdown?: {
+    creatorFeeBps: number;
+    platformFeeBps: number;
+    totalFeeBps: number;
+    creatorFeePercent: string;
+    platformFeePercent: string;
+    totalFeePercent: string;
+  };
+  platformTreasury?: string;
+  treasury?: string;
 };
 
 /**

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requestPreflightQuote, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { resolvePublicImageUrl } from "@/lib/safe-image-url";
 import { isSolanaAddress } from "@/lib/solana";
+import { getPlatformTreasuryWallet, calculateLaunchFeeBreakdown, CREATOR_FEE_MIN_BPS, CREATOR_FEE_MAX_BPS } from "@/lib/treasury";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,9 +36,15 @@ export async function POST(req: NextRequest) {
     }
 
     const feeBps = Number(pumpCreatorFeeBps);
-    if (!Number.isInteger(feeBps) || feeBps < 50 || feeBps > 500) {
-      return NextResponse.json({ error: "Creator fee must be an integer between 50 and 500 bps (0.5%–5%)." }, { status: 400 });
+    if (!Number.isInteger(feeBps) || feeBps < CREATOR_FEE_MIN_BPS || feeBps > CREATOR_FEE_MAX_BPS) {
+      return NextResponse.json({ 
+        error: `Creator fee must be an integer between ${CREATOR_FEE_MIN_BPS} and ${CREATOR_FEE_MAX_BPS} bps (${(CREATOR_FEE_MIN_BPS/100).toFixed(1)}%–${(CREATOR_FEE_MAX_BPS/100).toFixed(1)}%).` 
+      }, { status: 400 });
     }
+
+    // Calculate fee breakdown including platform surcharge
+    const feeBreakdown = calculateLaunchFeeBreakdown(feeBps);
+    const platformTreasury = getPlatformTreasuryWallet();
 
     if (!walletAddress || typeof walletAddress !== "string" || !isSolanaAddress(walletAddress)) {
       return NextResponse.json({ error: "Invalid Solana wallet address provided." }, { status: 400 });
@@ -58,7 +65,13 @@ export async function POST(req: NextRequest) {
       devBuySol: initialBuySol,
     });
 
-    return NextResponse.json(preflight);
+    // Add fee breakdown and platform treasury to response
+    return NextResponse.json({
+      ...preflight,
+      feeBreakdown,
+      platformTreasury,
+      treasury: platformTreasury, // For backward compatibility
+    });
   } catch {
     return NextResponse.json({ error: "Failed to generate launch preflight quote" }, { status: 500 });
   }

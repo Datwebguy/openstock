@@ -3,6 +3,7 @@ import { executeClawPumpLaunch, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/claw
 import { addCommunityToken } from "@/lib/community-tokens";
 import { resolvePublicImageUrl } from "@/lib/safe-image-url";
 import { isSolanaAddress } from "@/lib/solana";
+import { getPlatformTreasuryWallet, calculateLaunchFeeBreakdown, CREATOR_FEE_MIN_BPS, CREATOR_FEE_MAX_BPS } from "@/lib/treasury";
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,9 +47,15 @@ export async function POST(req: NextRequest) {
     }
 
     const feeBps = Number(pumpCreatorFeeBps);
-    if (!Number.isInteger(feeBps) || feeBps < 50 || feeBps > 500) {
-      return NextResponse.json({ error: "Creator fee must be an integer between 50 and 500 bps (0.5%–5%)." }, { status: 400 });
+    if (!Number.isInteger(feeBps) || feeBps < CREATOR_FEE_MIN_BPS || feeBps > CREATOR_FEE_MAX_BPS) {
+      return NextResponse.json({ 
+        error: `Creator fee must be an integer between ${CREATOR_FEE_MIN_BPS} and ${CREATOR_FEE_MAX_BPS} bps (${(CREATOR_FEE_MIN_BPS/100).toFixed(1)}%–${(CREATOR_FEE_MAX_BPS/100).toFixed(1)}%).` 
+      }, { status: 400 });
     }
+
+    // Calculate fee breakdown including platform surcharge
+    const feeBreakdown = calculateLaunchFeeBreakdown(feeBps);
+    const platformTreasury = getPlatformTreasuryWallet();
 
     const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000");
     if (!resolvedImageUrl) {
@@ -81,6 +88,14 @@ export async function POST(req: NextRequest) {
       devBuySol: initialBuySol,
     });
 
+    // Add fee breakdown to launch result
+    const launchResultWithFees = {
+      ...launchResult,
+      feeBreakdown,
+      platformTreasury,
+      treasury: platformTreasury, // For backward compatibility
+    };
+
     try {
       await addCommunityToken({
         mint: launchResult.mintAddress,
@@ -93,6 +108,8 @@ export async function POST(req: NextRequest) {
         creatorWallet: walletAddress,
         supply: tokenSupply,
         creatorFeeBps: feeBps,
+        platformFeeBps: feeBreakdown.platformFeeBps,
+        totalFeeBps: feeBreakdown.totalFeeBps,
         priceSol: 0,
         priceUsd: 0,
         marketCapUsd: 0,
@@ -104,13 +121,14 @@ export async function POST(req: NextRequest) {
         txSignature,
         pumpUrl: launchResult.pumpUrl,
         explorerUrl: launchResult.explorerUrl,
+        platformTreasury,
         createdAt: new Date().toISOString(),
       });
     } catch (storeErr) {
       console.warn("Could not record token into community store:", storeErr);
     }
 
-    return NextResponse.json(launchResult);
+    return NextResponse.json(launchResultWithFees);
   } catch {
     return NextResponse.json({ error: "Launch execution failed" }, { status: 500 });
   }

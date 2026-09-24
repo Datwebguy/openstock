@@ -12,6 +12,8 @@ export type CommunityToken = {
   creatorWallet: string;
   supply: number;
   creatorFeeBps: number;
+  platformFeeBps?: number; // Platform surcharge fee
+  totalFeeBps?: number; // Total fee (creator + platform)
   priceSol: number;
   priceUsd: number;
   marketCapUsd: number;
@@ -27,6 +29,7 @@ export type CommunityToken = {
   poolAddress?: string;
   meteoraUrl?: string;
   venue?: "pumpfun" | "meteora";
+  platformTreasury?: string; // Treasury wallet that receives platform fees
   isStale?: boolean;
   marketStatus?: "live" | "stale" | "unlisted";
 };
