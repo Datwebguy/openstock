@@ -1205,12 +1205,11 @@ export function LaunchClient() {
                     onClick={() => {
                       setSelectedVenue("meteora");
                       setSelectedCategory("all"); // Reset category to show all compatible stocks
-                      // Auto-select a Meteora-compatible stock if current one doesn't support it
+                      // ALWAYS auto-select first Meteora-compatible stock when switching to Meteora
                       const meteoraCompatibleStock = pairs.find(p => 
                         ["NVDAx", "AAPLx"].includes(p.symbol)
                       );
-                      if (meteoraCompatibleStock && 
-!["NVDAx", "AAPLx"].includes(selectedPair?.symbol || "")) {
+                      if (meteoraCompatibleStock) {
                         setSelectedPair(meteoraCompatibleStock);
                       }
                     }}
