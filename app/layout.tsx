@@ -8,7 +8,6 @@ import "./visual-overrides.css";
 import "./app-overrides.css";
 import "./live-overrides.css";
 import "./hero-size.css";
-import "./network.css";
 import "./apys-flow.css";
 import "./final-type.css";
 import "./ticker-fix.css";
