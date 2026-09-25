@@ -5,8 +5,10 @@ import {
   checkMeteoraDbcBadgeSupport,
   executeMeteoraDbcLaunch,
   prepareMeteoraDbcPoolTx,
+  DBC_CURVE_KEYS,
   readDbcConfigSummary,
   resolveDbcConfigAddress,
+  type DbcCurveKey,
 } from "@/lib/meteora-dbc";
 import { publicStoreError, writeJson } from "@/lib/json-store";
 import { resolvePublicImageUrl } from "@/lib/safe-image-url";
@@ -27,7 +29,9 @@ export async function POST(req: NextRequest) {
       txSignature,
       mintAddress,
       poolAddress,
+      curve: curveInput,
     } = body;
+    const curve: DbcCurveKey = DBC_CURVE_KEYS.includes(curveInput) ? curveInput : "standard";
 
     if (!creatorWallet || typeof creatorWallet !== "string" || !isSolanaAddress(creatorWallet)) {
       return NextResponse.json({ error: "Missing creator wallet address." }, { status: 400 });
@@ -74,6 +78,7 @@ export async function POST(req: NextRequest) {
       creatorFeeBps: 0,
       supply: tokenSupply,
       pairedStockSymbol: pairedStock.symbol,
+      curve,
       metadataUri: "",
     };
 
@@ -111,7 +116,7 @@ export async function POST(req: NextRequest) {
     // Record the newly created community stock-pair token in the live registry
     const pairedAsset = pairedStock;
 
-    const configAddress = resolveDbcConfigAddress({ quoteMint, pairedStockSymbol: pairedStock.symbol });
+    const configAddress = resolveDbcConfigAddress({ quoteMint, pairedStockSymbol: pairedStock.symbol, curve });
     const summary = configAddress ? await readDbcConfigSummary(configAddress) : null;
     const creatorFeeOnChainBps = summary ? Math.round((summary.baseFeeBps * summary.creatorTradingFeePercent) / 100) : 0;
 

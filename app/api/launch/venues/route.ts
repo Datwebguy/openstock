@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS, getClawPumpPairs } from "@/lib/clawpump";
-import { checkMeteoraDbcBadgeSupport, readDbcConfigSummary, resolveDbcConfigAddress } from "@/lib/meteora-dbc";
+import { checkMeteoraDbcBadgeSupport, DBC_CURVE_KEYS, DBC_CURVE_LABELS, listDbcConfigs, readDbcConfigSummary, type DbcConfigSummary, type DbcCurveKey } from "@/lib/meteora-dbc";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,15 +17,22 @@ export async function GET(req: NextRequest) {
     const pumpPairs = await getClawPumpPairs();
     const pumpSupported = pumpPairs.source === "clawpump" && pumpPairs.assets.some((a) => a.mint === pair.mint);
 
-    const [meteoraBadged, config] = await Promise.all([
+    const configured = listDbcConfigs({ quoteMint: pair.mint, pairedStockSymbol: pair.symbol });
+    const [meteoraBadged, summaries] = await Promise.all([
       checkMeteoraDbcBadgeSupport(pair.mint),
-      (async () => {
-        const address = resolveDbcConfigAddress({ quoteMint: pair.mint, pairedStockSymbol: pair.symbol });
-        return address ? readDbcConfigSummary(address) : null;
-      })(),
+      Promise.all(
+        DBC_CURVE_KEYS.map(async (key) => {
+          const address = configured[key];
+          const summary = address ? await readDbcConfigSummary(address) : null;
+          // Only curves whose config exists on-chain AND is quoted in this exact stock.
+          return summary && summary.quoteMint === pair.mint ? ([key, summary] as const) : null;
+        })
+      ),
     ]);
-    // Ready only when the config exists on-chain AND is quoted in this exact stock.
-    const dbcConfig = config && config.quoteMint === pair.mint ? config : null;
+    const dbcConfigs = Object.fromEntries(summaries.filter(Boolean).map((entry) => [entry![0], { ...entry![1], ...DBC_CURVE_LABELS[entry![0]] }])) as Partial<
+      Record<DbcCurveKey, DbcConfigSummary & { name: string; blurb: string }>
+    >;
+    const dbcConfig = dbcConfigs.standard ?? Object.values(dbcConfigs)[0] ?? null;
     const meteoraLaunchReady = meteoraBadged && Boolean(dbcConfig);
 
     return NextResponse.json({
@@ -34,6 +41,7 @@ export async function GET(req: NextRequest) {
       isBadged: meteoraBadged,
       dbcConfigReady: Boolean(dbcConfig),
       dbcConfig,
+      dbcConfigs,
       workingLaunchPath: pumpSupported ? "pumpfun" : meteoraLaunchReady ? "meteora" : null,
       venues: {
         pumpfun: {
