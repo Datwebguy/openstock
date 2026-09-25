@@ -34,9 +34,9 @@ services:
         sync: false
       - key: CLAWPUMP_API_KEY
         sync: false
-      - key: PLATFORM_TREASURY_WALLET
+      - key: UPSTASH_REDIS_REST_URL
         sync: false
-      - key: NEXT_PUBLIC_PLATFORM_TREASURY_WALLET
+      - key: UPSTASH_REDIS_REST_TOKEN
         sync: false
       - key: METEORA_DBC_CONFIG
         sync: false

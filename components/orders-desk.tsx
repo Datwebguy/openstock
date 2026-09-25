@@ -269,7 +269,7 @@ export function OrdersDesk() {
                 Set a target Limit Order or recurring DCA accumulation schedule directly from any stock terminal to trade without staying glued to the screen.
               </p>
               <Link href="/app" className="button button--gradient" style={{ padding: "10px 24px", fontSize: 13 }}>
-                Explore 25 xStocks
+                Explore the stocks desk
               </Link>
             </div>
           )}

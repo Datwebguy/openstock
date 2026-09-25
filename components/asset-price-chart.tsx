@@ -301,7 +301,7 @@ export function AssetPriceChart({
 
   // Time Scale Labels
   const timeTicks = useMemo(() => {
-    if (candles.length < 5) return ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"];
+    if (candles.length < 5) return [] as string[];
     const indices = [
       0,
       Math.floor(candles.length * 0.2),

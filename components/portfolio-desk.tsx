@@ -177,7 +177,10 @@ export function PortfolioDesk() {
     }
   }
 
-  const unclaimedTotal = royalties?.summary.totalUnclaimedUsd ?? 0;
+  // USD value of unclaimed fees is not priced server-side; show the xStock amount instead of a made-up $0.00.
+  const unclaimedTotal = 0;
+  const unclaimedShares = (royalties?.summary as { totalUnclaimedStockShares?: number } | undefined)?.totalUnclaimedStockShares ?? 0;
+  const unclaimedQuotes = (royalties?.summary.activeQuotes ?? []).join(", ");
   const netWorthUsd = address ? (portfolio.totalValueUsd + unclaimedTotal) : 0;
   const pnlUsd = portfolio.performance?.pnlUsd ?? 0;
   const hasPnl = portfolio.performance?.available && pnlUsd !== 0;
@@ -217,15 +220,15 @@ export function PortfolioDesk() {
           <div className="portfolio-main-val-box">
             <span>Total Portfolio Net Worth (USD)</span>
             <h1 id="portfolio-title" className="portfolio-main-val">
-              ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(netWorthUsd)}
+              {address ? `$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(netWorthUsd)}` : "—"}
             </h1>
             {hasPnl ? (
               <span className={`portfolio-delta-badge ${pnlUsd >= 0 ? "is-up" : "is-down"}`}>
-                {pnlUsd >= 0 ? "▲ +" : "▼ -"}${Math.abs(pnlUsd).toFixed(2)} 24h PnL
+                {pnlUsd >= 0 ? "▲ +" : "▼ -"}${Math.abs(pnlUsd).toFixed(2)} since first snapshot
               </span>
             ) : (
               <span className="portfolio-delta-badge" style={{ background: "rgba(255,255,255,0.06)", color: "var(--os-muted)" }}>
-                ● Live Solana On-Chain Balances
+                {address ? "On-chain balances" : "Connect a wallet to load balances"}
               </span>
             )}
           </div>
@@ -252,11 +255,13 @@ export function PortfolioDesk() {
             <div className="portfolio-royalty-icon" aria-hidden="true">💎</div>
             <div className="portfolio-royalty-text">
               <strong>
-                ${unclaimedTotal.toFixed(2)} in Unclaimed Creator Royalties
+                {address
+                  ? `${unclaimedShares.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${unclaimedQuotes || "xStock"} in unclaimed creator fees`
+                  : "Creator fees"}
               </strong>
               <span>
                 {address
-                  ? "Earned in real stock assets (1.0%–3.0% fee) from trading volume on your launched pairs"
+                  ? "Your share of trading fees on Meteora DBC pools you launched, paid in the paired xStock. Pump.fun fees are claimed on Pump.fun."
                   : "Connect your Solana wallet to read on-chain balances and creator royalty vaults"}
               </span>
             </div>
@@ -399,7 +404,7 @@ export function PortfolioDesk() {
                 <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--os-foreground)" }}>No Creator Vaults Found</h3>
                 <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto 20px", fontSize: 13, lineHeight: 1.6 }}>
                   {address
-                    ? "This wallet has not launched any synthetic stock pairs yet. Launch a community pair on Pump.fun or Meteora DBC paired against $NVDAx, $AAPLx, or $TSLAx to earn a permanent 1.0%–3.0% creator royalty paid directly in real stock shares."
+                    ? "This wallet has not launched a token through OpenStock yet. Launch one quoted in a stock to earn creator fees on its trading volume."
                     : "Connect your Solana wallet to view your active creator vaults and claim accrued stock royalties."}
                 </p>
                 <Link href="/launch" className="button button--gradient" style={{ padding: "10px 24px", fontSize: 13 }}>
@@ -502,7 +507,7 @@ export function PortfolioDesk() {
                 <p style={{ color: "var(--os-muted)", maxWidth: 480, margin: "0 auto 20px", fontSize: 13, lineHeight: 1.6 }}>
                   {address
                     ? "No tokenized stock assets ($NVDAx, $TSLAx, $AAPLx, etc.) were found in this wallet."
-                    : "Connect your wallet to inspect your on-chain synthetic stock portfolio."}
+                    : "Connect your wallet to see your tokenized stock holdings."}
                 </p>
                 <Link href="/app/community" className="button button--light" style={{ padding: "10px 24px", fontSize: 13 }}>
                   Explore Community Market

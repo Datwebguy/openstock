@@ -51,9 +51,28 @@ const STOCKS = new Map<string, CuratedPair>(
   (Object.values(curatedPairs) as CuratedPair[]).filter((entry) => entry?.mint).map((entry) => [entry.mint, entry])
 );
 
+/** Entries older builds wrote as seed/demo data. They were never launched through OpenStock. */
+const LEGACY_NON_LAUNCH_MINTS = new Set([
+  "8dJpCw1JurBZQGNeYwqVJkqs3DTjtYW5wcFXzCpmpump", // hardcoded "EATS" seed
+  "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
+  "SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
+  "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
+  "98sMhvDwXj1RQi5c5Mndm3vPe9cBqPrbLaufMXFNMh5g",
+  "BgCeigJo2iY3dJhqS2z9w4pjjufFd4F9oKS3FrkMbmbJ",
+  "ByCds9p6tXfF5HEg6aJDdrEypCWTi7Jui5nLs7QbyYuw",
+  "6oxWqT3Pkt97NEVDvthztC59vTGxSwSmsTL6eFFLoBGu",
+  "3JUj6ZdRreqNH5gkdL2dZWn477kB97NxdkqSv2GeXWG9",
+]);
+
 async function readStore(): Promise<CommunityTokenStore> {
   const data = await readJson<CommunityTokenStore>("community-tokens");
-  return { version: 2, tokens: Array.isArray(data?.tokens) ? data.tokens : [] };
+  const tokens = Array.isArray(data?.tokens) ? data.tokens : [];
+  return {
+    version: 2,
+    tokens: tokens.filter(
+      (t) => t?.mint && !LEGACY_NON_LAUNCH_MINTS.has(t.mint) && !t.mint.startsWith("Compute7b") && !t.mint.startsWith("CyberXs")
+    ),
+  };
 }
 
 async function readStoreSafe(): Promise<CommunityTokenStore> {
@@ -112,11 +131,24 @@ async function fetchPairsForMints(mints: string[]): Promise<DexPair[]> {
   return pairs;
 }
 
+/** Quote/base assets that form the stock's own markets — never a "community token". */
+const BASE_ASSETS = new Set([
+  "So11111111111111111111111111111111111111112", // SOL
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
+  "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo", // PYUSD
+  "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB", // USD1
+  "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4", // JLP
+  "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh", // WBTC
+  "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij", // cbBTC
+]);
+
 /** Which side of a DexScreener pair is the token, and which is its xStock. */
 function orient(pair: DexPair, tokenMint?: string) {
   const base = pair.baseToken?.address;
   const quote = pair.quoteToken?.address;
   if (!base || !quote) return null;
+  if (BASE_ASSETS.has(base) || BASE_ASSETS.has(quote)) return null;
   if (STOCKS.has(quote) && !STOCKS.has(base) && (!tokenMint || tokenMint === base)) {
     return { token: pair.baseToken!, stock: STOCKS.get(quote)!, tokenIsBase: true };
   }
@@ -157,7 +189,8 @@ const DISCOVERY_STOCKS = [
 
 /** Existing pools on DexScreener where some token trades directly against an xStock. Not OpenStock launches. */
 async function discoverStockPairedPools(): Promise<CommunityToken[]> {
-  const pairs = await fetchPairsForMints(DISCOVERY_STOCKS);
+  // One request per stock: DexScreener caps each /tokens response at 30 pairs in total, not per address.
+  const pairs = (await Promise.all(DISCOVERY_STOCKS.map((mint) => fetchPairsForMints([mint])))).flat();
   const tokens: CommunityToken[] = [];
   const seen = new Set<string>();
   for (const pair of pairs) {
