@@ -7,6 +7,7 @@ import { StockLogo } from "@/components/stock-logo";
 import { useWallet } from "@/components/wallet-session";
 import { translateWalletError } from "@/lib/solana-preflight";
 import type { CommunityToken } from "@/lib/community-tokens";
+import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isOnAmmPool } from "@/lib/community-token-utils";
 
 interface MigrationModalProps {
   token: CommunityToken;
@@ -25,9 +26,9 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalProps) {
   const { address, connect, canSign, signAnyTransaction } = useWallet();
-  const [isGraduated, setIsGraduated] = useState(
-    token.bondingCurveProgress >= 100 || token.status === "graduated"
-  );
+  const [isGraduated, setIsGraduated] = useState(isOnAmmPool(token));
+  // Migration is only offered for OpenStock Meteora DBC launches whose curve progress was measured on-chain.
+  const canMigrate = token.source === "openstock" && token.venue === "meteora" && Boolean(token.progressKnown) && Boolean(token.poolAddress);
   const [meteoraPoolUrl, setMeteoraPoolUrl] = useState(token.meteoraUrl || "");
   const [migrationTxHash, setMigrationTxHash] = useState("");
 
@@ -36,10 +37,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
   const [migrationError, setMigrationError] = useState("");
 
   const progress = Math.min(100, Math.max(0, isGraduated ? 100 : token.bondingCurveProgress));
-  const remainingPercent = (100 - progress).toFixed(1);
-
-  // Accurate remaining USD needed to graduate based on bonding curve progress
-  const remainingUsd = isGraduated ? 0 : Math.round(((100 - progress) / 100) * 69_000);
+  const progressShown = isGraduated || Boolean(token.progressKnown);
 
   // Close on Escape key
   useEffect(() => {
@@ -164,7 +162,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                 <span className="migration-badge-pair">Paired with {token.pairedStockSymbol}</span>
                 <span className={`migration-status-pill ${isGraduated ? "is-graduated" : "is-active"}`}>
                   <span className="migration-pulse-dot" />
-                  {isGraduated ? "✓ In Full Pool" : `${progress.toFixed(1)}% to Full Pool`}
+                  {curveStatusLabel(token)}
                 </span>
               </div>
             </div>
@@ -180,27 +178,27 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
           {/* Progress Visualizer Hero */}
           <div className="migration-gauge-hero">
             <div className="migration-gauge-header">
-              <span>Curve Progress</span>
-              <strong>{progress.toFixed(1)}% / 100%</strong>
+              <span>{isGraduated ? "Trading venue" : "Curve progress"}</span>
+              <strong>{isGraduated ? `${dexLabel(token)} pool` : progressShown ? `${progress.toFixed(1)}% / 100%` : "Not published"}</strong>
             </div>
 
-            <div className="migration-progress-track">
-              <div
-                className={`migration-progress-bar ${isGraduated ? "is-graduated" : ""}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            {progressShown ? (
+              <div className="migration-progress-track">
+                <div
+                  className={`migration-progress-bar ${isGraduated ? "is-graduated" : ""}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            ) : null}
 
             <div className="migration-gauge-meta">
-              {isGraduated ? (
-                <span className="migration-meta-notice is-success">
-                  🎉 Move to Full Pool Complete: Liquidity permanently deposited and locked.
-                </span>
-              ) : (
-                <span className="migration-meta-notice">
-                  Remaining to Full Pool: <strong>${remainingUsd.toLocaleString()} USD</strong> (~{remainingPercent}% of curve)
-                </span>
-              )}
+              <span className={`migration-meta-notice ${isGraduated ? "is-success" : ""}`}>
+                {isGraduated
+                  ? `Trading on a ${dexLabel(token)} pool against ${token.pairedStockSymbol}.`
+                  : progressShown
+                  ? "Progress = quote raised ÷ the PoolConfig migration threshold, read from Solana."
+                  : `${dexLabel(token)} does not publish curve progress through our data sources.`}
+              </span>
             </div>
           </div>
 
@@ -228,11 +226,11 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                 <div className="migration-step-content">
                   <h4>Initial Curve Trading</h4>
                   <p>
-                    Community trades against <strong>{token.pairedStockSymbol}</strong>. Creator earns{" "}
-                    <strong>{(token.creatorFeeBps / 100).toFixed(1)}%</strong> in stock on every swap.
+                    Trades settle against <strong>{token.pairedStockSymbol}</strong>
+                    {token.creatorFeeBps ? <>; the creator earns <strong>{(token.creatorFeeBps / 100).toFixed(2)}%</strong> of volume</> : null}.
                   </p>
                   <span className="migration-step-stat">
-                    {progress >= 100 ? "✓ Curve 100% Filled" : `${progress.toFixed(1)}% Filled`}
+                    {isGraduated ? "✓ Curve complete" : progressShown ? `${progress.toFixed(1)}% filled` : "On curve"}
                   </span>
                 </div>
               </div>
@@ -243,8 +241,8 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                 <div className="migration-step-content">
                   <h4>Full Pool Activation</h4>
                   <p>
-                    Upon hitting 100%, accumulated liquidity is automatically deposited into a concentrated{" "}
-                    <strong>Meteora full trading pool</strong> on Solana.
+                    When the curve fills, anyone can send the migration transaction that seeds an AMM pool
+                    with the raised {token.pairedStockSymbol}.
                   </p>
                   <span className="migration-step-stat">
                     {isGraduated ? "✓ Pool Initialized" : "Ready at 100%"}
@@ -256,12 +254,12 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
               <div className={`migration-step-card ${isGraduated ? "is-active" : ""}`}>
                 <div className="migration-step-badge">03</div>
                 <div className="migration-step-content">
-                  <h4>Permanent Liquidity Lock</h4>
+                  <h4>Liquidity terms</h4>
                   <p>
-                    Liquidity is permanently locked. The pool is fully autonomous and secured on Solana.
+                    How much migrated liquidity is locked is set by each venue&apos;s pool config — check the pool on Solscan.
                   </p>
                   <span className="migration-step-stat">
-                    {isGraduated ? "✓ Autonomous & Locked" : "Automatic Lock"}
+                    {isGraduated ? "✓ Pool live" : "After migration"}
                   </span>
                 </div>
               </div>
@@ -272,30 +270,30 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
           <div className="migration-telemetry-grid">
             <div className="migration-telemetry-item">
               <span>Current Token Price</span>
-              <strong>${token.priceUsd.toFixed(6)}</strong>
+              <strong>{formatTokenPrice(token.priceUsd)}</strong>
             </div>
             <div className="migration-telemetry-item">
               <span>Market Cap</span>
-              <strong>${token.marketCapUsd.toLocaleString()}</strong>
+              <strong>{formatMarketCap(token.marketCapUsd)}</strong>
             </div>
             <div className="migration-telemetry-item">
               <span>24h Paired Volume</span>
-              <strong>${token.volume24hUsd.toLocaleString()}</strong>
+              <strong>{formatTokenVolume(token.volume24hUsd)}</strong>
             </div>
             <div className="migration-telemetry-item">
-              <span>Holders</span>
-              <strong>{token.holdersCount.toLocaleString()} Wallets</strong>
+              <span>Source</span>
+              <strong>{token.source === "openstock" ? "Launched on OpenStock" : "Discovered on DexScreener"}</strong>
             </div>
             <div className="migration-telemetry-item">
               <span>Trading Venue</span>
               <strong style={{ color: "var(--solana-cyan, #03e1ff)" }}>
-                {isGraduated ? "Full Meteora Pool" : token.venue === "meteora" ? "Meteora curve" : "Pump curve"}
+                {curveStatusLabel(token)}
               </strong>
             </div>
             <div className="migration-telemetry-item">
-              <span>Creator Stock Royalty</span>
+              <span>Creator fee</span>
               <strong style={{ color: "var(--solana-green, #14f195)" }}>
-                {(token.creatorFeeBps / 100).toFixed(1)}% in {token.pairedStockSymbol}
+                {token.creatorFeeBps ? `${(token.creatorFeeBps / 100).toFixed(2)}%` : "Unknown"}
               </strong>
             </div>
           </div>
@@ -309,7 +307,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
             </a>
             {meteoraPoolUrl ? (
               <a href={meteoraPoolUrl} target="_blank" rel="noreferrer" className="migration-link-btn is-meteora">
-                Meteora Pool ↗
+                Pool ↗
               </a>
             ) : null}
             {migrationTxHash ? (
@@ -328,7 +326,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
           </div>
 
           <div className="migration-footer-actions">
-            {!isGraduated && progress >= 100 ? (
+            {canMigrate && !isGraduated && progress >= 100 ? (
               <button
                 type="button"
                 className="migration-primary-btn"
@@ -347,11 +345,11 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                   onOpenSwap(token);
                 }}
               >
-                Trade ${token.symbol} to help reach full pool ⚡
+                Trade ${token.symbol}
               </button>
             ) : isGraduated && meteoraPoolUrl ? (
               <a href={meteoraPoolUrl} target="_blank" rel="noreferrer" className="migration-primary-btn">
-                Trade on Meteora Pool ↗
+                Open pool ↗
               </a>
             ) : (
               <button type="button" className="migration-primary-btn" onClick={onClose}>

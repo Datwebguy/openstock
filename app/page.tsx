@@ -3,6 +3,10 @@ import { LandingStage, LandingReveals } from "@/components/landing-stage";
 import { StockLogo } from "@/components/stock-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CURATED_SYMBOLS } from "@/lib/xstocks";
+import { getLandingQuotes, spreadLabel, usd } from "@/lib/landing-quotes";
+
+// Live quotes are refreshed at most once a minute.
+export const revalidate = 60;
 
 const names: Record<string, string> = {
   AAPLx: "Apple",
@@ -20,19 +24,19 @@ const names: Record<string, string> = {
 const questions = [
   [
     "What is OpenStock?",
-    "OpenStock pairs tokenized equities (xStocks) on Solana with Meteora DLMM liquidity, Pyth benchmark oracles, and community token launch capability.",
+    "OpenStock is a desk for tokenized stocks (xStocks) on Solana: live issuer and DEX prices, Jupiter-routed trades, and launching tokens quoted in a stock.",
   ],
   [
     "Do I need a wallet to explore?",
-    "No. Browse all 25 equities, live pools, and news freely. Connect Phantom or Solflare only when executing a swap or launching a token.",
+    `No. Browse all ${CURATED_SYMBOLS.length} stocks, live pools, and news freely. Connect a Solana wallet only when you trade or launch.`,
   ],
   [
     "Is an xStock the same as a company share?",
-    "xStocks are tokenized equities backed 1:1 by underlying shares with on-chain oracle verification.",
+    "No. xStocks are tokens issued by Backed that track a share and are backed by shares held by the issuer. They do not give shareholder rights such as voting.",
   ],
   [
     "Why can reference prices differ from pool quotes?",
-    "Issuer reference reflects primary market valuations, while Meteora DLMM pools trade 24/7 on Solana. Spreads show immediate liquidity conditions.",
+    "The issuer reference follows the underlying share, while Solana pools trade 24/7. The gap shows current on-chain liquidity conditions.",
   ],
   [
     "How does token pairing and launching work?",
@@ -44,11 +48,12 @@ const questions = [
   ],
   [
     "Where do receipts and keys live?",
-    "OpenStock is 100% non-custodial. We never hold keys or seed phrases. Transaction receipts are permanently indexed to your wallet address.",
+    "Your wallet signs every trade — OpenStock never holds keys. Receipts are saved in your browser, and on the server once you verify your wallet.",
   ],
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const quotes = await getLandingQuotes();
   const assets = CURATED_SYMBOLS.map((symbol) => ({
     symbol,
     name: names[symbol] ?? symbol,
@@ -105,7 +110,7 @@ export default function HomePage() {
               </span>
             </h1>
             <p style={{ "--i": 3 } as React.CSSProperties}>
-              Trade tokenized equities 24/7 with live Meteora DLMM pools, Pyth benchmarks, and community token launches.
+              Trade tokenized stocks on Solana through Jupiter, compare issuer and on-chain prices, and launch tokens quoted in a stock.
             </p>
             <div className="os-hero-actions" style={{ "--i": 4 } as React.CSSProperties}>
               <Link className="os-button os-button-blue" href="/app">
@@ -117,12 +122,12 @@ export default function HomePage() {
             </div>
             <div className="os-hero-live-pill" style={{ "--i": 5 } as React.CSSProperties}>
               <span className="live-dot" />
-              <span>25 Curated Equities Live · Sub-Second Block Finality</span>
+              <span>{CURATED_SYMBOLS.length} tokenized stocks · live prices</span>
             </div>
           </div>
 
           <div className="os-hero-stage-wrap" data-reveal>
-            <LandingStage assets={assets} />
+            <LandingStage assets={assets} quotes={quotes} />
           </div>
         </div>
       </section>
@@ -132,27 +137,27 @@ export default function HomePage() {
         <div className="os-shell os-proof-row" data-reveal>
           <div className="os-proof-item" style={{ "--i": 0 } as React.CSSProperties}>
             <strong>
-              <span>25</span>
+              <span>{CURATED_SYMBOLS.length}</span>
             </strong>
-            <span className="os-micro os-micro-light">Tokenized Equities on Solana</span>
+            <span className="os-micro os-micro-light">Tokenized stocks on Solana</span>
           </div>
           <div className="os-proof-item" style={{ "--i": 1 } as React.CSSProperties}>
             <strong>
-              <span>&lt; 400ms</span>
+              <span>24/7</span>
             </strong>
-            <span className="os-micro os-micro-light">Sub-second block finality</span>
+            <span className="os-micro os-micro-light">On-chain trading hours</span>
           </div>
           <div className="os-proof-item" style={{ "--i": 2 } as React.CSSProperties}>
             <strong>
-              <span>DLMM Pools</span>
+              <span>Jupiter</span>
             </strong>
-            <span className="os-micro os-micro-light">Aggregated Meteora liquidity</span>
+            <span className="os-micro os-micro-light">Routes across Solana DEXes</span>
           </div>
           <div className="os-proof-item" style={{ "--i": 3 } as React.CSSProperties}>
             <strong>
-              <span>0%</span>
+              <span>Your keys</span>
             </strong>
-            <span className="os-micro os-micro-light">Custodial risk · Non-custodial</span>
+            <span className="os-micro os-micro-light">Every trade signed in your wallet</span>
           </div>
         </div>
       </section>
@@ -174,7 +179,7 @@ export default function HomePage() {
             </h2>
             <p>24/7 liquid tokenized equities backed 1:1 with transparent share reserves.</p>
             <Link className="os-text-link" href="/app">
-              Explore 25 tokenized stocks <span aria-hidden="true">→</span>
+              Explore {CURATED_SYMBOLS.length} tokenized stocks <span aria-hidden="true">→</span>
             </Link>
           </div>
 
@@ -197,7 +202,7 @@ export default function HomePage() {
               </div>
               <span className="os-card-tag">AI Infrastructure</span>
               <h3>Silicon leaders</h3>
-              <p>NVIDIA GPUs & datacenter silicon with real-time Pyth oracles.</p>
+              <p>NVIDIA GPUs & datacenter silicon, priced live on Solana.</p>
               <Link href="/app/asset/NVDAx" className="os-card-link">
                 View NVDAx desk <span aria-hidden="true">↗</span>
               </Link>
@@ -233,50 +238,29 @@ export default function HomePage() {
                 </span>
               </span>
             </h2>
-            <p>Real-time Pyth benchmarks cross-checked against Meteora DLMM pool depth.</p>
+            <p>Issuer reference prices side by side with Solana DEX prices and liquidity.</p>
             <Link className="os-button os-button-white" href="/app">
               Browse market desk <span aria-hidden="true">→</span>
             </Link>
             <span className="os-section-note">
-              Verified Solana mainnet liquidity.
+              Live prices and liquidity from Jupiter and DexScreener.
             </span>
           </div>
 
           <ul className="os-stock-list">
             {[
-              {
-                symbol: "NVDAx",
-                name: "NVIDIA Corporation",
-                sub: "Accelerated computing & AI chips",
-                price: "$118.20",
-                route: "Jupiter Swap v2",
-                status: "Active DLMM Pool",
-              },
-              {
-                symbol: "AAPLx",
-                name: "Apple Inc.",
-                sub: "Consumer hardware & global services",
-                price: "$238.45",
-                route: "Jupiter Swap v2",
-                status: "Active DLMM Pool",
-              },
-              {
-                symbol: "TSLAx",
-                name: "Tesla, Inc.",
-                sub: "Autonomous systems & energy grid",
-                price: "$242.15",
-                route: "Jupiter Swap v2",
-                status: "Active DLMM Pool",
-              },
-              {
-                symbol: "MSFTx",
-                name: "Microsoft Corporation",
-                sub: "Enterprise hyperscale cloud & AI",
-                price: "$442.80",
-                route: "Jupiter Swap v2",
-                status: "Active DLMM Pool",
-              },
-            ].map((item, idx) => (
+              { symbol: "NVDAx", sub: "Accelerated computing & AI chips" },
+              { symbol: "AAPLx", sub: "Consumer hardware & global services" },
+              { symbol: "TSLAx", sub: "Autonomous systems & energy grid" },
+              { symbol: "MSFTx", sub: "Enterprise hyperscale cloud & AI" },
+            ]
+              .map((item) => ({
+                ...item,
+                price: usd(quotes[item.symbol]?.dexPrice ?? quotes[item.symbol]?.issuerPrice ?? null),
+                route: `Liquidity ${quotes[item.symbol]?.liquidity ?? "—"}`,
+                status: `24h vol ${quotes[item.symbol]?.volume24h ?? "—"}`,
+              }))
+              .map((item, idx) => (
               <li
                 key={item.symbol}
                 className="os-stock-row"
@@ -325,7 +309,7 @@ export default function HomePage() {
                 </span>
               </span>
             </h2>
-            <p>Stock splits and share adjustments are reflected instantly in your holdings and orders.</p>
+            <p>Stock splits and share multipliers from the issuer are applied to holdings and order sizes.</p>
           </div>
 
           <div className="os-arch-grid" data-reveal>
@@ -339,7 +323,7 @@ export default function HomePage() {
                 <span className="os-arch-card__badge os-badge-green">1:1 Backed</span>
               </div>
               <h3>Tokenized Equities</h3>
-              <p>25 curated blue-chip stocks backed by physical custodian shares.</p>
+              <p>{CURATED_SYMBOLS.length} curated xStocks issued by Backed, each backed by shares the issuer holds.</p>
               <div className="os-arch-card__meta">
                 <span>Depository</span>
                 <strong>Backed Finance AG</strong>
@@ -356,10 +340,10 @@ export default function HomePage() {
                 <span className="os-arch-card__badge os-badge-purple">Sub-Second</span>
               </div>
               <h3>Dual-Oracle Consensus</h3>
-              <p>Pyth benchmarks cross-verified with on-chain DLMM pool depth.</p>
+              <p>Issuer reference compared with the Jupiter on-chain price.</p>
               <div className="os-arch-card__meta">
                 <span>Oracles</span>
-                <strong>Pyth + Meteora</strong>
+                <strong>Issuer + Jupiter</strong>
               </div>
             </article>
 
@@ -390,7 +374,7 @@ export default function HomePage() {
                 <span className="os-arch-card__badge os-badge-green">24/7 DEX</span>
               </div>
               <h3>Continuous Settlement</h3>
-              <p>Instant on-chain execution with zero market closing halts.</p>
+              <p>On-chain trading any hour; the issuer can still halt a stock.</p>
               <div className="os-arch-card__meta">
                 <span>Settlement</span>
                 <strong>Solana Mainnet</strong>
@@ -426,20 +410,20 @@ export default function HomePage() {
               style={{ "--i": 0 } as React.CSSProperties}
             >
               <div className="os-bento-tags">
-                <span>Pyth Oracle</span>
-                <span>Meteora DLMM</span>
-                <span>Issuer Books</span>
+                <span>Issuer reference</span>
+                <span>Jupiter</span>
+                <span>DexScreener</span>
               </div>
               <h3>Multi-Source Analytics</h3>
               <p>Compare primary reference prices with on-chain pool depth and spread divergence.</p>
               <div className="os-widget-preview">
                 <div className="os-widget-row">
-                  <span>Pyth Benchmark</span>
-                  <strong>$212.33</strong>
+                  <span>NVDAx issuer reference</span>
+                  <strong>{usd(quotes.NVDAx?.issuerPrice ?? null)}</strong>
                 </div>
                 <div className="os-widget-row">
-                  <span>Meteora DLMM Pool</span>
-                  <strong>$212.37 <small className="os-spread-pill">+0.02% spread</small></strong>
+                  <span>NVDAx on Solana DEX</span>
+                  <strong>{usd(quotes.NVDAx?.dexPrice ?? null)} <small className="os-spread-pill">{spreadLabel(quotes.NVDAx?.issuerPrice ?? null, quotes.NVDAx?.dexPrice ?? null)}</small></strong>
                 </div>
               </div>
               <span className="os-bento-link">
@@ -503,11 +487,11 @@ export default function HomePage() {
                 ↶
               </span>
               <h3>Receipts & Audit Trail</h3>
-              <p>Cryptographic receipts retaining display shares and verifiable settlement amounts.</p>
+              <p>Receipts keep the shares you saw and the raw on-chain amount, linked to the transaction signature.</p>
               <div className="os-widget-preview">
                 <div className="os-receipt-chip">
-                  <span>Receipt #4A81 · Solana Mainnet</span>
-                  <strong>Verified</strong>
+                  <span>Example receipt · Solana mainnet</span>
+                  <strong>Tx signature linked</strong>
                 </div>
               </div>
               <span className="os-bento-link">
@@ -548,17 +532,17 @@ export default function HomePage() {
                 </span>
               </span>
             </h2>
-            <p>Transparent execution with non-custodial wallet signatures.</p>
+            <p>Every order is signed in your own wallet.</p>
           </div>
 
           <ol className="os-path-steps" data-reveal>
             <li>
               <strong>01. Explore</strong>
-              <p>Browse 25+ verified tokenized equities and live DLMM depth with zero wallet needed.</p>
+              <p>Browse every curated xStock and its live liquidity without connecting a wallet.</p>
             </li>
             <li>
               <strong>02. Verify</strong>
-              <p>Cross-check Pyth benchmarks, pool spreads, and verified reserve coverage.</p>
+              <p>Cross-check issuer prices, pool spreads, and the issuer&apos;s reserve coverage.</p>
             </li>
             <li>
               <strong>03. Execute</strong>

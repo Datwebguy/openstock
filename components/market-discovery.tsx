@@ -193,10 +193,14 @@ export function MarketDiscovery({
     { key: "watchlist", label: `Watchlist (${watchlist.length})` },
   ];
 
-  // Derive Ryntra-style Market Pulse stats
-  const mostTraded = assets.find((a) => a.symbol === "NVDAx") ?? assets[0];
-  const topGainer = assets.find((a) => a.symbol === "MSTRx") ?? assets[1];
-  const mostLiquid = assets.find((a) => a.symbol === "SPYx") ?? assets[2];
+  // Market pulse — ranked from live DexScreener/Jupiter stats, never a fixed ticker
+  const rankBy = (score: (symbol: string) => number | null | undefined) =>
+    [...assets]
+      .filter((a) => typeof score(a.symbol) === "number")
+      .sort((a, b) => (score(b.symbol) as number) - (score(a.symbol) as number))[0] ?? null;
+  const mostTraded = rankBy((symbol) => assetStats[symbol]?.rawVolume24h);
+  const topGainer = rankBy((symbol) => assetStats[symbol]?.change24h);
+  const mostLiquid = rankBy((symbol) => assetStats[symbol]?.rawLiquidity);
 
   return (
     <section className="discovery" aria-label="Market discovery">
@@ -207,14 +211,14 @@ export function MarketDiscovery({
         {mostTraded && (
           <Link href={`/app/asset/${mostTraded.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Featured</span>
-              <span className="market-pulse-tile__tag">24/7 DEX</span>
+              <span className="market-pulse-tile__kicker">Most traded 24h</span>
+              <span className="market-pulse-tile__tag">{assetStats[mostTraded.symbol]?.volume24h ?? "—"}</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={mostTraded.symbol} logo={mostTraded.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{mostTraded.symbol}</strong>
-                <span>Live issuer + on-chain quotes</span>
+                <span>Solana DEX volume</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(mostTraded.price)}</strong>
             </div>
@@ -224,14 +228,14 @@ export function MarketDiscovery({
         {topGainer && (
           <Link href={`/app/asset/${topGainer.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Also watch</span>
-              <span className="market-pulse-tile__tag">xStock</span>
+              <span className="market-pulse-tile__kicker">Top gainer 24h</span>
+              <span className="market-pulse-tile__tag">{assetStats[topGainer.symbol]?.change24h != null ? `${(assetStats[topGainer.symbol]!.change24h as number) >= 0 ? "+" : ""}${assetStats[topGainer.symbol]!.change24h}%` : "—"}</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={topGainer.symbol} logo={topGainer.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{topGainer.symbol}</strong>
-                <span>Open asset desk for evidence</span>
+                <span>On-chain price change</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(topGainer.price)}</strong>
             </div>
@@ -241,14 +245,14 @@ export function MarketDiscovery({
         {mostLiquid && (
           <Link href={`/app/asset/${mostLiquid.symbol}`} className="market-pulse-tile">
             <div className="market-pulse-tile__top">
-              <span className="market-pulse-tile__kicker">Index name</span>
-              <span className="market-pulse-tile__tag">Meteora DLMM</span>
+              <span className="market-pulse-tile__kicker">Most liquid</span>
+              <span className="market-pulse-tile__tag">{assetStats[mostLiquid.symbol]?.liquidity ?? "—"}</span>
             </div>
             <div className="market-pulse-tile__main">
               <StockLogo symbol={mostLiquid.symbol} logo={mostLiquid.logo} size={28} />
               <div className="market-pulse-tile__meta">
                 <strong>{mostLiquid.symbol}</strong>
-                <span>Pool TVL when Meteora reports it</span>
+                <span>Deepest Solana liquidity</span>
               </div>
               <strong className="market-pulse-tile__price">{displayPrice(mostLiquid.price)}</strong>
             </div>
@@ -386,7 +390,7 @@ export function MarketDiscovery({
               setFilter("all");
             }}
           >
-            Browse all 25 stocks
+            Browse all {assets.length} stocks
           </button>
         </div>
       )}
@@ -451,7 +455,7 @@ export function MarketDiscovery({
                       )}
                     </td>
                     <td className="trends-td--backing">
-                      <span className="trends-backing-pill">Issuer PoR</span>
+                      <span className="trends-backing-pill" title="Backed publishes proof-of-reserves for xStocks; see each stock's desk for the current figure">Issuer PoR</span>
                     </td>
                     <td className="trends-td--actions">
                       <div className="trends-action-group">

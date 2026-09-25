@@ -16,6 +16,25 @@ export type AssetMarketStats = {
 };
 
 const JUPITER_PRICE_URL = process.env.JUPITER_PRICE_URL ?? "https://api.jup.ag/price/v3";
+const JUPITER_PUBLIC_PRICE_URL = "https://lite-api.jup.ag/price/v3";
+
+/** Jupiter Price v3. If the keyed endpoint rejects the request, retry the public one instead of reporting price 0. */
+async function fetchJupiterPrices(ids: string[], timeoutMs: number): Promise<Record<string, any>> {
+  const attempt = async (url: string, withKey: boolean) => {
+    const res = await fetch(`${url}?ids=${ids.join(",")}`, {
+      headers: withKey && process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`Jupiter price ${res.status}`);
+    return (await res.json()) as Record<string, any>;
+  };
+  try {
+    return await attempt(JUPITER_PRICE_URL, true);
+  } catch (err) {
+    console.warn("Jupiter price (configured) failed, trying public endpoint:", err instanceof Error ? err.message : err);
+    return attempt(JUPITER_PUBLIC_PRICE_URL, false).catch(() => ({}));
+  }
+}
 const DEXSCREENER_URL = "https://api.dexscreener.com/tokens/v1/solana";
 
 const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
@@ -71,18 +90,14 @@ export async function getAllAssetMarketStats(): Promise<Record<string, AssetMark
     }
 
     const [jupRes, ...dexResponses] = await Promise.allSettled([
-      fetch(`${JUPITER_PRICE_URL}?ids=${mints.join(",")}`, {
-        headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
-        signal: AbortSignal.timeout(8000),
-      }),
+      fetchJupiterPrices(mints, 8000),
       ...dexChunkPromises,
     ]);
 
-    const jupData: Record<string, any> =
-      jupRes.status === "fulfilled" && jupRes.value.ok ? await jupRes.value.json() : {};
+    const jupData: Record<string, any> = jupRes.status === "fulfilled" ? jupRes.value : {};
 
     const dexPairs: any[] = [];
-    for (const res of dexResponses) {
+    for (const res of dexResponses as PromiseSettledResult<Response>[]) {
       if (res.status === "fulfilled" && res.value.ok) {
         try {
           const data = await res.value.json();
@@ -194,17 +209,14 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
   if (mint) {
     try {
       const [jupRes, dexRes] = await Promise.allSettled([
-        fetch(`${JUPITER_PRICE_URL}?ids=${mint}`, {
-          headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
-          signal: AbortSignal.timeout(5000),
-        }),
+        fetchJupiterPrices([mint], 5000),
         fetch(`${DEXSCREENER_URL}/${mint}`, {
           headers: { Accept: "application/json" },
           signal: AbortSignal.timeout(5000),
         }),
       ]);
 
-      const jupData = jupRes.status === "fulfilled" && jupRes.value.ok ? await jupRes.value.json() : {};
+      const jupData: Record<string, any> = jupRes.status === "fulfilled" ? jupRes.value : {};
       const tokenData = jupData[mint] || jupData.data?.[mint];
       const dexPairs = dexRes.status === "fulfilled" && dexRes.value.ok ? await dexRes.value.json() : [];
       const dexPair = Array.isArray(dexPairs) && dexPairs.length > 0 ? dexPairs[0] : null;

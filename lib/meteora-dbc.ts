@@ -322,9 +322,10 @@ export async function queryOnChainDbcProgress(poolAddress: string): Promise<numb
   try {
     const connection = new Connection(DEFAULT_RPC, "confirmed");
     const client = DynamicBondingCurveClient.create(connection, "confirmed");
+    // SDK returns quoteReserve / migrationQuoteThreshold in [0, 1]; expose it as a percentage.
     const progress = await client.state.getPoolQuoteTokenCurveProgress(new PublicKey(poolAddress));
-    if (typeof progress === "number") {
-      return progress;
+    if (typeof progress === "number" && Number.isFinite(progress)) {
+      return Math.round(progress * 10_000) / 100;
     }
     return null;
   } catch {

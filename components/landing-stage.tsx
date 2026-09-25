@@ -6,59 +6,11 @@ import { StockLogo } from "@/components/stock-logo";
 
 type Asset = { symbol: string; name: string; logo?: string };
 
-type StockMeta = {
-  price: string;
-  change: string;
-  isPositive: boolean;
-  poolPrice: string;
-  spread: string;
-  pool: string;
-  volume: string;
-  oracle: string;
-};
+import type { LandingQuote } from "@/lib/landing-quotes";
 
-const STOCK_DATA: Record<string, StockMeta> = {
-  AAPLx: {
-    price: "$238.45",
-    change: "+1.84%",
-    isPositive: true,
-    poolPrice: "$238.49",
-    spread: "0.01% spread",
-    pool: "$4.2M Meteora DLMM",
-    volume: "$1.8M 24h",
-    oracle: "Pyth Verified",
-  },
-  NVDAx: {
-    price: "$118.20",
-    change: "+4.12%",
-    isPositive: true,
-    poolPrice: "$118.22",
-    spread: "0.02% spread",
-    pool: "$8.9M Meteora DLMM",
-    volume: "$5.4M 24h",
-    oracle: "Pyth Verified",
-  },
-  TSLAx: {
-    price: "$242.15",
-    change: "-0.92%",
-    isPositive: false,
-    poolPrice: "$242.10",
-    spread: "0.02% spread",
-    pool: "$3.1M Meteora DLMM",
-    volume: "$1.2M 24h",
-    oracle: "Pyth Verified",
-  },
-  MSFTx: {
-    price: "$442.80",
-    change: "+0.65%",
-    isPositive: true,
-    poolPrice: "$442.85",
-    spread: "0.01% spread",
-    pool: "$2.8M Meteora DLMM",
-    volume: "$980K 24h",
-    oracle: "Pyth Verified",
-  },
-};
+function usd(value: number | null): string {
+  return value === null ? "—" : `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export function LandingReveals() {
   const [scrollPercent, setScrollPercent] = useState(0);
@@ -130,7 +82,7 @@ export function LandingReveals() {
   );
 }
 
-export function LandingStage({ assets }: { assets: Asset[] }) {
+export function LandingStage({ assets, quotes }: { assets: Asset[]; quotes: Record<string, LandingQuote> }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const featured = ["AAPLx", "NVDAx", "TSLAx", "MSFTx"].flatMap((symbol) =>
     assets.filter((asset) => asset.symbol === symbol)
@@ -138,7 +90,12 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
 
   const [selected, setSelected] = useState<string>("NVDAx");
   const asset = featured.find((item) => item.symbol === selected) ?? featured[0] ?? { symbol: "NVDAx", name: "NVIDIA" };
-  const meta = STOCK_DATA[asset.symbol] ?? STOCK_DATA.NVDAx;
+  const quote = quotes[asset.symbol];
+  const change = quote?.change24h ?? null;
+  const spread =
+    quote?.issuerPrice && quote?.dexPrice
+      ? `${(((quote.dexPrice - quote.issuerPrice) / quote.issuerPrice) * 100).toFixed(2)}% spread`
+      : "spread unavailable";
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -200,7 +157,7 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
             <span className="os-type-dot" />
             Tokenized xStock · Solana
           </span>
-          <span className="os-stage-oracle">{meta.oracle}</span>
+          <span className="os-stage-oracle">Live quote</span>
         </div>
 
         <div className="os-stage-main">
@@ -215,9 +172,9 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
           </div>
 
           <div className="os-stage-quote">
-            <span className="os-stage-price">{meta.price}</span>
-            <span className={`os-stage-change ${meta.isPositive ? "is-pos" : "is-neg"}`}>
-              {meta.change}
+            <span className="os-stage-price">{usd(quote?.dexPrice ?? quote?.issuerPrice ?? null)}</span>
+            <span className={`os-stage-change ${change !== null && change < 0 ? "is-neg" : "is-pos"}`}>
+              {change === null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`}
             </span>
           </div>
         </div>
@@ -225,32 +182,32 @@ export function LandingStage({ assets }: { assets: Asset[] }) {
         {/* Live Market Spread Widget (High-signal real-time execution) */}
         <div className="os-stage-spread-bar">
           <div className="os-spread-item">
-            <span className="os-spread-label">Pyth Oracle</span>
-            <span className="os-spread-val">{meta.price}</span>
+            <span className="os-spread-label">Issuer reference</span>
+            <span className="os-spread-val">{usd(quote?.issuerPrice ?? null)}</span>
           </div>
           <div className="os-spread-arrow" aria-hidden="true">↔</div>
           <div className="os-spread-item">
-            <span className="os-spread-label">Meteora Pool</span>
-            <span className="os-spread-val">{meta.poolPrice}</span>
+            <span className="os-spread-label">Solana DEX</span>
+            <span className="os-spread-val">{usd(quote?.dexPrice ?? null)}</span>
           </div>
           <div className="os-spread-badge">
             <span className="os-pulse-dot" />
-            {meta.spread}
+            {spread}
           </div>
         </div>
 
         <div className="os-stage-metrics">
           <div>
             <small>Liquidity</small>
-            <strong>{meta.pool}</strong>
+            <strong>{quote?.liquidity ?? "—"}</strong>
           </div>
           <div>
             <small>Volume</small>
-            <strong>{meta.volume}</strong>
+            <strong>{quote?.volume24h ?? "—"} 24h</strong>
           </div>
           <div>
             <small>Execution</small>
-            <strong className="os-live-route">Jupiter Route Ready</strong>
+            <strong className="os-live-route">Jupiter</strong>
           </div>
         </div>
 

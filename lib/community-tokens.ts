@@ -1,4 +1,5 @@
 import { readJson, writeJson } from "@/lib/json-store";
+import { queryOnChainDbcProgress } from "@/lib/meteora-dbc";
 import curatedPairs from "./solana-curated-25.json";
 
 export type CommunityToken = {
@@ -41,7 +42,7 @@ export type CommunityToken = {
   marketStatus?: "live" | "stale" | "unlisted";
 };
 
-export { formatTokenPrice, formatTokenVolume } from "./community-token-utils";
+export { formatTokenPrice, formatTokenVolume, isLookalikeTicker } from "./community-token-utils";
 
 type CommunityTokenStore = { version: 2; tokens: CommunityToken[] };
 
@@ -49,18 +50,6 @@ type CuratedPair = { symbol: string; name: string; mint: string };
 const STOCKS = new Map<string, CuratedPair>(
   (Object.values(curatedPairs) as CuratedPair[]).filter((entry) => entry?.mint).map((entry) => [entry.mint, entry])
 );
-
-/** Tickers that impersonate majors/stablecoins or the stocks themselves — flagged, never hidden. */
-const LOOKALIKE_TICKERS = new Set(["USDC", "USDT", "SOL", "WSOL", "BTC", "ETH", "JUP", "BONK"]);
-export function isLookalikeTicker(symbol: string): boolean {
-  const upper = symbol.toUpperCase().replace(/^\$/, "");
-  if (LOOKALIKE_TICKERS.has(upper)) return true;
-  for (const stock of STOCKS.values()) {
-    const base = stock.symbol.replace(/x$/i, "").toUpperCase();
-    if (upper === base || upper === stock.symbol.toUpperCase()) return true;
-  }
-  return false;
-}
 
 async function readStore(): Promise<CommunityTokenStore> {
   const data = await readJson<CommunityTokenStore>("community-tokens");
@@ -223,7 +212,7 @@ async function enrichLaunchedTokens(tokens: CommunityToken[]): Promise<Community
       .filter((entry) => entry.side && entry.side.stock.symbol === token.pairedStockSymbol)
       .sort((a, b) => (b.pair.volume?.h24 ?? 0) - (a.pair.volume?.h24 ?? 0));
     const best = matches[0];
-    if (!best?.side) return { ...token, volume24hUsd: 0, marketStatus: "unlisted" as const };
+    if (!best?.side) return { ...token, volume24hUsd: 0, change24h: 0, marketStatus: "unlisted" as const };
     const { priceUsd, priceInStock } = tokenPrices(best.pair, best.side.tokenIsBase);
     const graduated = !isCurvePool(best.pair);
     return {
@@ -245,12 +234,25 @@ async function enrichLaunchedTokens(tokens: CommunityToken[]): Promise<Community
 let listCache: { at: number; tokens: CommunityToken[] } | null = null;
 const LIST_TTL_MS = 20_000;
 
+/** On-chain curve progress for OpenStock Meteora DBC launches that have not migrated yet. */
+async function measureDbcProgress(tokens: CommunityToken[]): Promise<CommunityToken[]> {
+  return Promise.all(
+    tokens.map(async (token) => {
+      if (token.venue !== "meteora" || token.status === "graduated" || !token.poolAddress) return token;
+      const progress = await queryOnChainDbcProgress(token.poolAddress);
+      if (progress === null) return token;
+      const pct = Math.max(0, Math.min(100, progress));
+      return { ...token, bondingCurveProgress: pct, progressKnown: true, status: pct >= 70 ? ("graduating" as const) : token.status };
+    })
+  );
+}
+
 export async function getCommunityTokens(): Promise<CommunityToken[]> {
   if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.tokens;
   const store = await readStoreSafe();
   const launched = store.tokens.map((token) => ({ ...token, source: "openstock" as const }));
   const [enrichedLaunched, discovered] = await Promise.all([
-    enrichLaunchedTokens(launched).catch(() => launched),
+    enrichLaunchedTokens(launched).then(measureDbcProgress).catch(() => launched),
     discoverStockPairedPools().catch(() => [] as CommunityToken[]),
   ]);
   const launchedMints = new Set(enrichedLaunched.map((token) => token.mint));

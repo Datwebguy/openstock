@@ -12,29 +12,21 @@ async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; stats: R
     const [statsResult, assetsResult] = await Promise.allSettled([
       getAllAssetMarketStats(),
       Promise.all(
-        CURATED_SYMBOLS.map(async (symbol) => {
-          const meta = curated25[symbol] ?? {
-            symbol,
-            name: symbol.replace(/x$/, " xStock"),
-            mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-            decimals: 6,
-            logo: `https://xstocks-metadata.backed.fi/logos/tokens/${symbol}.png`,
-          };
+        CURATED_SYMBOLS.filter((symbol) => curated25[symbol]).map(async (symbol) => {
+          const meta = curated25[symbol];
 
           const [priceResult, multResult] = await Promise.allSettled([
             getPrice(symbol),
             getMultiplier(symbol),
           ]);
 
+          // Missing data stays null — the desk shows "Unavailable" rather than a made-up price or multiplier.
           const price =
             priceResult.status === "fulfilled" && typeof priceResult.value?.quote === "number" && priceResult.value.quote > 0
               ? priceResult.value.quote
-              : 100.0;
+              : null;
 
-          const multiplier =
-            multResult.status === "fulfilled" && multResult.value
-              ? multResult.value
-              : { currentMultiplier: 1.0, newMultiplier: 0, activationDateTime: 0, reason: null };
+          const multiplier = multResult.status === "fulfilled" && multResult.value ? multResult.value : null;
 
           return {
             id: symbol,
@@ -50,7 +42,6 @@ async function getDiscoverAssets(): Promise<{ assets: OpenStockAsset[]; stats: R
                 solanaTokenProgram: "Token2022Program" as const,
               },
             ],
-            trading: { openNow: true, currentPeriod: "market" as const },
             price,
             multiplier,
             solanaDeployment: {
@@ -92,7 +83,7 @@ export default async function AppPage() {
           <div className="workspace-heading__body">
             <div className="workspace-kicker">
               <span className="live-dot" aria-hidden="true" />
-              <span>Solana Mainnet · 25 Tokenized Equities</span>
+              <span>Solana Mainnet · {CURATED_SYMBOLS.length} Tokenized Equities</span>
             </div>
             <h1>Tokenized Equities Desk</h1>
             <p>24/7 tokenized stocks on Solana.</p>
