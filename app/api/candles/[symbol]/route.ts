@@ -50,9 +50,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ symb
       .map(([t, o, h, l, c, v]) => ({ timestamp: t * 1000, open: o, high: h, low: l, close: c, volume: v }))
       .filter((c) => [c.open, c.high, c.low, c.close].every((n) => Number.isFinite(n) && n > 0))
       .sort((a, b) => a.timestamp - b.timestamp);
-    const body = { symbol, timeframe: tf, candles, source: { provider: "GeckoTerminal", pool: pool.name, poolAddress: pool.address } };
-    if (candles.length > 0) lastGood.set(`${symbol}:${tf}`, { at: Date.now(), body });
-    return NextResponse.json(body, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=300" } });
+    const payload = { symbol, timeframe: tf, candles, source: { provider: "GeckoTerminal", pool: pool.name, poolAddress: pool.address } };
+    if (candles.length > 0) lastGood.set(`${symbol}:${tf}`, { at: Date.now(), body: payload });
+    return NextResponse.json(payload, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=300" } });
   } catch (error) {
     console.warn("candles failed", symbol, error instanceof Error ? error.message : error);
     const cached = lastGood.get(`${symbol}:${tf}`);
