@@ -1,5 +1,4 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { readJson, writeJson } from "@/lib/json-store";
 
 export type AlertWatch = { eventId: string; symbol: string; enabled: boolean; updatedAt: string };
 export type AlertHistoryItem = AlertWatch & { action: "enabled" | "disabled" };
@@ -7,22 +6,16 @@ export type MarketWatch = { id: string; symbol: string; kind: "price" | "liquidi
 export type MarketAlert = { id: string; watchId: string; symbol: string; kind: "price" | "liquidity"; direction: "above" | "below"; threshold: number; currentValue: number; createdAt: string };
 type AlertStore = { version: 3; watches: Record<string, AlertWatch[]>; marketWatches: Record<string, MarketWatch[]>; marketAlerts: Record<string, MarketAlert[]>; history: Record<string, AlertHistoryItem[]> };
 
-const STORE_PATH = process.env.OPENSTOCK_ALERT_STORE_PATH ?? path.join(process.cwd(), ".data", "alerts.json");
 const EMPTY_STORE: AlertStore = { version: 3, watches: {}, marketWatches: {}, marketAlerts: {}, history: {} };
 
 async function readStore(): Promise<AlertStore> {
-  try {
-    const raw = await fs.readFile(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<AlertStore>;
-    return { version: 3, watches: parsed.watches ?? {}, marketWatches: parsed.marketWatches ?? {}, marketAlerts: parsed.marketAlerts ?? {}, history: parsed.history ?? {} };
-  } catch { return EMPTY_STORE; }
+  const parsed = await readJson<AlertStore>("alerts");
+  if (!parsed) return { ...EMPTY_STORE, watches: {}, marketWatches: {}, marketAlerts: {}, history: {} };
+  return { version: 3, watches: parsed.watches ?? {}, marketWatches: parsed.marketWatches ?? {}, marketAlerts: parsed.marketAlerts ?? {}, history: parsed.history ?? {} };
 }
 
 async function writeStore(store: AlertStore) {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-  const temporaryPath = STORE_PATH + "." + process.pid + ".tmp";
-  await fs.writeFile(temporaryPath, JSON.stringify(store, null, 2), "utf8");
-  await fs.rename(temporaryPath, STORE_PATH);
+  await writeJson("alerts", store);
 }
 
 export async function getAlertState(sessionId: string) {

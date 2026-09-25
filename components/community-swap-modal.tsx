@@ -1,36 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { VersionedTransaction } from "@solana/web3.js";
+import { executeCommunitySwap, NoRouteError } from "@/lib/community-swap";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import type { CommunityToken } from "@/lib/community-tokens";
 import { StockLogo } from "@/components/stock-logo";
+import { curveStatusLabel } from "@/lib/community-token-utils";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 
 type CommunitySwapModalProps = {
   token: CommunityToken;
   onClose: () => void;
-  onTradeSuccess?: (updatedVolume: number) => void;
+  /** Called after a confirmed swap so the caller can refetch live data. */
+  onTradeSuccess?: () => void;
 };
 
 function quoteMintFor(token: CommunityToken) {
   return VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === token.pairedStockSymbol)?.mint ?? null;
 }
 
-function decode(value: string) {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-}
-
-function encode(value: Uint8Array) {
-  let binary = "";
-  for (let i = 0; i < value.length; i += 0x8000) {
-    binary += String.fromCharCode(...value.subarray(i, i + 0x8000));
-  }
-  return btoa(binary);
-}
-
 export function CommunitySwapModal({ token, onClose, onTradeSuccess }: CommunitySwapModalProps) {
-  const { address, connect, signTransaction } = useWallet();
+  const { address, canSign, connect, signTransaction } = useWallet();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState<string>("1");
   const [slippage, setSlippage] = useState<number>(1.0);
@@ -42,10 +32,9 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
   const parsedAmount = parseFloat(amount) || 0;
   const quoteMint = quoteMintFor(token);
   const quoteSymbol = token.pairedStockSymbol;
-  const quoteDecimals = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === quoteSymbol)?.decimals ?? 6;
 
   async function handleExecuteSwap() {
-    if (!address) {
+    if (!address || !canSign) {
       try {
         await connect();
       } catch (err) {
@@ -65,93 +54,34 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
     setBondingNotice(null);
 
     try {
-      const slippageBps = Math.round(slippage * 100);
-      const inputMint = side === "buy" ? quoteMint : token.mint;
-      const outputMint = side === "buy" ? token.mint : quoteMint;
-      const inputDecimals = side === "buy" ? quoteDecimals : 6;
-      const rawAmount = Math.max(1, Math.round(parsedAmount * (10 ** inputDecimals))).toString();
-
-      // Query live Jupiter Lite routing
-      const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(rawAmount)}&slippageBps=${slippageBps}`;
-      const quoteRes = await fetch(quoteUrl, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(10000),
+      const result = await executeCommunitySwap({
+        inputMint: side === "buy" ? quoteMint : token.mint,
+        outputMint: side === "buy" ? token.mint : quoteMint,
+        uiAmount: parsedAmount,
+        slippageBps: Math.round(slippage * 100),
+        wallet: address,
+        sign: signTransaction,
       });
-
-      if (!quoteRes.ok) {
-        // If AMM routing is not yet available, token is likely trading on internal bonding curve
-        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/${quoteSymbol}-${token.mint}`;
-        const poolLabel = token.meteoraUrl ? "Meteora DLMM Pool" : "Pump.fun Bonding Curve";
-        setBondingNotice({
-          message: `Direct AMM route is pending curve graduation (${token.bondingCurveProgress.toFixed(1)}%). Trade directly on the pool:`,
-          url: poolUrl,
-          label: poolLabel,
-        });
-        setIsSwapping(false);
-        return;
-      }
-
-      const quoteResponse = await quoteRes.json();
-      if (!quoteResponse || quoteResponse.error) {
-        throw new Error(quoteResponse?.error || "Unable to acquire an on-chain DEX quote.");
-      }
-
-      // Build genuine Versioned Transaction
-      const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          quoteResponse,
-          userPublicKey: address,
-          wrapAndUnwrapSol: false,
-        }),
-        signal: AbortSignal.timeout(12000),
-      });
-
-      if (!swapRes.ok) {
-        throw new Error(`Swap builder returned HTTP ${swapRes.status}`);
-      }
-
-      const swapData = (await swapRes.json()) as { swapTransaction?: string; lastValidBlockHeight?: number };
-      if (!swapData.swapTransaction) {
-        throw new Error("Solana swap transaction could not be constructed.");
-      }
-
-      // Sign transaction using connected Solana wallet (Phantom, Solflare, etc.)
-      const deserialized = VersionedTransaction.deserialize(decode(swapData.swapTransaction));
-      const signed = await signTransaction(deserialized);
-
-      // Broadcast authentic transaction to Solana Mainnet RPC
-      const execRes = await fetch("/api/trade/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signedTransaction: encode(signed.serialize()),
-          requestId: `comm_${Date.now()}`,
-          lastValidBlockHeight: swapData.lastValidBlockHeight,
-        }),
-      });
-
-      const execution = await execRes.json();
-      if (!execRes.ok || !execution.signature) {
-        throw new Error(execution.error || "The swap was not confirmed by Solana RPC.");
-      }
-
-      const formattedReceived =
-        side === "buy"
-          ? `${token.symbol} against ${quoteSymbol}`
-          : `${quoteSymbol} against ${token.symbol}`;
-
+      const outSymbol = side === "buy" ? token.symbol : quoteSymbol;
+      const inSymbol = side === "buy" ? quoteSymbol : token.symbol;
       setTxSuccess({
-        signature: execution.signature,
-        received: formattedReceived,
+        signature: result.signature,
+        received: `${result.inputUi} ${inSymbol} → ≈ ${result.expectedOutUi.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${outSymbol}`,
       });
-
-      onTradeSuccess?.(token.volume24hUsd + parsedAmount * 150);
+      onTradeSuccess?.();
     } catch (err: unknown) {
-      console.error("Community swap error:", err);
-      const msg = err instanceof Error ? err.message : "Swap failed to execute.";
-      setSwapError(msg);
+      if (err instanceof NoRouteError) {
+        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/${quoteMint}-${token.mint}`;
+        setBondingNotice({
+          message: token.dexId === "pumpfun" || !token.progressKnown
+            ? "Jupiter has no route yet — this token still trades on its bonding curve. Trade it on the pool:"
+            : "Jupiter has no route for this pair right now. Trade it on the pool:",
+          url: poolUrl,
+          label: token.dexId === "pumpfun" ? "Pump.fun" : "Open pool",
+        });
+      } else {
+        setSwapError(err instanceof Error ? err.message : "Swap failed to execute.");
+      }
     } finally {
       setIsSwapping(false);
     }
@@ -352,8 +282,8 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             {/* Slippage & Routing Info */}
             <div className="community-swap-meta-strip">
               <div className="community-swap-meta-row">
-                <span>Bonding Curve Progress</span>
-                <strong>{token.bondingCurveProgress.toFixed(1)}% to DLMM Pool</strong>
+                <span>Where it trades</span>
+                <strong>{curveStatusLabel(token)}</strong>
               </div>
               <div className="community-swap-meta-row">
                 <span>Slippage Tolerance</span>
@@ -423,7 +353,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
               className="community-swap-ext-link"
               style={{ color: "var(--solana-green, #14f195)" }}
             >
-              Meteora DLMM Pool ↗
+              Meteora pool ↗
             </a>
           ) : null}
           {token.pumpUrl ? (

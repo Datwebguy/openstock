@@ -16,6 +16,8 @@ type ProStockHeaderProps = {
   liquidityUsd?: string;
   volume24h?: string;
   oraclePrice?: string;
+  /** "PYTH ORACLE" or "JUPITER PRICE" — whichever source actually produced oraclePrice. */
+  oracleLabel?: string;
   reserveCoverage?: string;
   mintAddress?: string;
   decimals?: number | null;
@@ -33,8 +35,9 @@ export function ProStockHeader({
   liquidityUsd,
   volume24h,
   oraclePrice,
+  oracleLabel = "ORACLE",
   reserveCoverage = "Reserve unavailable",
-  mintAddress = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+  mintAddress = "",
   decimals = 6,
   venueStatus,
   sessionStatus,
@@ -43,8 +46,8 @@ export function ProStockHeader({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentPriceStr, setCurrentPriceStr] = useState(priceFormatted);
-  const [currentLiquidity, setCurrentLiquidity] = useState(liquidityUsd || "Unavailable");
-  const [currentVolume, setCurrentVolume] = useState(volume24h || "Unavailable");
+  const currentLiquidity = liquidityUsd || "Unavailable";
+  const currentVolume = volume24h || "Unavailable";
   const [isLivePulse, setIsLivePulse] = useState(false);
 
   // 10-Second Live Polling from Solana Meteora Pool & Oracle Stream
@@ -61,12 +64,7 @@ export function ProStockHeader({
           setIsLivePulse(true);
           setTimeout(() => setIsLivePulse(false), 1200);
         }
-        if (typeof data.liquidity === "number" && data.liquidity > 0) {
-          setCurrentLiquidity(`$${data.liquidity.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
-        }
-        if (typeof data.volume24h === "number" && data.volume24h > 0) {
-          setCurrentVolume(`$${data.volume24h.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
-        }
+        // Liquidity/volume stay the all-pools figures from the server; the stream only carries the top Meteora pool.
       } catch {
         // quiet catch
       }
@@ -169,16 +167,16 @@ export function ProStockHeader({
       {/* Ryntra-Style Horizontal Metric Strip */}
       <div className="pro-asset-header__metrics-strip" role="group" aria-label="Key asset metrics">
         <div className="pro-asset-header__metric">
-          <span className="pro-asset-header__metric-label">LIQUIDITY</span>
+          <span className="pro-asset-header__metric-label">LIQUIDITY (ALL POOLS)</span>
           <strong className="pro-asset-header__metric-val">{currentLiquidity}</strong>
         </div>
         <div className="pro-asset-header__metric">
-          <span className="pro-asset-header__metric-label">VOLUME 24H</span>
+          <span className="pro-asset-header__metric-label">VOLUME 24H (ALL POOLS)</span>
           <strong className="pro-asset-header__metric-val">{currentVolume}</strong>
         </div>
         <div className="pro-asset-header__metric">
-          <span className="pro-asset-header__metric-label">ORACLE BENCHMARK</span>
-          <strong className="pro-asset-header__metric-val">{oraclePrice || currentPriceStr}</strong>
+          <span className="pro-asset-header__metric-label">{oracleLabel}</span>
+          <strong className="pro-asset-header__metric-val">{oraclePrice || "Unavailable"}</strong>
         </div>
         <div className="pro-asset-header__metric">
           <span className="pro-asset-header__metric-label">RESERVES</span>
@@ -210,6 +208,8 @@ export function ProStockHeader({
               <div className="pro-asset-header__detail-item">
                 <span>Asset Identifier</span>
                 <div className="pro-asset-header__mint-copy">
+                  {!mintAddress ? <code>No Solana deployment reported</code> : null}
+                  {mintAddress ? <>
                   <code>{mintAddress.slice(0, 8)}...{mintAddress.slice(-8)}</code>
                   <button type="button" onClick={copyMint} className="pro-asset-header__copy-btn">
                     {copied ? "Copied!" : "Copy"}
@@ -222,6 +222,7 @@ export function ProStockHeader({
                   >
                     Solscan ↗
                   </a>
+                  </> : null}
                 </div>
               </div>
 

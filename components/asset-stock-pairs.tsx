@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { CommunityToken } from "@/lib/community-tokens";
-import { formatTokenPrice } from "@/lib/community-token-utils";
+import { curveStatusLabel, formatTokenPrice, isOnAmmPool } from "@/lib/community-token-utils";
 import { MigrationModal } from "@/components/migration-modal";
 
 export function AssetStockPairs({ symbol }: { symbol: string }) {
@@ -37,10 +37,8 @@ export function AssetStockPairs({ symbol }: { symbol: string }) {
     };
   }, [symbol]);
 
-  const graduating = tokens.filter(
-    (t) => t.bondingCurveProgress > 0 && t.bondingCurveProgress < 100 && t.status !== "graduated"
-  );
-  const graduated = tokens.filter((t) => t.status === "graduated" || t.bondingCurveProgress >= 100);
+  const graduating = tokens.filter((t) => !isOnAmmPool(t));
+  const graduated = tokens.filter(isOnAmmPool);
 
   return (
     <section className="asset-stock-pairs" id="pairs" aria-label={`Community pairs against ${symbol}`}>
@@ -51,7 +49,7 @@ export function AssetStockPairs({ symbol }: { symbol: string }) {
             TOKEN × {symbol}
           </span>
           <h2>Pairs launched against this stock</h2>
-          <p>DBC progress and graduated pools that dump onto this desk.</p>
+          <p>Tokens quoted in {symbol}: OpenStock launches and existing pools found on DexScreener.</p>
         </div>
         <Link className="button button--gradient" href={`/launch?symbol=${encodeURIComponent(symbol)}&quick=1`}>
           Launch against {symbol}
@@ -69,15 +67,15 @@ export function AssetStockPairs({ symbol }: { symbol: string }) {
         <div className="asset-stock-pairs__grid">
           {graduating.length > 0 ? (
             <div className="asset-stock-pairs__group">
-              <h3>Approaching graduation</h3>
+              <h3>On a bonding curve</h3>
               <ul>
                 {graduating.slice(0, 6).map((t) => (
                   <li key={t.mint}>
                     <button type="button" onClick={() => setMigrationToken(t)}>
                       <strong>{t.symbol}</strong>
-                      <span>{t.bondingCurveProgress.toFixed(1)}% curve</span>
+                      <span>{curveStatusLabel(t)}</span>
                     </button>
-                    <Link href={`/app/community?mint=${encodeURIComponent(t.mint)}`}>Open</Link>
+                    <Link href={`/token/${encodeURIComponent(t.mint)}`}>Open</Link>
                   </li>
                 ))}
               </ul>
@@ -85,15 +83,15 @@ export function AssetStockPairs({ symbol }: { symbol: string }) {
           ) : null}
           {graduated.length > 0 ? (
             <div className="asset-stock-pairs__group">
-              <h3>On desk (graduated)</h3>
+              <h3>On an AMM pool</h3>
               <ul>
                 {graduated.slice(0, 6).map((t) => (
                   <li key={t.mint}>
                     <div>
                       <strong>{t.symbol}</strong>
-                      <span>{formatTokenPrice(t.priceUsd)} · full pool</span>
+                      <span>{formatTokenPrice(t.priceUsd)} · {curveStatusLabel(t)}</span>
                     </div>
-                    <Link href={`/app/community?mint=${encodeURIComponent(t.mint)}`}>Trade</Link>
+                    <Link href={`/token/${encodeURIComponent(t.mint)}`}>Trade</Link>
                   </li>
                 ))}
               </ul>
@@ -104,8 +102,8 @@ export function AssetStockPairs({ symbol }: { symbol: string }) {
               {tokens.slice(0, 8).map((t) => (
                 <li key={t.mint}>
                   <strong>{t.symbol}</strong>
-                  <span>{t.bondingCurveProgress.toFixed(0)}%</span>
-                  <Link href={`/app/community?mint=${encodeURIComponent(t.mint)}`}>Open</Link>
+                  <span>{curveStatusLabel(t)}</span>
+                  <Link href={`/token/${encodeURIComponent(t.mint)}`}>Open</Link>
                 </li>
               ))}
             </ul>

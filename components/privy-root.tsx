@@ -31,7 +31,8 @@ function PrivyBridge() {
 
       const walletAddress = solanaAcc?.address;
       if (walletAddress) {
-        localStorage.setItem("openstock:wallet", walletAddress);
+        // View-only in the wallet session: this embedded wallet is not wired to sign OpenStock transactions.
+        localStorage.setItem("openstock:privy-wallet", walletAddress);
         window.dispatchEvent(new Event("openstock:wallet-change"));
       } else if (user.email?.address) {
         // Email/Google identity only — do not invent a signing wallet address.

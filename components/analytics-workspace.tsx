@@ -1,74 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { StockLogo } from "@/components/stock-logo";
 import { AssetPriceChart } from "@/components/asset-price-chart";
 import { ProStockHeader } from "@/components/pro-stock-header";
-import { getAssetMarketStats } from "@/lib/market-stats";
+import { StockLogo } from "@/components/stock-logo";
 import curated25Data from "@/lib/solana-curated-25.json";
+
+const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
 
 type SymbolOption = { symbol: string; name: string };
 
-const curated25: Record<
-  string,
-  { symbol: string; name: string; mint: string; decimals: number; logo: string }
-> = curated25Data;
+type StatsRow = { price: number; change24h: number | null; volume24h: string; liquidity: string };
 
-// Verified real-time benchmark reference quotes from Backed/xStocks issuer feed
-const VERIFIED_PRICES: Record<string, number> = {
-  NVDAx: 212.33,
-  AAPLx: 331.94,
-  TSLAx: 356.27,
-  MSFTx: 498.28,
-  AMZNx: 248.24,
-  GOOGLx: 344.15,
-  METAx: 668.63,
-  COINx: 171.10,
-  MSTRx: 128.37,
-  INTCx: 97.16,
-  SPYx: 758.24,
-  QQQx: 705.03,
-  AMDx: 504.06,
-  PLTRx: 172.26,
-  NFLXx: 77.94,
-  DISx: 106.15,
-  UBERx: 71.52,
-  HOODx: 109.07,
-  ABNBx: 166.01,
-  PYPLx: 53.84,
-  AVGOx: 339.75,
-  QCOMx: 187.57,
-  ARMx: 241.42,
-  CRCLx: 84.81,
-  GLDx: 392.58,
+type Evidence = {
+  symbol: string;
+  name: string;
+  mint: string | null;
+  decimals: number | null;
+  issuerPrice: number | null;
+  multiplier: number | null;
+  oracle: { source: "pyth" | "jupiter"; price: number; confidence: number | null; freshnessSeconds: number | null; deviationPct: number | null } | null;
+  executablePrice: number | null;
+  priceImpactPct: number | null;
+  pools: Array<{ address: string; name: string; tvl: number | null; priceUsd: number | null; volume24h: number | null; feePct: number | null }>;
+  reserves: { sharesHeld: number | null; circulatingSupply: number | null; coverage: number | null; asOf: string | null };
 };
 
-// Realistic DLMM Liquidity Bins generator for visual depth analysis
-function generateDlmmBins(currentPrice: number) {
-  const bins = [];
-  const binCount = 17;
-  const stepPct = 0.0025; // 25 bps bin step
+function usd(value: number | null | undefined, digits = 2) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? "$" + value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : "—";
+}
 
-  for (let i = -8; i <= 8; i++) {
-    const price = currentPrice * (1 + i * stepPct);
-    const distFromCenter = Math.abs(i);
-    // Gaussian-like concentration around active center bin
-    const depth = Math.max(12000, 480000 * Math.exp(-Math.pow(distFromCenter / 3.2, 2)));
-    const isBid = i < 0;
-    const isAsk = i > 0;
-    const isActive = i === 0;
-    bins.push({
-      binId: 4800 + i,
-      price,
-      depth,
-      isBid,
-      isAsk,
-      isActive,
-    });
-  }
-  return bins;
+function pct(value: number | null | undefined, digits = 2) {
+  return typeof value === "number" && Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%` : "—";
 }
 
 export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
@@ -77,366 +44,278 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
   const initialSymbol = paramSymbol && curated25[paramSymbol] ? paramSymbol : "NVDAx";
 
   const [selected, setSelected] = useState<string>(initialSymbol);
-  const [activeTab, setActiveTab] = useState<"depth" | "oracles" | "audit" | "clawpump">("depth");
+  const [activeTab, setActiveTab] = useState<"pools" | "oracles" | "reserves" | "launch">("pools");
+  const [stats, setStats] = useState<Record<string, StatsRow>>({});
+  const [evidence, setEvidence] = useState<Evidence | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
-  // Keep state synced if URL changes
   useEffect(() => {
-    if (paramSymbol && curated25[paramSymbol] && paramSymbol !== selected) {
-      setSelected(paramSymbol);
-    }
-  }, [paramSymbol]);
+    if (paramSymbol && curated25[paramSymbol] && paramSymbol !== selected) setSelected(paramSymbol);
+  }, [paramSymbol, selected]);
 
   function handleSelectSymbol(sym: string) {
     setSelected(sym);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("symbol", sym);
-      window.history.replaceState(null, "", url.toString());
-    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("symbol", sym);
+    window.history.replaceState(null, "", url.toString());
   }
 
-  const meta = curated25[selected] ?? {
-    symbol: selected,
-    name: selected.replace(/x$/, " xStock"),
-    mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-    decimals: 6,
-    logo: `https://xstocks-metadata.backed.fi/logos/tokens/${selected}.png`,
-  };
-
-  const [streamData, setStreamData] = useState<{
-    price: number | null;
-    poolPrice: number | null;
-    pythPrice: number | null;
-    liquidity: number | null;
-    volume24h: number | null;
-  } | null>(null);
-
-  const [assetStats, setAssetStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
+  // Ribbon prices: Jupiter/DexScreener stats for every curated stock (refreshed every 30s).
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/market/stats", { cache: "no-store" });
+        const body = (await res.json()) as { stats?: Record<string, StatsRow> };
+        if (active && body.stats) setStats(body.stats);
+      } catch {
+        /* keep the last good values */
+      }
+    }
+    void load();
+    const timer = setInterval(load, 30_000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
-    async function fetchStream() {
-      try {
-        const res = await fetch(`/api/market-stream/${selected}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (active) {
-          setStreamData({
-            price: typeof data.price === "number" && Number.isFinite(data.price) ? data.price : null,
-            poolPrice: typeof data.poolPrice === "number" && Number.isFinite(data.poolPrice) ? data.poolPrice : null,
-            pythPrice: typeof data.pythPrice === "number" && Number.isFinite(data.pythPrice) ? data.pythPrice : null,
-            liquidity: typeof data.liquidity === "number" && Number.isFinite(data.liquidity) ? data.liquidity : null,
-            volume24h: typeof data.volume24h === "number" && Number.isFinite(data.volume24h) ? data.volume24h : null,
-          });
-        }
-      } catch {
-        // Fall back gracefully to verified benchmark price
-      }
-    }
-
-    void fetchStream();
-    const interval = setInterval(fetchStream, 8000);
+    setEvidence(null);
+    setEvidenceError(null);
+    fetch(`/api/evidence/${encodeURIComponent(selected)}`)
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || "Evidence is unavailable right now.");
+        if (active) setEvidence(body as Evidence);
+      })
+      .catch((err: unknown) => active && setEvidenceError(err instanceof Error ? err.message : "Evidence is unavailable right now."));
     return () => {
       active = false;
-      clearInterval(interval);
     };
   }, [selected]);
 
-  const benchmarkPrice = VERIFIED_PRICES[selected] ?? 166.01;
-  const currentPrice = streamData?.price ?? benchmarkPrice;
-  const dlmmBins = useMemo(() => generateDlmmBins(currentPrice), [currentPrice]);
-
-  useEffect(() => {
-    getAssetMarketStats(selected, currentPrice).then(setAssetStats);
-  }, [selected, currentPrice]);
-  const maxBinDepth = Math.max(...dlmmBins.map((b) => b.depth)) || 1;
-
-  // Genuine Oracle values: Pyth reference benchmark vs Meteora DLMM executable pool quote
-  const pythPrice = streamData?.pythPrice ?? currentPrice;
-  const dlmmPrice = streamData?.poolPrice ?? (currentPrice > 0 ? +(currentPrice * 0.9998).toFixed(2) : currentPrice);
-  const oracleGap = currentPrice > 0 ? +(Math.abs((pythPrice - dlmmPrice) / currentPrice) * 100).toFixed(3) : 0;
+  const meta = curated25[selected];
+  const row = stats[selected];
+  const dexPrice = row && row.price > 0 ? row.price : evidence?.executablePrice ?? null;
+  const headlinePrice = dexPrice ?? evidence?.issuerPrice ?? null;
+  const topPool = evidence?.pools[0] ?? null;
+  const oracleGap =
+    evidence?.oracle && dexPrice ? ((dexPrice - evidence.oracle.price) / evidence.oracle.price) * 100 : null;
 
   return (
-    <section className="analytics-suite" aria-label="Institutional Equity & Pool Analytics">
-      {/* Quick Select Stock Ribbon */}
-      <div className="analytics-asset-ribbon" role="group" aria-label="Select stock asset">
+    <section className="analytics-suite" aria-label="Pool and price analytics">
+      <div className="analytics-asset-ribbon" role="group" aria-label="Select stock">
         {symbols.slice(0, 10).map((item) => {
-          const price = VERIFIED_PRICES[item.symbol] ?? 100;
-          const isCurrent = selected === item.symbol;
+          const price = stats[item.symbol]?.price;
           return (
             <button
               type="button"
               key={item.symbol}
-              className={`analytics-ribbon-pill ${isCurrent ? "is-active" : ""}`}
+              className={`analytics-ribbon-pill ${selected === item.symbol ? "is-active" : ""}`}
               onClick={() => handleSelectSymbol(item.symbol)}
             >
-              <StockLogo
-                symbol={item.symbol}
-                logo={curated25[item.symbol]?.logo}
-                size={22}
-              />
+              <StockLogo symbol={item.symbol} logo={curated25[item.symbol]?.logo} size={22} />
               <span className="analytics-ribbon-symbol">{item.symbol}</span>
-              <span className="analytics-ribbon-price">${price.toFixed(2)}</span>
+              <span className="analytics-ribbon-price">{usd(price)}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Ryntra-Style Pro Header for Selected Asset */}
-      <ProStockHeader
-        symbol={meta.symbol}
-        name={meta.name}
-        logo={meta.logo}
-        underlyingSymbol={meta.symbol.replace(/x$/, "")}
-        price={currentPrice}
-        officialReady={true}
-        priceFormatted={`$${currentPrice.toFixed(2)}`}
-        change24h={assetStats?.change24h}
-        liquidityUsd={assetStats?.liquidity}
-        volume24h={assetStats?.volume24h}
-        oraclePrice={`$${pythPrice.toFixed(2)}`}
-        reserveCoverage="Reserve from issuer feed"
-        mintAddress={meta.mint}
-        decimals={meta.decimals}
-        venueStatus="ROUTE"
-        sessionStatus="24/7 DEX"
-      />
-
-      {/* Main Interactive Pro Candlestick Chart */}
-      <div className="analytics-chart-container">
-        <AssetPriceChart
-          symbol={selected}
-          name={meta.name.replace(/ xStock$/, "")}
-          referencePrice={currentPrice}
+      {meta ? (
+        <ProStockHeader
+          symbol={meta.symbol}
+          name={meta.name}
+          logo={meta.logo}
+          underlyingSymbol={meta.symbol.replace(/x$/, "")}
+          price={headlinePrice ?? 0}
+          officialReady={evidence?.issuerPrice != null}
+          priceFormatted={usd(headlinePrice)}
+          change24h={row?.change24h}
+          liquidityUsd={row?.liquidity}
+          volume24h={row?.volume24h}
+          oraclePrice={evidence?.oracle ? usd(evidence.oracle.price) : undefined}
+          oracleLabel={evidence?.oracle?.source === "pyth" ? "PYTH ORACLE" : evidence?.oracle ? "JUPITER PRICE" : "ORACLE"}
+          reserveCoverage={evidence?.reserves.coverage != null ? `${(evidence.reserves.coverage * 100).toFixed(2)}% backed` : "Reserve unavailable"}
+          mintAddress={meta.mint}
+          decimals={evidence?.decimals ?? meta.decimals}
+          venueStatus={dexPrice !== null ? "ROUTE" : "24/7 DEX"}
+          sessionStatus="24/7 DEX"
         />
+      ) : null}
+
+      <div className="analytics-chart-container">
+        <AssetPriceChart symbol={selected} name={meta?.name.replace(/ xStock$/, "") ?? selected} referencePrice={headlinePrice} />
       </div>
 
-      {/* Tabbed Institutional Analysis Modules */}
       <div className="analytics-module-card">
         <div className="analytics-module-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "depth"}
-            className={`analytics-module-tab ${activeTab === "depth" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("depth")}
-          >
-            DLMM Liquidity Depth
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "oracles"}
-            className={`analytics-module-tab ${activeTab === "oracles" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("oracles")}
-          >
-            Dual-Oracle Consensus
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "audit"}
-            className={`analytics-module-tab ${activeTab === "audit" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("audit")}
-          >
-            Physical Reserves Audit
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "clawpump"}
-            className={`analytics-module-tab ${activeTab === "clawpump" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("clawpump")}
-          >
-            ClawPump Pairing
-          </button>
+          {([
+            ["pools", "Meteora pools"],
+            ["oracles", "Price sources"],
+            ["reserves", "Issuer reserves"],
+            ["launch", "Launch a pair"],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              className={`analytics-module-tab ${activeTab === id ? "is-active" : ""}`}
+              onClick={() => setActiveTab(id)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Tab 1: Meteora DLMM Liquidity Depth */}
-        {activeTab === "depth" && (
+        {evidenceError ? <p className="workspace-note" role="alert">{evidenceError}</p> : null}
+        {!evidence && !evidenceError ? <p className="workspace-note">Loading on-chain evidence…</p> : null}
+
+        {evidence && activeTab === "pools" && (
           <div className="analytics-tab-content">
             <div className="analytics-dlmm-header">
               <div>
-                <h4>Meteora Dynamic Liquidity Market Maker (DLMM)</h4>
-                <p>Concentrated active liquidity distribution across discrete price bins on Solana Mainnet.</p>
+                <h4>Meteora pools for {selected}</h4>
+                <p>From Meteora&apos;s pool API. Bin-level depth is not published there, so pools are listed with TVL and volume.</p>
               </div>
               <div className="analytics-dlmm-stats">
                 <div className="analytics-stat-pill">
-                  <span>Pool TVL</span>
-                  <strong>$4,850,000</strong>
+                  <span>Top pool TVL</span>
+                  <strong>{usd(topPool?.tvl, 0)}</strong>
                 </div>
                 <div className="analytics-stat-pill">
-                  <span>Bin Step</span>
-                  <strong>25 bps (0.25%)</strong>
+                  <span>Top pool fee</span>
+                  <strong>{topPool?.feePct ? `${topPool.feePct.toFixed(2)}%` : "—"}</strong>
                 </div>
                 <div className="analytics-stat-pill">
-                  <span>Dynamic Fee Rate</span>
-                  <strong style={{ color: "var(--solana-green, #14f195)" }}>0.15% - 0.40%</strong>
+                  <span>Pools</span>
+                  <strong>{evidence.pools.length}</strong>
                 </div>
               </div>
             </div>
-
-            {/* DLMM Visualizer Bars */}
-            <div className="dlmm-bins-chart" aria-label="DLMM bin depth chart">
-              {dlmmBins.map((bin) => {
-                const heightPct = Math.max(8, (bin.depth / maxBinDepth) * 100);
-                return (
-                  <div key={bin.binId} className="dlmm-bin-col" title={`Bin #${bin.binId}: $${bin.price.toFixed(2)} ($${(bin.depth / 1000).toFixed(0)}K depth)`}>
-                    <div className="dlmm-bin-bar-track">
-                      <div
-                        className={`dlmm-bin-bar ${
-                          bin.isActive
-                            ? "is-active-bin"
-                            : bin.isBid
-                            ? "is-bid-bin"
-                            : "is-ask-bin"
-                        }`}
-                        style={{ height: `${heightPct}%` }}
-                      />
-                    </div>
-                    <span className="dlmm-bin-label">${bin.price.toFixed(1)}</span>
+            {evidence.pools.length === 0 ? (
+              <p className="workspace-note">No Meteora pools reported for {selected}.</p>
+            ) : (
+              <div className="analytics-audit-grid">
+                {evidence.pools.map((pool) => (
+                  <div className="analytics-audit-item" key={pool.address}>
+                    <span>
+                      <a href={`https://solscan.io/account/${pool.address}`} target="_blank" rel="noreferrer">{pool.name} ↗</a>
+                    </span>
+                    <strong>
+                      TVL {usd(pool.tvl, 0)} · 24h {usd(pool.volume24h, 0)} · {usd(pool.priceUsd)}
+                    </strong>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="dlmm-legend">
-              <span className="dlmm-legend-item">
-                <span className="dlmm-dot is-bid" /> Bid Liquidity Depth
-              </span>
-              <span className="dlmm-legend-item">
-                <span className="dlmm-dot is-active" /> Active Price Bin (${currentPrice.toFixed(2)})
-              </span>
-              <span className="dlmm-legend-item">
-                <span className="dlmm-dot is-ask" /> Ask Liquidity Depth
-              </span>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Tab 2: Dual-Oracle Consensus */}
-        {activeTab === "oracles" && (
+        {evidence && activeTab === "oracles" && (
           <div className="analytics-tab-content">
             <div className="analytics-oracle-grid">
               <article className="analytics-oracle-card">
                 <div className="analytics-oracle-card__head">
-                  <span className="analytics-oracle-badge os-badge-purple">Pyth Network</span>
-                  <span className="live-dot" />
+                  <span className="analytics-oracle-badge os-badge-purple">Issuer reference</span>
                 </div>
-                <h3>${pythPrice.toFixed(2)}</h3>
-                <p>Real-time low-latency Solana benchmark quote</p>
-                <div className="analytics-oracle-meta">
-                  <span>Confidence Interval</span>
-                  <strong>±$0.04</strong>
-                </div>
-                <div className="analytics-oracle-meta">
-                  <span>Update Frequency</span>
-                  <strong>~400ms Slot Speed</strong>
-                </div>
+                <h3>{usd(evidence.issuerPrice)}</h3>
+                <p>Backed/xStocks price for the underlying share.</p>
               </article>
-
               <article className="analytics-oracle-card">
                 <div className="analytics-oracle-card__head">
-                  <span className="analytics-oracle-badge os-badge-green">Meteora DLMM</span>
-                  <span className="live-dot" />
+                  <span className="analytics-oracle-badge os-badge-green">
+                    {evidence.oracle?.source === "pyth" ? "Pyth feed" : "Jupiter price (no Pyth feed)"}
+                  </span>
                 </div>
-                <h3>${dlmmPrice.toFixed(2)}</h3>
-                <p>On-chain executable DEX swap price</p>
+                <h3>{usd(evidence.oracle?.price)}</h3>
                 <div className="analytics-oracle-meta">
-                  <span>Pool Pairing</span>
-                  <strong>{meta.symbol} / USDC</strong>
+                  <span>Confidence</span>
+                  <strong>{evidence.oracle?.confidence != null ? `±${usd(evidence.oracle.confidence)}` : "—"}</strong>
                 </div>
                 <div className="analytics-oracle-meta">
-                  <span>Settlement Route</span>
-                  <strong>DLMM Concentrated Pool</strong>
+                  <span>Age</span>
+                  <strong>{evidence.oracle?.freshnessSeconds != null ? `${Math.round(evidence.oracle.freshnessSeconds)}s` : "—"}</strong>
                 </div>
               </article>
-
               <article className="analytics-oracle-card">
                 <div className="analytics-oracle-card__head">
-                  <span className="analytics-oracle-badge os-badge-blue">Consensus Spread</span>
-                  <span className="analytics-status-tag">VERIFIED</span>
+                  <span className="analytics-oracle-badge os-badge-blue">Solana DEX vs oracle</span>
                 </div>
-                <h3 style={{ color: "var(--solana-green, #14f195)" }}>{oracleGap}%</h3>
-                <p>Pyth vs On-chain pool price divergence</p>
+                <h3>{pct(oracleGap, 3)}</h3>
                 <div className="analytics-oracle-meta">
-                  <span>Max Allowed Drift</span>
-                  <strong>&lt; 0.25% Tolerance</strong>
+                  <span>DEX price (Jupiter)</span>
+                  <strong>{usd(dexPrice)}</strong>
                 </div>
                 <div className="analytics-oracle-meta">
-                  <span>Health State</span>
-                  <strong style={{ color: "var(--solana-green, #14f195)" }}>Full Consensus Active</strong>
+                  <span>Quote price impact</span>
+                  <strong>{evidence.priceImpactPct != null ? `${evidence.priceImpactPct.toFixed(3)}%` : "—"}</strong>
                 </div>
               </article>
             </div>
           </div>
         )}
 
-        {/* Tab 3: Token-2022 Reserves Audit */}
-        {activeTab === "audit" && (
+        {evidence && activeTab === "reserves" && (
           <div className="analytics-tab-content">
             <div className="analytics-audit-grid">
               <div className="analytics-audit-item">
-                <span>Depository Custodian</span>
-                <strong>Backed Finance AG (Zug, Switzerland)</strong>
+                <span>Issuer</span>
+                <strong>Backed (xStocks)</strong>
               </div>
               <div className="analytics-audit-item">
-                <span>Underlying Asset</span>
-                <strong>1:1 Physically Backed Equity Shares</strong>
+                <span>Reserve coverage</span>
+                <strong>{evidence.reserves.coverage != null ? `${(evidence.reserves.coverage * 100).toFixed(2)}%` : "Unavailable"}</strong>
               </div>
               <div className="analytics-audit-item">
-                <span>Asset Standard</span>
-                <strong>Solana Backed Stock (1:1 Reserved)</strong>
+                <span>Shares held / circulating</span>
+                <strong>
+                  {evidence.reserves.sharesHeld?.toLocaleString() ?? "—"} / {evidence.reserves.circulatingSupply?.toLocaleString() ?? "—"}
+                </strong>
               </div>
               <div className="analytics-audit-item">
-                <span>Mint Address</span>
+                <span>Reported</span>
+                <strong>{evidence.reserves.asOf ? new Date(evidence.reserves.asOf).toUTCString() : "—"}</strong>
+              </div>
+              <div className="analytics-audit-item">
+                <span>Mint</span>
                 <div className="analytics-mint-row">
-                  <code>{meta.mint}</code>
-                  <a
-                    href={`https://solscan.io/token/${meta.mint}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="analytics-solscan-link"
-                  >
-                    View on Solscan ↗
-                  </a>
+                  <code>{evidence.mint ?? "—"}</code>
+                  {evidence.mint ? (
+                    <a href={`https://solscan.io/token/${evidence.mint}`} target="_blank" rel="noreferrer" className="analytics-solscan-link">
+                      Solscan ↗
+                    </a>
+                  ) : null}
                 </div>
               </div>
               <div className="analytics-audit-item">
-                <span>Decimals</span>
-                <strong>{meta.decimals} (Micro-shares support)</strong>
-              </div>
-              <div className="analytics-audit-item">
-                <span>Share Multiplier</span>
-                <strong>1.0000× (On-chain split adjustment)</strong>
+                <span>Decimals · share multiplier</span>
+                <strong>
+                  {evidence.decimals ?? "—"} · {evidence.multiplier != null ? `${evidence.multiplier.toFixed(4)}×` : "—"}
+                </strong>
               </div>
             </div>
           </div>
         )}
 
-        {/* Tab 4: ClawPump Meme Pairing */}
-        {activeTab === "clawpump" && (
+        {activeTab === "launch" && (
           <div className="analytics-tab-content">
             <div className="analytics-clawpump-box">
               <div className="analytics-clawpump-info">
-                <h4>Pair Any Community Meme or Token with {meta.symbol}</h4>
-                <p>
-                  Via OpenStock &amp; ClawPump, creators can launch new community tokens paired directly
-                  against real tokenized stocks with customized initial supply, reserve ratios, and fee tokenomics.
-                </p>
+                <h4>Launch a token quoted in {selected}</h4>
+                <p>Pump.fun (via ClawPump) or Meteora DBC where configured. The pool&apos;s quote asset is the stock, not SOL or USDC.</p>
                 <div className="analytics-pair-pill">
                   <span>YOUR_TOKEN</span>
                   <strong>×</strong>
-                  <span>{meta.symbol}</span>
+                  <span>{selected}</span>
                 </div>
               </div>
               <div className="analytics-clawpump-cta">
-                <Link
-                  href={`/launch?symbol=${meta.symbol}`}
-                  className="button button--gradient"
-                  style={{ padding: "12px 24px", fontSize: 13, fontWeight: 800 }}
-                >
-                  Pair &amp; Launch on ClawPump
+                <Link href={`/launch?symbol=${encodeURIComponent(selected)}`} className="button button--gradient" style={{ padding: "12px 24px", fontSize: 13, fontWeight: 800 }}>
+                  Open launch studio
                 </Link>
               </div>
             </div>

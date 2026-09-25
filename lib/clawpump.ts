@@ -51,70 +51,39 @@ export const VERIFIED_SOLANA_XSTOCKS_PAIRS: PumpPairAsset[] = (curatedSymbols as
     underlyingStock: pair.symbol.replace(/x$/i, ""),
   }));
 
-/**
- * Fetch supported pump pairs from ClawPump API.
- * Sourced from GET https://clawpump.tech/api/v1/pump-pairs
- */
-export async function getClawPumpPairs(): Promise<PumpPairsResponse> {
-  const apiKey = process.env.CLAWPUMP_API_KEY;
+/** ClawPump's own creator-fee bounds, used until its API reports different ones. */
+export const CLAWPUMP_DEFAULT_FEE_RANGE = { min: 100, max: 300, default: 100 };
 
+/**
+ * xStocks that can be launched against on Pump.fun via ClawPump.
+ * Only curated xStock mints are ever returned (ClawPump also lists memecoins and non-xStock tickers).
+ * Symbols/names come from the curated registry so deep links like ?symbol=NVDAx match.
+ * source "clawpump" = confirmed by GET /pump-pairs; "registry" = ClawPump not reachable, launch will be unavailable.
+ */
+export async function getClawPumpPairs(): Promise<PumpPairsResponse & { source: "clawpump" | "registry" }> {
+  const apiKey = process.env.CLAWPUMP_API_KEY;
   if (apiKey) {
     try {
       const res = await fetch(`${CLAWPUMP_API_BASE}/pump-pairs`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json",
-        },
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
         next: { revalidate: 60 },
         signal: AbortSignal.timeout(8000),
       });
-
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.assets) && data.assets.length > 0) {
-          const verifiedStockSymbols = new Set(VERIFIED_SOLANA_XSTOCKS_PAIRS.map((p) => p.symbol.toLowerCase()));
-          const verifiedStockMints = new Set(VERIFIED_SOLANA_XSTOCKS_PAIRS.map((p) => p.mint.toLowerCase()));
-
-          // Strictly filter out non-stock meme tokens (Fartcoin, MOODENG, Bonk, etc.)
-          const stockAssets = data.assets.filter((asset: PumpPairAsset) => {
-            const sym = (asset.symbol || "").toLowerCase();
-            const mint = (asset.mint || "").toLowerCase();
-            const name = (asset.name || "").toLowerCase();
-
-            const isStock =
-              verifiedStockSymbols.has(sym) ||
-              verifiedStockMints.has(mint) ||
-              sym.endsWith("x") ||
-              name.includes("xstock") ||
-              name.includes("stock") ||
-              Boolean(asset.underlyingStock);
-
-            return isStock;
-          });
-
-          // Merge with our verified xStocks list to ensure all 25 curated stocks are always available
-          const existingMints = new Set(stockAssets.map((a: PumpPairAsset) => a.mint.toLowerCase()));
-          const completeStockList = [
-            ...stockAssets,
-            ...VERIFIED_SOLANA_XSTOCKS_PAIRS.filter((p) => !existingMints.has(p.mint.toLowerCase())),
-          ];
-
-          return {
-            assets: completeStockList,
-            creatorFeeBps: data.creatorFeeBps ?? { min: 100, max: 300, default: 100 },
-          };
-        }
+        const data = (await res.json()) as { assets?: PumpPairAsset[]; creatorFeeBps?: PumpPairsResponse["creatorFeeBps"] };
+        const supportedMints = new Set((data.assets ?? []).map((asset) => asset.mint));
+        return {
+          assets: VERIFIED_SOLANA_XSTOCKS_PAIRS.filter((pair) => supportedMints.has(pair.mint)),
+          creatorFeeBps: data.creatorFeeBps ?? CLAWPUMP_DEFAULT_FEE_RANGE,
+          source: "clawpump",
+        };
       }
+      console.warn("ClawPump pump-pairs returned", res.status);
     } catch (err) {
-      console.warn("ClawPump API pump-pairs query failed, using verified xStocks fallback:", err);
+      console.warn("ClawPump pump-pairs query failed:", err instanceof Error ? err.message : err);
     }
   }
-
-  // Fallback to verified Solana xStocks pump pairs
-  return {
-    assets: VERIFIED_SOLANA_XSTOCKS_PAIRS,
-    creatorFeeBps: { min: 100, max: 300, default: 100 },
-  };
+  return { assets: VERIFIED_SOLANA_XSTOCKS_PAIRS, creatorFeeBps: CLAWPUMP_DEFAULT_FEE_RANGE, source: "registry" };
 }
 
 /**
@@ -163,6 +132,9 @@ export type PreflightPayload = {
   walletAddress: string;
   supply?: number;
   devBuySol?: number;
+  /** Reuse the launcher agent from an earlier quote in the same launch attempt instead of creating another. */
+  agentId?: string;
+  agentName?: string;
 };
 
 export type PreflightResult = {
@@ -180,17 +152,14 @@ export type PreflightResult = {
     preflightToken: string;
   };
   meta?: Record<string, unknown>;
-  feeBreakdown?: {
-    creatorFeeBps: number;
-    platformFeeBps: number;
-    totalFeeBps: number;
-    creatorFeePercent: string;
-    platformFeePercent: string;
-    totalFeePercent: string;
-  };
-  platformTreasury?: string;
-  treasury?: string;
 };
+
+/** Preflight and confirm must send an identical body to ClawPump, so both resolve the description here. */
+export function resolveLaunchDescription(description: unknown, name: string, pairedStockSymbol: string): string {
+  return typeof description === "string" && description.trim().length >= 3
+    ? description.trim().slice(0, 500)
+    : `${name.trim()} paired against ${pairedStockSymbol} on Solana via OpenStock`;
+}
 
 /**
  * Step 1: Preflight quote discovery.
@@ -200,10 +169,13 @@ export async function requestPreflightQuote(payload: PreflightPayload): Promise<
   const apiKey = process.env.CLAWPUMP_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "CLAWPUMP_API_KEY is not configured. Live Pump.fun quote and fee estimation requires an authorized ClawPump API key. You can also deploy via Meteora Dynamic Bonding Curve."
+      "Pump.fun launches are not configured on this deployment."
     );
   }
-  const agent = await getOrCreateLauncherAgent(payload.name);
+  const agent =
+    payload.agentId && payload.agentName
+      ? { id: payload.agentId, name: payload.agentName }
+      : await getOrCreateLauncherAgent(payload.name);
 
   const res = await fetch(`${CLAWPUMP_API_BASE}/launch/self-funded`, {
     method: "POST",
@@ -259,16 +231,6 @@ export type ConfirmLaunchResult = {
   pumpUrl: string;
   explorerUrl: string;
   meta?: Record<string, unknown>;
-  feeBreakdown?: {
-    creatorFeeBps: number;
-    platformFeeBps: number;
-    totalFeeBps: number;
-    creatorFeePercent: string;
-    platformFeePercent: string;
-    totalFeePercent: string;
-  };
-  platformTreasury?: string;
-  treasury?: string;
 };
 
 /**
@@ -279,9 +241,7 @@ export async function executeClawPumpLaunch(payload: ConfirmLaunchPayload): Prom
   const apiKey = process.env.CLAWPUMP_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
-      "CLAWPUMP_API_KEY is not configured on the server. Live token deployment on Pump.fun via ClawPump requires an authorized API key."
-    );
+    throw new Error("Pump.fun launches are not configured on this deployment.");
   }
 
   const res = await fetch(`${CLAWPUMP_API_BASE}/launch/self-funded`, {
@@ -311,10 +271,13 @@ export async function executeClawPumpLaunch(payload: ConfirmLaunchPayload): Prom
   if (!res.ok) {
     const errorBody = await res.text();
     console.error("ClawPump launch failed", res.status, errorBody.slice(0, 400));
-    throw new Error("Token launch could not be completed. Try again in a moment.");
+    throw new Error("Token launch could not be completed. Your payment is on-chain — retry to finish the launch with the same payment.");
   }
 
   const data = await res.json();
+  if (typeof data.mintAddress !== "string" || data.mintAddress.length < 32) {
+    throw new Error("ClawPump did not return a mint address. Retry to finish the launch with the same payment.");
+  }
   return {
     success: true,
     mintAddress: data.mintAddress,

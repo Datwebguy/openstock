@@ -152,7 +152,12 @@ async function portfolioResponse(wallet: string, track: boolean) {
       holdings: holdings.map((h) => ({ symbol: h.symbol, shares: h.shares, valueUsd: h.valueUsd })),
     };
 
-    const snapshotState = track ? await recordPortfolioSnapshot(wallet, snapshot) : { recorded: false, snapshots: await getPortfolioSnapshots(wallet) };
+    let snapshotState: { recorded: boolean; snapshots: PortfolioSnapshot[] } = { recorded: false, snapshots: [] };
+    try {
+      snapshotState = track ? await recordPortfolioSnapshot(wallet, snapshot) : { recorded: false, snapshots: await getPortfolioSnapshots(wallet) };
+    } catch {
+      // History storage unavailable — balances are still real, only the value-change history is skipped.
+    }
     const performance = portfolioChange(snapshotState.snapshots, totalValueUsd);
 
     return NextResponse.json({
@@ -171,11 +176,11 @@ async function portfolioResponse(wallet: string, track: boolean) {
         pnlUsd: performance.changeUsd,
         since: performance.since,
         snapshots: performance.snapshots,
-        note: performance.available ? "Real PnL based on on-chain snapshots." : "Real on-chain balance tracking.",
+        note: performance.available ? "Change in wallet value since the first snapshot (includes deposits and withdrawals)." : "On-chain balances. Value history starts after the next snapshot.",
       },
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "The portfolio could not be loaded." }, { status: 502, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: "The portfolio could not be loaded. Try again in a moment." }, { status: 502, headers: { "Cache-Control": "no-store" } });
   }
 }
 

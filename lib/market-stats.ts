@@ -1,5 +1,6 @@
 // Real market stats helper connecting directly to Solana on-chain dex sources (Jupiter v3 + DexScreener)
 import curated25Data from "@/lib/solana-curated-25.json";
+import { fetchJupiterPrices } from "@/lib/jupiter-price";
 
 export type AssetMarketStats = {
   price: number;
@@ -15,7 +16,6 @@ export type AssetMarketStats = {
   low24h: number | null;
 };
 
-const JUPITER_PRICE_URL = process.env.JUPITER_PRICE_URL ?? "https://api.jup.ag/price/v3";
 const DEXSCREENER_URL = "https://api.dexscreener.com/tokens/v1/solana";
 
 const curated25: Record<string, { symbol: string; name: string; mint: string; decimals: number; logo: string }> = curated25Data;
@@ -26,6 +26,12 @@ function formatDollars(value: number | null | undefined): string {
   }
   if (value === 0) {
     return "$0";
+  }
+  if (value >= 1_000_000_000_000) {
+    return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
+  }
+  if (value >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(2)}B`;
   }
   if (value >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -71,18 +77,14 @@ export async function getAllAssetMarketStats(): Promise<Record<string, AssetMark
     }
 
     const [jupRes, ...dexResponses] = await Promise.allSettled([
-      fetch(`${JUPITER_PRICE_URL}?ids=${mints.join(",")}`, {
-        headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
-        signal: AbortSignal.timeout(8000),
-      }),
+      fetchJupiterPrices(mints, 8000),
       ...dexChunkPromises,
     ]);
 
-    const jupData: Record<string, any> =
-      jupRes.status === "fulfilled" && jupRes.value.ok ? await jupRes.value.json() : {};
+    const jupData: Record<string, any> = jupRes.status === "fulfilled" ? jupRes.value : {};
 
     const dexPairs: any[] = [];
-    for (const res of dexResponses) {
+    for (const res of dexResponses as PromiseSettledResult<Response>[]) {
       if (res.status === "fulfilled" && res.value.ok) {
         try {
           const data = await res.value.json();
@@ -194,17 +196,14 @@ export async function getAssetMarketStats(symbol: string, currentPrice?: number 
   if (mint) {
     try {
       const [jupRes, dexRes] = await Promise.allSettled([
-        fetch(`${JUPITER_PRICE_URL}?ids=${mint}`, {
-          headers: process.env.JUPITER_API_KEY ? { "x-api-key": process.env.JUPITER_API_KEY } : undefined,
-          signal: AbortSignal.timeout(5000),
-        }),
+        fetchJupiterPrices([mint], 5000),
         fetch(`${DEXSCREENER_URL}/${mint}`, {
           headers: { Accept: "application/json" },
           signal: AbortSignal.timeout(5000),
         }),
       ]);
 
-      const jupData = jupRes.status === "fulfilled" && jupRes.value.ok ? await jupRes.value.json() : {};
+      const jupData: Record<string, any> = jupRes.status === "fulfilled" ? jupRes.value : {};
       const tokenData = jupData[mint] || jupData.data?.[mint];
       const dexPairs = dexRes.status === "fulfilled" && dexRes.value.ok ? await dexRes.value.json() : [];
       const dexPair = Array.isArray(dexPairs) && dexPairs.length > 0 ? dexPairs[0] : null;

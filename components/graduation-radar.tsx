@@ -11,17 +11,11 @@ interface GraduationRadarProps {
 }
 
 export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: GraduationRadarProps) {
-  // Sort tokens by highest bonding curve progress that are actively filling (not yet 100%), fallback to highest overall
-  const activeCandidates = tokens
-    .filter((t) => t.bondingCurveProgress > 0 && t.bondingCurveProgress < 100)
-    .sort((a, b) => b.bondingCurveProgress - a.bondingCurveProgress);
-
-  const completedCandidates = tokens
-    .filter((t) => t.bondingCurveProgress >= 100 || t.status === "graduated")
-    .slice(0, 1);
-
-  // Top 3 spotlight items
-  const radarSpotlight = [...activeCandidates, ...completedCandidates].slice(0, 3);
+  // Only curves whose progress was actually measured on-chain (OpenStock Meteora DBC launches).
+  const radarSpotlight = tokens
+    .filter((t) => t.progressKnown && t.status !== "graduated" && t.bondingCurveProgress < 100)
+    .sort((a, b) => b.bondingCurveProgress - a.bondingCurveProgress)
+    .slice(0, 3);
 
   if (radarSpotlight.length === 0) return null;
 
@@ -35,27 +29,20 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
           <div className="graduation-radar-header-left">
             <div className="graduation-radar-title-row">
               <span className="radar-pulse-core" aria-hidden="true" />
-              <h2 className="graduation-radar-title">Tokens Approaching Full Pool</h2>
-              <span className="graduation-radar-chip">Meteora Full Pool Target</span>
+              <h2 className="graduation-radar-title">Curves closest to migration</h2>
+              <span className="graduation-radar-chip">Meteora DBC</span>
             </div>
             <p className="graduation-radar-subtitle">
-              Live curve progress tracking. Tokens automatically move to a full Meteora trading pool on Solana once filled.
+              Progress is read from each pool on Solana. When a curve fills, anyone can migrate it to a Meteora pool.
             </p>
-          </div>
-          <div className="graduation-radar-header-right">
-            <span className="radar-live-indicator">
-              <span className="radar-live-pulse-dot" /> Live Solana Sync
-            </span>
           </div>
         </div>
 
         {/* Spotlight Cards Grid */}
         <div className="graduation-radar-grid">
           {radarSpotlight.map((item) => {
-            const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
+            const isGraduated = false;
             const progress = Math.min(100, Math.max(0, item.bondingCurveProgress));
-            const remainingPercentage = Math.max(0, 100 - progress);
-            const remainingUsd = isGraduated ? 0 : Math.round((remainingPercentage / 100) * 69_000);
 
             return (
               <article key={item.mint} className={`radar-card ${isGraduated ? "is-graduated" : ""}`}>
@@ -113,12 +100,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                     />
                   </div>
                   <div className="radar-progress-sub">
-                    <span className="radar-target-label">Target: $69,000 Pool</span>
-                    {isGraduated ? (
-                      <span className="radar-sub-success">Live in Full Pool</span>
-                    ) : (
-                      <span className="radar-sub-needed">${remainingUsd.toLocaleString()} USD needed</span>
-                    )}
+                    <span className="radar-target-label">Quote raised vs. migration threshold</span>
                   </div>
                 </div>
 
@@ -135,7 +117,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                   <div className="radar-stat-col">
                     <span className="radar-stat-lbl">Royalty</span>
                     <strong className="radar-stat-val is-green">
-                      {(item.creatorFeeBps / 100).toFixed(1)}% {item.pairedStockSymbol}
+                      {item.creatorFeeBps ? `${(item.creatorFeeBps / 100).toFixed(2)}%` : "—"}
                     </strong>
                   </div>
                 </div>

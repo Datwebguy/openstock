@@ -3,14 +3,14 @@ import { PublicKey } from "@solana/web3.js";
 import { getMarketEvidence } from "@/lib/market-evidence";
 import { getMarketVerdict } from "@/lib/market-verdict";
 import { getHydratedAsset, XStocksApiError } from "@/lib/xstocks";
-import { uiToRaw } from "@/lib/scaled-amounts";
+import { rawToUi, uiToRaw } from "@/lib/scaled-amounts";
 import { USDC_DECIMALS, USDC_MINT } from "@/lib/solana";
 import { logApiError, logApiSuccess } from "@/lib/monitoring";
 
 const JUPITER_API_BASE = process.env.JUPITER_SWAP_API_BASE ?? "https://api.jup.ag/swap/v2";
 const DEFAULT_SLIPPAGE_BPS = 50;
 type TradeRequest = { symbol?: string; side?: "buy" | "sell"; shares?: number; wallet?: string };
-type OrderResponse = { transaction?: string | null; requestId?: string; lastValidBlockHeight?: number; errorMessage?: string };
+type OrderResponse = { transaction?: string | null; requestId?: string; lastValidBlockHeight?: number; errorMessage?: string; inAmount?: string; outAmount?: string };
 
 function headers() {
   return {
@@ -71,10 +71,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: verdict.headline, verdict: verdict.label }, { status: 409, headers: { "Cache-Control": "no-store" } });
     }
 
+    // Size the order on the same on-chain price the order form shows (Jupiter executable → pool → issuer).
     const poolPrice =
       evidence.meteora.data?.find((pool) => typeof pool.priceUsd === "number" && pool.priceUsd > 0)?.priceUsd ?? null;
+    const executablePrice = evidence.jupiter.data?.executablePrice ?? null;
     const officialReferencePrice = asset.price;
-    const price = officialReferencePrice ?? poolPrice;
+    const price = executablePrice ?? poolPrice ?? officialReferencePrice;
+    const priceSource = executablePrice !== null ? "jupiter_quote" : poolPrice !== null ? "onchain_pool" : "official";
     const halted = Boolean(asset.isTradingHalted || asset.trading?.isTradingHalted);
     const multiplier = asset.multiplier?.currentMultiplier;
     const decimals = evidence.tokenDecimals.data;
@@ -116,6 +119,13 @@ export async function POST(request: Request) {
       slippageBps: String(DEFAULT_SLIPPAGE_BPS),
     });
     const order = await requestJson<OrderResponse>(JUPITER_API_BASE + "/order?" + params);
+    // What the signed transaction will actually deliver, in shares (buy) or USDC (sell).
+    const quotedOutUi =
+      order.outAmount && /^\d+$/.test(order.outAmount)
+        ? side === "buy"
+          ? rawToUi(order.outAmount, multiplier, decimals)
+          : Number(order.outAmount) / 10 ** stableDecimals
+        : null;
 
     if (!order.transaction || !order.requestId) {
       logApiError("/api/trade/prepare", new Error(order.errorMessage ?? "Jupiter did not return a live route"), { symbol, side, shares });
@@ -138,7 +148,9 @@ export async function POST(request: Request) {
         side,
         shares: Number(shares),
         referencePrice: price,
-        priceSource: officialReferencePrice !== null ? "official" : "onchain_pool",
+        priceSource,
+        quotedOutUi,
+        inputUi: side === "buy" ? Number(inputAmount) / 10 ** stableDecimals : Number(shares),
         multiplier,
         decimals,
         inputMint,

@@ -18,9 +18,12 @@ function respond(request: Request, body: unknown, status = 200) {
 }
 
 export async function GET(request: Request) {
-  const sessionId = sessionFrom(request);
-  const state = await getAlertState(sessionId);
-  return respond(request, { ...state, scope: "server-local", message: "Alert preferences are saved to this OpenStock server session." });
+  try {
+    const state = await getAlertState(sessionFrom(request));
+    return respond(request, { ...state, scope: "server", message: "Alert preferences are saved to this browser session." });
+  } catch {
+    return respond(request, { watches: [], history: [], error: "Alert storage is unavailable." }, 503);
+  }
 }
 
 export async function PUT(request: Request) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
+import { rpcRelayUrl } from "@/lib/client-rpc";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import {
   SolanaMobileWalletAdapter,
@@ -9,13 +10,10 @@ import {
   createDefaultWalletNotFoundHandler,
 } from "@solana-mobile/wallet-adapter-mobile";
 
-const RPC_ENDPOINT =
-  process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-  process.env.SOLANA_RPC_URL ||
-  "https://api.mainnet-beta.solana.com";
 
 export function SolanaWalletProvider({ children }: { children: ReactNode }) {
-  const endpoint = useMemo(() => RPC_ENDPOINT, []);
+  // Same-origin relay: public mainnet RPC rejects browser origins.
+  const endpoint = useMemo(() => rpcRelayUrl(), []);
 
   // Solana Mobile Wallet Adapter (MWA) enables native mobile wallet apps
   // (Phantom, Solflare, etc. on Android / Solana Mobile / Seeker / Saga) to connect and
@@ -30,7 +28,7 @@ export function SolanaWalletProvider({ children }: { children: ReactNode }) {
           addressSelector: createDefaultAddressSelector(),
           appIdentity: {
             name: "OpenStock",
-            uri: typeof window !== "undefined" ? window.location.origin : "https://openstock.app",
+            uri: window.location.origin,
             icon: "/logo/openstock-icon-transparent.png",
           },
           authorizationResultCache: createDefaultAuthorizationResultCache(),

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { VersionedTransaction } from "@solana/web3.js";
+import { executeCommunitySwap, NoRouteError } from "@/lib/community-swap";
 import type { CommunityToken } from "@/lib/community-tokens";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
@@ -10,7 +10,7 @@ import { ShareToXModal } from "@/components/share-to-x-modal";
 import { BubblemapsModal } from "@/components/bubblemaps-modal";
 import { getStockCompany, formatStockTicker, TOKENIZED_STOCK_SAFE_WORDING } from "@/lib/tokenized-stock-wording";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
-import { formatTokenPrice, formatTokenVolume } from "@/lib/community-token-utils";
+import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isLookalikeTicker, isOnAmmPool } from "@/lib/community-token-utils";
 
 interface TokenTradeViewProps {
   token: CommunityToken | null;
@@ -22,20 +22,8 @@ function quoteMintFor(token: CommunityToken) {
   return VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === token.pairedStockSymbol)?.mint ?? null;
 }
 
-function decode(value: string) {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-}
-
-function encode(value: Uint8Array) {
-  let binary = "";
-  for (let i = 0; i < value.length; i += 0x8000) {
-    binary += String.fromCharCode(...value.subarray(i, i + 0x8000));
-  }
-  return btoa(binary);
-}
-
 export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProps) {
-  const { address, connect, signTransaction } = useWallet();
+  const { address, canSign, connect, signTransaction } = useWallet();
 
   // Modals
   const [showShareModal, setShowShareModal] = useState(false);
@@ -74,17 +62,17 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
   const stockCompany = getStockCompany(token.pairedStockSymbol);
   const stockX = formatStockTicker(token.pairedStockSymbol);
   const cleanSymbol = token.symbol.startsWith("$") ? token.symbol.slice(1).toUpperCase() : token.symbol.toUpperCase();
-  const isGraduated = token.bondingCurveProgress >= 100 || token.status === "graduated";
+  const isGraduated = isOnAmmPool(token);
+  const lookalike = isLookalikeTicker(token.symbol);
 
   const parsedAmount = parseFloat(amount) || 0;
   const quoteMint = quoteMintFor(token);
   const quoteSymbol = token.pairedStockSymbol;
-  const quoteDecimals = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === quoteSymbol)?.decimals ?? 6;
 
   async function handleExecuteTrade() {
     if (!token) return;
 
-    if (!address) {
+    if (!address || !canSign) {
       try {
         await connect();
       } catch (err) {
@@ -105,90 +93,34 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
     setTxSuccess(null);
 
     try {
-      const slippageBps = Math.round(slippage * 100);
-      const inputMint = side === "buy" ? quoteMint : token.mint;
-      const outputMint = side === "buy" ? token.mint : quoteMint;
-      const inputDecimals = side === "buy" ? quoteDecimals : 6;
-      const rawAmount = Math.max(1, Math.round(parsedAmount * (10 ** inputDecimals))).toString();
-
-      // Query live Jupiter Lite routing
-      const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(rawAmount)}&slippageBps=${slippageBps}`;
-      const quoteRes = await fetch(quoteUrl, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(10000),
+      const result = await executeCommunitySwap({
+        inputMint: side === "buy" ? quoteMint : token.mint,
+        outputMint: side === "buy" ? token.mint : quoteMint,
+        uiAmount: parsedAmount,
+        slippageBps: Math.round(slippage * 100),
+        wallet: address,
+        sign: signTransaction,
       });
-
-      if (!quoteRes.ok) {
-        // Fallback to pool/bonding curve
-        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/${quoteSymbol}-${token.mint}`;
-        const poolLabel = token.meteoraUrl ? "Meteora DLMM Pool" : "Pump.fun Bonding Curve";
-        setBondingNotice({
-          message: `Direct AMM route is pending curve graduation (${token.bondingCurveProgress.toFixed(1)}%). Trade directly on the pool:`,
-          url: poolUrl,
-          label: poolLabel,
-        });
-        setIsSwapping(false);
-        return;
-      }
-
-      const quoteResponse = await quoteRes.json();
-      if (!quoteResponse || quoteResponse.error) {
-        throw new Error(quoteResponse?.error || "Unable to acquire an on-chain DEX quote.");
-      }
-
-      const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          quoteResponse,
-          userPublicKey: address,
-          wrapAndUnwrapSol: false,
-        }),
-        signal: AbortSignal.timeout(12000),
-      });
-
-      if (!swapRes.ok) {
-        throw new Error(`Swap builder returned HTTP ${swapRes.status}`);
-      }
-
-      const swapData = (await swapRes.json()) as { swapTransaction?: string; lastValidBlockHeight?: number };
-      if (!swapData.swapTransaction) {
-        throw new Error("Solana swap transaction could not be constructed.");
-      }
-
-      if (!signTransaction) {
-        throw new Error("Connected wallet does not support transaction signing.");
-      }
-
-      const deserialized = VersionedTransaction.deserialize(decode(swapData.swapTransaction));
-      const signed = await signTransaction(deserialized);
-
-      const execRes = await fetch("/api/trade/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signedTransaction: encode(signed.serialize()),
-          requestId: `comm_${Date.now()}`,
-          lastValidBlockHeight: swapData.lastValidBlockHeight,
-        }),
-      });
-
-      const execution = await execRes.json();
-      if (!execRes.ok || !execution.signature) {
-        throw new Error(execution.error || "The swap was not confirmed by Solana RPC.");
-      }
-
-      const formattedReceived =
-        side === "buy"
-          ? `${token.symbol} against ${quoteSymbol}`
-          : `${quoteSymbol} against ${token.symbol}`;
-
+      const outSymbol = side === "buy" ? token.symbol : quoteSymbol;
+      const inSymbol = side === "buy" ? quoteSymbol : token.symbol;
       setTxSuccess({
-        signature: execution.signature,
-        received: formattedReceived,
+        signature: result.signature,
+        received: `${result.inputUi} ${inSymbol} → ≈ ${result.expectedOutUi.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${outSymbol}`,
       });
-    } catch (err: any) {
-      setSwapError(err?.message || "Execution error during swap.");
+      
+    } catch (err: unknown) {
+      if (err instanceof NoRouteError) {
+        const poolUrl = token.meteoraUrl || token.pumpUrl || `https://jup.ag/swap/${quoteMint}-${token.mint}`;
+        setBondingNotice({
+          message: token.dexId === "pumpfun" || !token.progressKnown
+            ? "Jupiter has no route yet — this token still trades on its bonding curve. Trade it on the pool:"
+            : "Jupiter has no route for this pair right now. Trade it on the pool:",
+          url: poolUrl,
+          label: token.dexId === "pumpfun" ? "Pump.fun" : "Open pool",
+        });
+      } else {
+        setSwapError(err instanceof Error ? err.message : "Swap failed to execute.");
+      }
     } finally {
       setIsSwapping(false);
     }
@@ -223,11 +155,15 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
           <div className="token-trade-meta">
             <div className="token-trade-title-row">
               <h1 className="token-trade-title">${cleanSymbol}</h1>
-              <span className="token-trade-chip">
-                {isGraduated ? "Meteora DLMM Pool" : "ClawPump Curve"}
-              </span>
+              <span className="token-trade-chip">{curveStatusLabel(token)}</span>
+              <span className="token-trade-chip">{token.source === "openstock" ? "Launched on OpenStock" : "Discovered pool"}</span>
             </div>
             <div className="token-trade-name">{token.name}</div>
+            {lookalike ? (
+              <p className="token-trade-paired-wording" role="note">
+                ⚠ This ticker copies a stock, stablecoin or major token. It is an unrelated token — check the mint.
+              </p>
+            ) : null}
             <div className="token-trade-paired-wording">
               <span className="token-trade-paired-dot" aria-hidden="true" />
               <span>
@@ -250,9 +186,9 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
             type="button"
             className="share-btn-secondary"
             onClick={() => setShowBubbleModal(true)}
-            title="View Bubblemaps cluster distribution"
+            title="Top holders from Solana"
           >
-            Bubblemaps Audit
+            Holders
           </button>
           <a
             href={token.explorerUrl || `https://solscan.io/token/${token.mint}`}
@@ -273,8 +209,10 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
           <div className="token-metrics-row">
             <div className="token-metric-card">
               <div className="token-metric-label">Price USD</div>
-              <div className="token-metric-value">${formatTokenPrice(token.priceUsd)}</div>
-              <div className="token-metric-sub">{token.priceSol.toFixed(7)} SOL</div>
+              <div className="token-metric-value">{formatTokenPrice(token.priceUsd)}</div>
+              <div className="token-metric-sub">
+                {token.priceInPairedStock ? `${token.priceInPairedStock.toPrecision(4)} ${token.pairedStockSymbol}` : `DexScreener · ${dexLabel(token)}`}
+              </div>
             </div>
 
             <div className="token-metric-card">
@@ -284,25 +222,21 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
                   token.change24h >= 0 ? "is-positive" : "is-negative"
                 }`}
               >
-                {token.change24h >= 0 ? `+${token.change24h.toFixed(1)}%` : `${token.change24h.toFixed(1)}%`}
+                {!token.change24h ? "—" : token.change24h >= 0 ? `+${token.change24h.toFixed(1)}%` : `${token.change24h.toFixed(1)}%`}
               </div>
-              <div className="token-metric-sub">Rolling 24h</div>
+              <div className="token-metric-sub">DexScreener 24h</div>
             </div>
 
             <div className="token-metric-card">
               <div className="token-metric-label">24h Volume</div>
               <div className="token-metric-value">{formatTokenVolume(token.volume24hUsd)}</div>
-              <div className="token-metric-sub">On-chain verified</div>
+              <div className="token-metric-sub">Pools quoted in {token.pairedStockSymbol}</div>
             </div>
 
             <div className="token-metric-card">
               <div className="token-metric-label">Market Cap</div>
-              <div className="token-metric-value">
-                {token.marketCapUsd >= 1_000_000
-                  ? `$${(token.marketCapUsd / 1_000_000).toFixed(2)}M`
-                  : `$${(token.marketCapUsd / 1000).toFixed(1)}K`}
-              </div>
-              <div className="token-metric-sub">FDV</div>
+              <div className="token-metric-value">{formatMarketCap(token.marketCapUsd)}</div>
+              <div className="token-metric-sub">DexScreener</div>
             </div>
           </div>
 
@@ -310,22 +244,26 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
           <div className="token-curve-card">
             <div className="token-curve-header">
               <div>
-                <h3 className="token-curve-title">Bonding Curve Progress</h3>
+                <h3 className="token-curve-title">Where it trades</h3>
                 <p className="token-curve-desc">
                   {isGraduated
-                    ? "Curve completed. Pair migrated into full liquidity on Meteora DLMM."
-                    : `When curve reaches 100%, 100% of collateral pool graduates directly to Meteora DLMM.`}
+                    ? `Trading on a ${dexLabel(token)} pool against ${token.pairedStockSymbol}.`
+                    : token.progressKnown
+                    ? `Still on its bonding curve. Progress is read from the pool on Solana.`
+                    : `Still on its ${dexLabel(token)} bonding curve. Progress is not published by this venue.`}
                 </p>
               </div>
-              <div className="token-curve-pct">{token.bondingCurveProgress.toFixed(1)}%</div>
+              <div className="token-curve-pct">{isGraduated ? "Pool" : token.progressKnown ? `${token.bondingCurveProgress.toFixed(1)}%` : "Curve"}</div>
             </div>
 
-            <div className="token-progress-bar-wrap">
-              <div
-                className="token-progress-bar-fill"
-                style={{ width: `${Math.min(100, Math.max(5, token.bondingCurveProgress))}%` }}
-              />
-            </div>
+            {isGraduated || token.progressKnown ? (
+              <div className="token-progress-bar-wrap">
+                <div
+                  className="token-progress-bar-fill"
+                  style={{ width: `${isGraduated ? 100 : Math.min(100, Math.max(0, token.bondingCurveProgress))}%` }}
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* Pair Collateral Details */}
@@ -431,7 +369,7 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
             {swapError && <div className="token-swap-alert is-error">{swapError}</div>}
             {txSuccess && (
               <div className="token-swap-alert is-success">
-                <div>Trade executed successfully on Solana.</div>
+                <div>Confirmed on Solana: {txSuccess.received}</div>
                 <a
                   href={`https://solscan.io/tx/${txSuccess.signature}`}
                   target="_blank"

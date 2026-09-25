@@ -9,7 +9,7 @@ import { GraduationRadar } from "@/components/graduation-radar";
 import { MigrationModal } from "@/components/migration-modal";
 import { ShareToXModal, type ShareTokenData } from "@/components/share-to-x-modal";
 import type { CommunityToken } from "@/lib/community-tokens";
-import { formatTokenPrice, formatTokenVolume } from "@/lib/community-token-utils";
+import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isLookalikeTicker, isOnAmmPool } from "@/lib/community-token-utils";
 
 type FilterTab = "all" | "new" | "graduating" | "graduated";
 
@@ -28,7 +28,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
   const [, startTransition] = useTransition();
 
-  // Load tokens from API and start 5s live polling
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Load tokens from the API and poll every 30s (server caches DexScreener for 20s)
   useEffect(() => {
     let cancelled = false;
 
@@ -47,21 +49,21 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       }
     }
 
-    void load(true);
-    const interval = setInterval(() => void load(false), 5_000);
+    void load(reloadKey === 0);
+    const interval = setInterval(() => void load(false), 30_000);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [reloadKey]);
 
   // Deep-link from share cards: /app/community?mint=<address>
   useEffect(() => {
     if (typeof window === "undefined" || tokens.length === 0) return;
     const mint = new URLSearchParams(window.location.search).get("mint")?.trim();
     if (!mint) return;
-    const match = tokens.find((t) => t.mint.toLowerCase() === mint.toLowerCase());
+    const match = tokens.find((t) => t.mint === mint);
     if (!match) {
       setSearch(mint.slice(0, 8));
       return;
@@ -77,9 +79,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
       if (ageHours > 24) return false;
     } else if (filter === "graduating") {
-      if (t.bondingCurveProgress < 70 || t.bondingCurveProgress >= 100) return false;
+      if (!t.progressKnown || t.bondingCurveProgress < 70 || isOnAmmPool(t)) return false;
     } else if (filter === "graduated") {
-      if (t.status !== "graduated" && t.bondingCurveProgress < 100) return false;
+      if (!isOnAmmPool(t)) return false;
     }
 
     if (!search.trim()) return true;
@@ -92,54 +94,30 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
     );
   });
 
-  // KPI Calculations
-  const totalLaunches = tokens.length;
-  const totalVolumeUsd = tokens.reduce((acc, t) => acc + t.volume24hUsd, 0);
-  const totalVolumeFormatted = formatTokenVolume(totalVolumeUsd);
-  const graduatedCount = tokens.filter((t) => t.status === "graduated" || t.bondingCurveProgress >= 100).length;
-  const newCount = tokens.filter((t) => {
-    const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
-    return ageHours <= 24;
-  }).length;
-  const avgChange24h = tokens.length > 0
-    ? +(tokens.reduce((acc, t) => acc + (t.change24h || 0), 0) / tokens.length).toFixed(1)
-    : 0;
-
-  function handleTradeSuccess(newVol: number) {
-    if (!activeSwapToken) return;
-    setTokens((prev) =>
-      prev.map((t) =>
-        t.mint === activeSwapToken.mint
-          ? {
-              ...t,
-              volume24hUsd: newVol,
-              bondingCurveProgress: Math.min(100, +(t.bondingCurveProgress + 1.2).toFixed(1)),
-              holdersCount: t.holdersCount + 1,
-            }
-          : t
-      )
-    );
-  }
+  // KPI Calculations — launched = through OpenStock; discovered = existing DexScreener pools against an xStock
+  const launchedCount = tokens.filter((t) => t.source === "openstock").length;
+  const discoveredCount = tokens.length - launchedCount;
+  const totalVolumeFormatted = formatTokenVolume(tokens.reduce((acc, t) => acc + t.volume24hUsd, 0));
+  const ammPoolCount = tokens.filter(isOnAmmPool).length;
+  const newCount = tokens.filter((t) => Date.now() - new Date(t.createdAt).getTime() <= 24 * 3600_000).length;
 
   return (
     <section className="community-market-section" aria-label="Community Meme & Stock Pairs Market">
       {/* KPI Highlight Strip */}
       <div className="community-kpi-ribbon" role="region" aria-label="Key launch metrics">
         <div className="community-kpi-card">
-          <span className="community-kpi-label">TOTAL LAUNCHES</span>
+          <span className="community-kpi-label">LAUNCHED ON OPENSTOCK</span>
           <div className="community-kpi-value-row">
-            <strong>{totalLaunches}</strong>
-            <span className="community-kpi-badge">Verified on Solana</span>
+            <strong>{launchedCount}</strong>
+            <span className="community-kpi-badge">+{discoveredCount} discovered pools</span>
           </div>
         </div>
 
         <div className="community-kpi-card">
-          <span className="community-kpi-label">24H PAIRED VOLUME</span>
+          <span className="community-kpi-label">24H STOCK-PAIRED VOLUME</span>
           <div className="community-kpi-value-row">
             <strong>{totalVolumeFormatted}</strong>
-            <span className={`community-kpi-badge ${avgChange24h >= 0 ? "is-green" : "is-red"}`}>
-              {avgChange24h >= 0 ? "+" : ""}{avgChange24h}% 24h
-            </span>
+            <span className="community-kpi-badge">DexScreener</span>
           </div>
         </div>
 
@@ -147,17 +125,15 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
           <span className="community-kpi-label">NEW IN LAST 24H</span>
           <div className="community-kpi-value-row">
             <strong>{newCount}</strong>
-            <span className="community-kpi-badge is-purple">
-              <span className="live-dot" /> Live Solana Feed
-            </span>
+            <span className="community-kpi-badge is-purple">Pools created</span>
           </div>
         </div>
 
         <div className="community-kpi-card">
-          <span className="community-kpi-label">IN FULL POOL</span>
+          <span className="community-kpi-label">ON AN AMM POOL</span>
           <div className="community-kpi-value-row">
-            <strong>{graduatedCount}</strong>
-            <span className="community-kpi-badge is-cyan">Meteora Live</span>
+            <strong>{ammPoolCount}</strong>
+            <span className="community-kpi-badge is-cyan">Past the curve</span>
           </div>
         </div>
       </div>
@@ -207,10 +183,10 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
         <div className="discovery-filters" role="tablist" aria-label="Filter community launches">
           {[
-            { id: "all", label: `All Launches (${tokens.length})` },
-            { id: "new", label: `New Launches (${newCount})` },
-            { id: "graduating", label: "Graduating Soon (>70%)" },
-            { id: "graduated", label: `Graduated (${graduatedCount})` },
+            { id: "all", label: `All (${tokens.length})` },
+            { id: "new", label: `New (${newCount})` },
+            { id: "graduating", label: "Near graduation (>70%)" },
+            { id: "graduated", label: `On AMM pool (${ammPoolCount})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -236,7 +212,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       {/* Empty State */}
       {filteredTokens.length === 0 && !loading && (
         <div className="community-empty-card">
-          <p>No token launches matched your filter.</p>
+          <p>No tokens matched your filter.</p>
           <Link href="/launch" className="button button--gradient" style={{ display: "inline-flex", marginTop: 12 }}>
             Launch First Token Pair ↗
           </Link>
@@ -255,7 +231,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                 <th scope="col" className="trends-th--price">PRICE</th>
                 <th scope="col" className="trends-th--change">24H CHANGE</th>
                 <th scope="col" className="trends-th--volume">24H VOLUME</th>
-                <th scope="col" className="trends-th--bonding">BONDING CURVE</th>
+                <th scope="col" className="trends-th--bonding">WHERE IT TRADES</th>
                 <th scope="col" className="trends-th--mcap">MARKET CAP</th>
                 <th scope="col" className="trends-th--actions">ACTIONS</th>
               </tr>
@@ -263,8 +239,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
             <tbody>
               {filteredTokens.map((item, index) => {
                 const isPositive = item.change24h >= 0;
-                const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
+                const isGraduated = isOnAmmPool(item);
                 const volumeFormatted = formatTokenVolume(item.volume24hUsd);
+                const lookalike = isLookalikeTicker(item.symbol);
 
                 return (
                   <tr key={item.mint} id={`community-token-${item.mint}`} className="trends-tr">
@@ -292,9 +269,14 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                         <div className="trends-brand-details">
                           <div className="trends-symbol-line">
                             <span className="trends-symbol">${item.symbol}</span>
-                            <span className="trends-chip trends-chip--verified">
-                              {isGraduated ? "DLMM POOL" : "BONDING"}
+                            <span className="trends-chip trends-chip--verified" title={item.source === "openstock" ? "Launched through OpenStock" : "Existing pool found on DexScreener"}>
+                              {item.source === "openstock" ? "OPENSTOCK" : "DISCOVERED"}
                             </span>
+                            {lookalike ? (
+                              <span className="trends-chip" title="This ticker copies a stock, stablecoin or major token. It is not that asset.">
+                                LOOK-ALIKE
+                              </span>
+                            ) : null}
                           </div>
                           <span className="trends-name">{item.name}</span>
                         </div>
@@ -316,16 +298,20 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     <td className="trends-td--price">
                       <div className="trends-price-cell">
                         <strong>{formatTokenPrice(item.priceUsd)}</strong>
-                        <small>vs {item.pairedStockSymbol}</small>
+                        <small>{item.priceInPairedStock ? `${item.priceInPairedStock.toPrecision(3)} ${item.pairedStockSymbol}` : `on ${dexLabel(item)}`}</small>
                       </div>
                     </td>
 
                     {/* 24h Change */}
                     <td className="trends-td--change">
-                      <span className={`trends-change-pill ${isPositive ? "is-up" : "is-down"}`}>
-                        {isPositive ? "+" : ""}
-                        {item.change24h}%
-                      </span>
+                      {item.change24h ? (
+                        <span className={`trends-change-pill ${isPositive ? "is-up" : "is-down"}`}>
+                          {isPositive ? "+" : ""}
+                          {item.change24h.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="trends-change-pill">—</span>
+                      )}
                     </td>
 
                     {/* 24h Volume */}
@@ -333,32 +319,26 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
                     {/* Bonding Curve Progress (Clickable Migration Trigger) */}
                     <td className="trends-td--bonding">
-                      <div
+                      <button
+                        type="button"
                         className="bonding-progress-cell is-interactive"
                         onClick={() => setActiveMigrationToken(item)}
-                        title="Click to view pool migration progress"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
+                        title="Pool and migration details"
                       >
-                        <div className="bonding-progress-bar">
-                          <div
-                            className={`bonding-progress-fill ${isGraduated ? "is-graduated" : ""}`}
-                            style={{ width: `${Math.min(100, item.bondingCurveProgress)}%` }}
-                          />
-                        </div>
-                        <span className="bonding-progress-label">
-                          {item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "In Full Pool" : "Filled"} 🔍
-                        </span>
-                      </div>
+                        {item.progressKnown || isGraduated ? (
+                          <div className="bonding-progress-bar">
+                            <div
+                              className={`bonding-progress-fill ${isGraduated ? "is-graduated" : ""}`}
+                              style={{ width: `${Math.min(100, isGraduated ? 100 : item.bondingCurveProgress)}%` }}
+                            />
+                          </div>
+                        ) : null}
+                        <span className="bonding-progress-label">{curveStatusLabel(item)}</span>
+                      </button>
                     </td>
 
                     {/* Market Cap */}
-                    <td className="trends-td--mcap">
-                      {item.marketCapUsd >= 1_000_000
-                        ? `$${(item.marketCapUsd / 1_000_000).toFixed(2)}M`
-                        : `$${(item.marketCapUsd / 1000).toFixed(1)}K`}
-                    </td>
+                    <td className="trends-td--mcap">{formatMarketCap(item.marketCapUsd)}</td>
 
                     {/* Action Buttons */}
                     <td className="trends-td--actions">
@@ -375,12 +355,12 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                           type="button"
                           className="community-action-btn is-bubble"
                           onClick={() => setActiveBubbleToken(item)}
-                          title="View Bubblemaps cluster distribution"
+                          title="Top holders from Solana and the Bubblemaps map"
                         >
-                          Bubblemaps
+                          Holders
                         </button>
                         <Link
-                          href={`/launch?symbol=${item.pairedStockSymbol}`}
+                          href={`/launch?symbol=${encodeURIComponent(item.pairedStockSymbol)}`}
                           className="community-action-btn is-pair"
                           title="Launch another token paired to this stock"
                         >
@@ -419,7 +399,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
         <div className="community-cards-grid" style={{ marginTop: 24 }}>
           {filteredTokens.map((item) => {
             const isPositive = item.change24h >= 0;
-            const isGraduated = item.bondingCurveProgress >= 100 || item.status === "graduated";
+            const isGraduated = isOnAmmPool(item);
 
             return (
               <article key={item.mint} id={`community-token-${item.mint}`} className="community-card">
@@ -445,8 +425,8 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                       <StockLogo symbol={item.pairedStockSymbol} size={24} />
                     </div>
                   </div>
-                  <span className={`trends-delta-pill ${isPositive ? "is-up" : "is-down"}`}>
-                    {isPositive ? "+" : ""}{item.change24h}%
+                  <span className={`trends-delta-pill ${item.change24h ? (isPositive ? "is-up" : "is-down") : ""}`}>
+                    {item.change24h ? `${isPositive ? "+" : ""}${item.change24h.toFixed(2)}%` : "—"}
                   </span>
                 </div>
 
@@ -457,25 +437,25 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
                 <p className="community-card__desc">{item.description}</p>
 
-                <div
+                <button
+                  type="button"
                   className="community-card__bonding is-interactive"
                   onClick={() => setActiveMigrationToken(item)}
-                  title="Click to view pool migration progress"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setActiveMigrationToken(item)}
+                  title="Pool and migration details"
                 >
                   <div className="community-card__bonding-head">
-                    <span>Curve Progress</span>
-                    <strong>{item.bondingCurveProgress.toFixed(1)}% {isGraduated ? "✓ In Full Pool" : "🔍"}</strong>
+                    <span>{item.source === "openstock" ? "Launched on OpenStock" : "Discovered pool"}</span>
+                    <strong>{curveStatusLabel(item)}</strong>
                   </div>
-                  <div className="bonding-progress-bar">
-                    <div
-                      className={`bonding-progress-fill ${isGraduated ? "is-graduated" : ""}`}
-                      style={{ width: `${Math.min(100, item.bondingCurveProgress)}%` }}
-                    />
-                  </div>
-                </div>
+                  {item.progressKnown || isGraduated ? (
+                    <div className="bonding-progress-bar">
+                      <div
+                        className={`bonding-progress-fill ${isGraduated ? "is-graduated" : ""}`}
+                        style={{ width: `${Math.min(100, isGraduated ? 100 : item.bondingCurveProgress)}%` }}
+                      />
+                    </div>
+                  ) : null}
+                </button>
 
                 <div className="community-card__meta">
                   <div>
@@ -488,11 +468,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                   </div>
                   <div>
                     <span>Market Cap</span>
-                    <strong>
-                      {item.marketCapUsd >= 1_000_000
-                        ? `$${(item.marketCapUsd / 1_000_000).toFixed(2)}M`
-                        : `$${(item.marketCapUsd / 1000).toFixed(1)}K`}
-                    </strong>
+                    <strong>{formatMarketCap(item.marketCapUsd)}</strong>
                   </div>
                 </div>
 
@@ -509,7 +485,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     className="button button--light community-card__bubble-btn"
                     onClick={() => setActiveBubbleToken(item)}
                   >
-                    Bubblemaps
+                    Holders
                   </button>
                   <button
                     type="button"
@@ -541,7 +517,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
         <CommunitySwapModal
           token={activeSwapToken}
           onClose={() => setActiveSwapToken(null)}
-          onTradeSuccess={handleTradeSuccess}
+          onTradeSuccess={() => setReloadKey((key) => key + 1)}
         />
       )}
 

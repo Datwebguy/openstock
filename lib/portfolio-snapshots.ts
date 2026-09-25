@@ -1,24 +1,16 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { readJson, writeJson } from "@/lib/json-store";
 
 export type PortfolioSnapshot = { createdAt: string; totalValueUsd: number | null; solValueUsd: number | null; usdcValueUsd: number | null; holdings: Array<{ symbol: string; shares: number; valueUsd: number | null }> };
 type SnapshotStore = { version: 1; wallets: Record<string, PortfolioSnapshot[]> };
 
-const STORE_PATH = process.env.OPENSTOCK_PORTFOLIO_STORE_PATH ?? path.join(process.cwd(), ".data", "portfolio-snapshots.json");
-const EMPTY_STORE: SnapshotStore = { version: 1, wallets: {} };
 const INTERVAL_MS = 30 * 60 * 1000;
 
 async function readStore(): Promise<SnapshotStore> {
-  try {
-    const parsed = JSON.parse(await fs.readFile(STORE_PATH, "utf8")) as Partial<SnapshotStore>;
-    return { version: 1, wallets: parsed.wallets ?? {} };
-  } catch { return EMPTY_STORE; }
+  const parsed = await readJson<SnapshotStore>("portfolio-snapshots");
+  return { version: 1, wallets: parsed?.wallets ?? {} };
 }
 async function writeStore(store: SnapshotStore) {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-  const temporary = STORE_PATH + "." + process.pid + ".tmp";
-  await fs.writeFile(temporary, JSON.stringify(store, null, 2), "utf8");
-  await fs.rename(temporary, STORE_PATH);
+  await writeJson("portfolio-snapshots", store);
 }
 
 export async function getPortfolioSnapshots(wallet: string) {

@@ -89,9 +89,9 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const facts = [
     { label: "Market Price", value: officialReady ? displayPrice(asset.price) : "Unavailable" },
     { label: "Trading Price", value: onchainPrice !== null ? "$" + number(onchainPrice) : "Unavailable" },
-    { label: "Price Source", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "Unavailable" },
-    { label: "Available", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Unavailable" },
-    { label: "Trading Fee", value: pool && pool.feePct !== null && pool.feePct !== undefined ? number(pool.feePct, 2) + "%" : "Unavailable" },
+    { label: evidence.pyth.data?.source === "pyth" ? "Pyth oracle" : "Jupiter price", value: evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : "Unavailable" },
+    { label: "Top Meteora pool TVL", value: pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Unavailable" },
+    { label: "Top pool fee", value: pool && pool.feePct !== null && pool.feePct !== undefined && pool.feePct > 0 ? number(pool.feePct, 2) + "%" : "Unavailable" },
     { label: "Backed", value: coverage !== null ? number(coverage * 100) + "%" : "Unavailable" },
     { label: "Shares", value: multiplier(asset.multiplier?.currentMultiplier) },
   ];
@@ -110,11 +110,12 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             officialReady={officialReady}
             priceFormatted={officialReady ? displayPrice(asset.price) : priceForTrade !== null ? "$" + number(priceForTrade) : "Live"}
             change24h={stats.change24h}
-            liquidityUsd={pool && pool.tvl !== null ? "$" + number(pool.tvl, 0) : "Unavailable"}
-            volume24h={pool && pool.volume24h !== null ? "$" + number(pool.volume24h, 0) : "Unavailable"}
+            liquidityUsd={stats.liquidity && stats.liquidity !== "Pre-Pool" ? stats.liquidity : "Unavailable"}
+            volume24h={stats.volume24h || "Unavailable"}
             oraclePrice={evidence.pyth.data ? "$" + number(evidence.pyth.data.price) : undefined}
+            oracleLabel={evidence.pyth.data?.source === "pyth" ? "PYTH ORACLE" : evidence.pyth.data ? "JUPITER PRICE" : "ORACLE"}
             reserveCoverage={coverage !== null ? number(coverage * 100) + "% backed" : "Reserve unavailable"}
-            mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"}
+            mintAddress={asset.solanaDeployment?.address ?? ""}
             decimals={decimals ?? asset.solanaDeployment?.decimals ?? 6}
             venueStatus={venueStatus}
             sessionStatus={sessionStatus}
@@ -124,14 +125,14 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <a href="#overview">Overview</a>
         <a href="#chart">Chart</a>
         <a href="#news">News</a>
-        <a href="#events">Issuer events</a>
+        {nextMultiplier ? <a href="#events">Issuer events</a> : <Link href={`/app/actions`}>Issuer events</Link>}
         <a href="#trade">Trade</a>
         <a href="#pairs">Pairs</a>
         <Link href={`/launch?symbol=${encodeURIComponent(asset.symbol)}&quick=1`} style={{ color: "var(--accent, #9945ff)", fontWeight: 700 }}>
           Launch against {asset.symbol}
         </Link>
       </nav>
-      <div className="asset-trade-grid"><div className="asset-analysis-stack"><AssetPriceChart symbol={asset.symbol} name={asset.name.replace(/ xStock$/, "")} referencePrice={asset.price} /><div id="news"><MarketNewsFeed compact symbol={asset.symbol} symbols={[{ symbol: asset.symbol, name: asset.name.replace(/ xStock$/, "") }]} /></div></div><section className="asset-order-card" id="trade"><PaperOrderForm symbol={asset.symbol} name={asset.name} price={priceForTrade} solPriceUsd={evidence.solPriceUsd} priceIsIndicative={priceIsIndicative} multiplier={asset.multiplier?.currentMultiplier ?? null} decimals={decimals} halted={halted} ready={reviewReady} liveTrading={liveTrading} hardBlock={verdict.hardBlock} hardBlockReason={verdict.hardBlock ? verdict.headline : null} pythPrice={evidence.pyth.data?.price ?? null} poolPrice={pool?.priceUsd ?? null} mintAddress={asset.solanaDeployment?.address ?? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"} underlyingSymbol={asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "")} /></section></div>
+      <div className="asset-trade-grid"><div className="asset-analysis-stack"><AssetPriceChart symbol={asset.symbol} name={asset.name.replace(/ xStock$/, "")} referencePrice={asset.price} /><div id="news"><MarketNewsFeed compact symbol={asset.symbol} symbols={[{ symbol: asset.symbol, name: asset.name.replace(/ xStock$/, "") }]} /></div></div><section className="asset-order-card" id="trade"><PaperOrderForm symbol={asset.symbol} name={asset.name} price={priceForTrade} solPriceUsd={evidence.solPriceUsd} priceIsIndicative={priceIsIndicative} multiplier={asset.multiplier?.currentMultiplier ?? null} decimals={decimals} halted={halted} ready={reviewReady} liveTrading={liveTrading} hardBlock={verdict.hardBlock} hardBlockReason={verdict.hardBlock ? verdict.headline : null} pythPrice={evidence.pyth.data?.price ?? null} pythSource={evidence.pyth.data?.source ?? null} poolPrice={pool?.priceUsd ?? null} underlyingSymbol={asset.underlying?.symbol ?? asset.symbol.replace(/x$/, "")} /></section></div>
       <section className="asset-overview" id="overview"><div className="asset-fact-grid">{facts.map((fact) => <article className="asset-fact" key={fact.label}><span>{fact.label}</span><strong>{fact.value}</strong></article>)}</div></section>
       <AssetStockPairs symbol={asset.symbol} />
       {nextMultiplier ? <section className="asset-event-card" id="events"><div><h2>Share Update</h2><p>{multiplier(asset.multiplier?.currentMultiplier)} → {multiplier(nextMultiplier)}</p></div><Link className="button button--dark" href="/app/actions">View events</Link></section> : null}

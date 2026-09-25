@@ -4,7 +4,11 @@ import {
   prepareMeteoraDammMigrationTx,
   queryOnChainDbcProgress,
 } from "@/lib/meteora-dbc";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { DAMM_V2_PROGRAM_ID } from "@meteora-ag/dynamic-bonding-curve-sdk";
 import { isSolanaAddress } from "@/lib/solana";
+
+const RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,22 +76,34 @@ export async function POST(req: NextRequest) {
 
     // Mode 3: Confirm Migration with broadcasted txSignature
     if (mode === "confirm") {
-      if (!txSignature) {
-        return NextResponse.json(
-          { error: "A valid signed Solana transaction signature is required to confirm migration." },
-          { status: 400 }
-        );
+      if (typeof txSignature !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{64,100}$/.test(txSignature)) {
+        return NextResponse.json({ error: "A valid transaction signature is required to confirm migration." }, { status: 400 });
+      }
+      if (!dammPoolAddress || !isSolanaAddress(dammPoolAddress) || (mint && !isSolanaAddress(mint))) {
+        return NextResponse.json({ error: "The migration mint or pool address is not valid." }, { status: 400 });
       }
 
-      const targetDammPool = dammPoolAddress || poolAddress;
-      const meteoraUrl = `https://app.meteora.ag/dlmm/${targetDammPool}`;
-      const explorerUrl = `https://solscan.io/tx/${txSignature}`;
+      // Only mark graduated once the chain shows the migration landed and the DAMM v2 pool exists.
+      const connection = new Connection(RPC, "confirmed");
+      const status = await connection.getSignatureStatus(txSignature, { searchTransactionHistory: true });
+      if (!status.value || status.value.err || !status.value.confirmationStatus) {
+        return NextResponse.json({ error: "The migration transaction is not confirmed on Solana yet." }, { status: 409 });
+      }
+      const dammAccount = await connection.getAccountInfo(new PublicKey(dammPoolAddress));
+      if (!dammAccount || !dammAccount.owner.equals(DAMM_V2_PROGRAM_ID)) {
+        return NextResponse.json({ error: "The DAMM v2 pool was not found on Solana." }, { status: 409 });
+      }
 
+      const targetDammPool = dammPoolAddress;
+      const meteoraUrl = `https://solscan.io/account/${targetDammPool}`;
+      const explorerUrl = `https://solscan.io/tx/${txSignature}`;
+      let registryUpdated = false;
       if (mint) {
-        if (!isSolanaAddress(mint) || (dammPoolAddress && !isSolanaAddress(dammPoolAddress))) {
-          return NextResponse.json({ error: "The migration mint or pool address is not valid." }, { status: 400 });
+        try {
+          registryUpdated = Boolean(await updateCommunityTokenStatus(mint, "graduated", targetDammPool, meteoraUrl));
+        } catch {
+          registryUpdated = false;
         }
-        await updateCommunityTokenStatus(mint, "graduated", targetDammPool, meteoraUrl);
       }
 
       return NextResponse.json({
@@ -98,12 +114,14 @@ export async function POST(req: NextRequest) {
         txHash: txSignature,
         meteoraUrl,
         explorerUrl,
+        registryUpdated,
       });
     }
 
     return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 });
   } catch (err: unknown) {
     console.error("Meteora migration route error:", err);
-    return NextResponse.json({ error: "Meteora migration transaction failed" }, { status: 500 });
+    const message = err instanceof Error && /not configured|not found/.test(err.message) ? err.message : "Meteora migration transaction failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

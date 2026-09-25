@@ -18,8 +18,12 @@ function respond(request: Request, body: unknown, status = 200) {
 export async function GET(request: Request) {
   const symbol = new URL(request.url).searchParams.get("symbol") ?? undefined;
   if (symbol && !CURATED_SYMBOLS.includes(symbol)) return respond(request, { error: "Choose a supported stock." }, 400);
-  const state = await getMarketWatchState(sessionFrom(request), symbol);
-  return respond(request, { ...state, message: "Watch rules are saved to this server session." });
+  try {
+    const state = await getMarketWatchState(sessionFrom(request), symbol);
+    return respond(request, { ...state, message: "Watch rules are saved to this browser session." });
+  } catch {
+    return respond(request, { watches: [], error: "Watch storage is unavailable." }, 503);
+  }
 }
 
 export async function PUT(request: Request) {

@@ -3,10 +3,11 @@ import Link from "next/link";
 import { AppFooterNav, AppNav } from "@/components/app-nav";
 import { CommunityMarketHub } from "@/components/community-market-hub";
 import { getCommunityTokens } from "@/lib/community-tokens";
+import curatedSymbols from "@/lib/curated-symbols.json";
 
 export const metadata: Metadata = {
   title: "Community Stock Pairs & Memes — OpenStock × ClawPump",
-  description: "Live registry of community memes and tokens paired against tokenized equities on Solana with bonding curves and Bubblemaps.",
+  description: "Tokens launched on OpenStock and existing pools quoted directly in tokenized stocks (xStocks) on Solana.",
 };
 
 export default async function CommunityMarketPage() {
@@ -21,11 +22,11 @@ export default async function CommunityMarketPage() {
           <div className="workspace-heading__body">
             <div className="workspace-kicker">
               <span className="live-dot" aria-hidden="true" />
-              <span>Solana Mainnet · ClawPump &amp; Meteora DLMM</span>
+              <span>Solana mainnet · pools quoted in xStocks</span>
             </div>
             <h1>Community Stock Pairs &amp; Memes</h1>
             <p>
-              Community tokens paired directly against 25 real tokenized stocks. Live bonding curves, instant trading, and Bubblemaps cluster audits.
+              Tokens launched on OpenStock, plus existing pools found on DexScreener that trade directly against a tokenized stock. Prices and volume come from DexScreener; holders come from Solana.
             </p>
           </div>
           <div className="workspace-heading__actions">
@@ -33,7 +34,7 @@ export default async function CommunityMarketPage() {
               Launch Token Pair ↗
             </Link>
             <Link className="workspace-pill-link workspace-pill-link--secondary" href="/app">
-              25 Tokenized Equities ↗
+              {curatedSymbols.length} tokenized stocks ↗
             </Link>
           </div>
         </header>

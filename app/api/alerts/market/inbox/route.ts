@@ -11,7 +11,12 @@ function sessionFrom(request: Request) {
 export async function GET(request: Request) {
   const hasSession = Boolean(request.headers.get("cookie")?.match(COOKIE_PATTERN)?.[1]);
   const sessionId = sessionFrom(request);
-  const state = await evaluateMarketWatches(sessionId);
+  let state: Awaited<ReturnType<typeof evaluateMarketWatches>>;
+  try {
+    state = await evaluateMarketWatches(sessionId);
+  } catch {
+    return NextResponse.json({ error: "Watch storage is unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
   const response = NextResponse.json({ ...state, message: state.checked ? "Checks run while OpenStock is open." : "Create a watch rule to start checking a level." }, { headers: { "Cache-Control": "no-store" } });
   if (!hasSession) response.cookies.set(COOKIE_NAME, sessionId, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 180 });
   return response;

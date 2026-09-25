@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { executeClawPumpLaunch, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
+import { executeClawPumpLaunch, getClawPumpPairs, resolveLaunchDescription, VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { addCommunityToken } from "@/lib/community-tokens";
+import { publicStoreError } from "@/lib/json-store";
 import { resolvePublicImageUrl } from "@/lib/safe-image-url";
 import { isSolanaAddress } from "@/lib/solana";
-import { getPlatformTreasuryWallet, calculateLaunchFeeBreakdown, CREATOR_FEE_MIN_BPS, CREATOR_FEE_MAX_BPS } from "@/lib/treasury";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     if (!symbol || typeof symbol !== "string" || symbol.trim().length < 1 || symbol.length > 10) {
       return NextResponse.json({ error: "Token symbol must be between 1 and 10 characters." }, { status: 400 });
     }
-    if (!txSignature || typeof txSignature !== "string" || txSignature.length < 32 || txSignature.length > 128) {
+    if (!txSignature || typeof txSignature !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{64,100}$/.test(txSignature)) {
       return NextResponse.json({ error: "Missing transaction signature proof." }, { status: 400 });
     }
     if (!preflightToken || typeof preflightToken !== "string" || preflightToken.length > 2048) {
@@ -46,89 +46,87 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing selected xStock pump quote mint." }, { status: 400 });
     }
 
-    const feeBps = Number(pumpCreatorFeeBps);
-    if (!Number.isInteger(feeBps) || feeBps < CREATOR_FEE_MIN_BPS || feeBps > CREATOR_FEE_MAX_BPS) {
-      return NextResponse.json({ 
-        error: `Creator fee must be an integer between ${CREATOR_FEE_MIN_BPS} and ${CREATOR_FEE_MAX_BPS} bps (${(CREATOR_FEE_MIN_BPS/100).toFixed(1)}%–${(CREATOR_FEE_MAX_BPS/100).toFixed(1)}%).` 
-      }, { status: 400 });
-    }
-
-    // Calculate fee breakdown including platform surcharge
-    const feeBreakdown = calculateLaunchFeeBreakdown(feeBps);
-    const platformTreasury = getPlatformTreasuryWallet();
-
-    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000");
-    if (!resolvedImageUrl) {
-      return NextResponse.json({ error: "Please provide or upload token artwork." }, { status: 400 });
-    }
-
-    const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1000000000;
-    const initialBuySol = devBuySol && Number.isFinite(Number(devBuySol)) && Number(devBuySol) >= 0 ? Number(devBuySol) : 0;
-
     const pairedAsset = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((p) => p.mint === pumpQuoteMint);
     if (!pairedAsset) {
-      return NextResponse.json({
-        error: "Choose a verified xStock pair. OpenStock launches against tokenized stocks, not SOL or USDC.",
-      }, { status: 400 });
+      return NextResponse.json({ error: "Choose a verified xStock pair. OpenStock launches against tokenized stocks, not SOL or USDC." }, { status: 400 });
     }
 
-    const launchResult = await executeClawPumpLaunch({
-      name: name.trim(),
-      symbol: symbol.trim().toUpperCase(),
-      description: typeof description === "string" ? description.trim().slice(0, 500) : "",
-      imageUrl: resolvedImageUrl,
-      pumpQuoteMint,
-      pumpCreatorFeeBps: feeBps,
-      walletAddress,
-      agentId,
-      agentName,
-      txSignature,
-      preflightToken,
-      supply: tokenSupply,
-      devBuySol: initialBuySol,
-    });
+    const { creatorFeeBps: range } = await getClawPumpPairs();
+    const feeBps = Number(pumpCreatorFeeBps);
+    if (!Number.isInteger(feeBps) || feeBps < range.min || feeBps > range.max) {
+      return NextResponse.json({ error: `Creator fee must be between ${(range.min / 100).toFixed(1)}% and ${(range.max / 100).toFixed(1)}%.` }, { status: 400 });
+    }
 
-    // Add fee breakdown to launch result
-    const launchResultWithFees = {
-      ...launchResult,
-      feeBreakdown,
-      platformTreasury,
-      treasury: platformTreasury, // For backward compatibility
-    };
+    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000");
+    if (!resolvedImageUrl || resolvedImageUrl.startsWith("data:")) {
+      return NextResponse.json({ error: "Upload token artwork or paste an https image URL." }, { status: 400 });
+    }
 
+    const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1_000_000_000;
+    const initialBuySol = devBuySol && Number.isFinite(Number(devBuySol)) && Number(devBuySol) >= 0 ? Number(devBuySol) : 0;
+    const resolvedDescription = resolveLaunchDescription(description, name, pairedAsset.symbol);
+
+    let launchResult;
+    try {
+      launchResult = await executeClawPumpLaunch({
+        name: name.trim(),
+        symbol: symbol.trim().toUpperCase(),
+        description: resolvedDescription,
+        imageUrl: resolvedImageUrl,
+        pumpQuoteMint,
+        pumpCreatorFeeBps: feeBps,
+        walletAddress,
+        agentId,
+        agentName,
+        txSignature,
+        preflightToken,
+        supply: tokenSupply,
+        devBuySol: initialBuySol,
+      });
+    } catch (launchError) {
+      // The payment already landed; the client keeps txSignature + preflightToken so the user can retry this step.
+      return NextResponse.json(
+        { error: launchError instanceof Error ? launchError.message : "Token launch could not be completed.", retryable: true },
+        { status: 502 }
+      );
+    }
+
+    let registered = true;
+    let registryError: string | null = null;
     try {
       await addCommunityToken({
         mint: launchResult.mintAddress,
         name: name.trim(),
         symbol: symbol.trim().toUpperCase(),
-        description: (typeof description === "string" ? description.trim() : "") || `Community token paired with ${pairedAsset.symbol} on Solana`,
+        description: resolvedDescription,
         imageUrl: resolvedImageUrl,
         pairedStockSymbol: pairedAsset.symbol,
         pairedStockName: pairedAsset.name.replace(/ xStock$/, ""),
         creatorWallet: walletAddress,
         supply: tokenSupply,
         creatorFeeBps: feeBps,
-        platformFeeBps: feeBreakdown.platformFeeBps,
-        totalFeeBps: feeBreakdown.totalFeeBps,
         priceSol: 0,
         priceUsd: 0,
         marketCapUsd: 0,
         volume24hUsd: 0,
         change24h: 0,
         bondingCurveProgress: 0,
+        progressKnown: false,
         status: "new",
-        holdersCount: 1,
+        holdersCount: 0,
         txSignature,
         pumpUrl: launchResult.pumpUrl,
         explorerUrl: launchResult.explorerUrl,
-        platformTreasury,
+        venue: "pumpfun",
+        dexId: "pumpfun",
         createdAt: new Date().toISOString(),
       });
     } catch (storeErr) {
-      console.warn("Could not record token into community store:", storeErr);
+      registered = false;
+      registryError = publicStoreError(storeErr, "The token is live on Pump.fun but could not be added to the OpenStock desk.");
     }
 
-    return NextResponse.json(launchResultWithFees);
+    return NextResponse.json({ ...launchResult, creatorFeeBps: feeBps, registered, registryError });
   } catch {
     return NextResponse.json({ error: "Launch execution failed" }, { status: 500 });
   }

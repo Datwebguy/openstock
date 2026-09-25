@@ -1,0 +1,111 @@
+/* Mobile fixes from the 2026-09 product audit. Loaded last so it wins over earlier passes. */
+
+/* Anchored sections land below the floating top nav instead of under it. */
+#overview, #chart, #news, #events, #trade, #pairs, [id^="community-token-"] { scroll-margin-top: 104px; }
+
+@media (max-width: 759px) {
+  /* The order card was sticky (≈590px tall) and covered the chart and news while scrolling. Keep it in flow. */
+  .asset-order-card { position: static; bottom: auto; box-shadow: none; }
+
+  /* Content must clear the fixed bottom nav (65px + home indicator). */
+  main.page { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Section tabs scroll sideways — show that with an edge fade and give each tab a 44px target. */
+  .asset-detail-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    mask-image: linear-gradient(to right, #000 85%, transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+    gap: 4px;
+  }
+  .asset-detail-tabs::-webkit-scrollbar { display: none; }
+  .asset-detail-tabs a { min-height: 44px; padding: 0 12px; flex: 0 0 auto; scroll-snap-align: start; }
+
+  /* Bottom nav also scrolls: fade the trailing edge so off-screen items (Portfolio, Wallet…) read as reachable. */
+  .footer-nav {
+    mask-image: linear-gradient(to right, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+    scroll-snap-type: x proximity;
+  }
+  .footer-nav a { scroll-snap-align: start; }
+
+  /* 44px minimum tap targets for the controls the audit measured below it. */
+  .trends-trade-btn,
+  .trends-launch-btn,
+  .trends-star-btn,
+  .community-action-btn,
+  .discovery-view-btn,
+  .discovery-filters button,
+  .pro-chart-tf-btn,
+  .token-quick-btn,
+  .token-slip-btn,
+  .community-swap-slip-btn,
+  .launch-preset-chip,
+  .launch-fee-chip,
+  .asset-stock-pairs a,
+  .asset-stock-pairs button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .theme-toggle { min-width: 44px; min-height: 44px; }
+  .back-link,
+  .launch-back-link,
+  .launch-quick-note a,
+  .os-text-link,
+  .os-card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Chart time axis: 6 labels overlap at phone width — keep first, middle and last. */
+@media (max-width: 480px) {
+  .pro-chart-time-scale { padding-right: 56px; }
+  .pro-chart-time-scale > :nth-child(2),
+  .pro-chart-time-scale > :nth-child(4),
+  .pro-chart-time-scale > :nth-child(5) { display: none; }
+}
+
+/* Small visual controls keep their look but get a ≥44px hit area. */
+@media (max-width: 759px) {
+  .theme-toggle,
+  .brand,
+  .os-wordmark,
+  .os-back-top,
+  .os-stock-row-action,
+  .market-pulse-tile__launch-cta,
+  .discovery-filter-link,
+  .workspace-pill-link { position: relative; }
+  .theme-toggle::after,
+  .brand::after,
+  .os-wordmark::after,
+  .os-back-top::after,
+  .os-stock-row-action::after,
+  .market-pulse-tile__launch-cta::after,
+  .discovery-filter-link::after,
+  .workspace-pill-link::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .trends-asset-cell { min-height: 44px; display: flex; align-items: center; }
+  /* Stacked footer links: real 44px rows (overlapping pseudo hit areas would steal taps from neighbours). */
+  .os-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+  .discovery-search input,
+  .launch-pair-search-input,
+  .launch-devbuy-sol-input,
+  .launch-devbuy-pct-input { min-height: 44px; }
+}
+
+@media (max-width: 759px) {
+  .analytics-audit-item a { display: inline-flex; align-items: center; min-height: 44px; }
+}
