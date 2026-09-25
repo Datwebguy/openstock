@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { Connection, Transaction } from "@solana/web3.js";
+import { Transaction } from "@solana/web3.js";
+import { browserConnection, waitForSignature } from "@/lib/client-rpc";
 import { StockLogo } from "@/components/stock-logo";
 import { useWallet, shortWallet } from "@/components/wallet-session";
 import type { CreatorVaultItem, RoyaltyClaimReceipt } from "@/lib/creator-royalties";
@@ -74,7 +75,7 @@ const EMPTY_ROYALTIES: RoyaltiesData = {
 };
 
 export function PortfolioDesk() {
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, canSign, signAnyTransaction } = useWallet();
   const [activeTab, setActiveTab] = useState<"royalties" | "holdings" | "history">("royalties");
   const [portfolio, setPortfolio] = useState<PortfolioData>(EMPTY_PORTFOLIO);
   const [royalties, setRoyalties] = useState<RoyaltiesData>(EMPTY_ROYALTIES);
@@ -155,27 +156,12 @@ export function PortfolioDesk() {
       if (!res.ok) throw new Error(data.error || "Claim failed");
       if (!data.transactionBase64) throw new Error("Claim transaction was not prepared.");
 
-      const win = window as unknown as {
-        solana?: { signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>; signTransaction?: (tx: Transaction) => Promise<Transaction> };
-        phantom?: { solana?: { signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>; signTransaction?: (tx: Transaction) => Promise<Transaction> } };
-      };
-      const provider = win.solana ?? win.phantom?.solana;
-      if (!provider?.signTransaction && !provider?.signAndSendTransaction) {
-        throw new Error("Connect Phantom or Solflare to sign the claim.");
-      }
-
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-      const connection = new Connection(rpcUrl, "confirmed");
+      if (!canSign) throw new Error("Connect a Solana wallet that can sign to claim.");
+      const connection = browserConnection();
       const tx = Transaction.from(base64ToUint8Array(data.transactionBase64));
-
-      let signature = "";
-      if (provider.signAndSendTransaction) {
-        signature = (await provider.signAndSendTransaction(tx)).signature;
-      } else if (provider.signTransaction) {
-        const signed = await provider.signTransaction(tx);
-        signature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 3 });
-      }
-      await connection.confirmTransaction(signature, "confirmed");
+      const signed = await signAnyTransaction(tx);
+      const signature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 3 });
+      await waitForSignature(connection, signature);
 
       const refreshRes = await fetch(`/api/portfolio/royalties?wallet=${encodeURIComponent(address)}`);
       if (refreshRes.ok) setRoyalties(await refreshRes.json());

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 import {
+  isAndroid,
   isMobile,
   isInAppBrowser,
   openPhantomMobile,
@@ -25,7 +26,6 @@ export function WalletSelectModal({ isOpen, onClose }: WalletSelectModalProps) {
     connecting,
     wallet,
     wallets,
-    select,
     connect,
     connectEmail,
     disconnect,
@@ -49,12 +49,15 @@ export function WalletSelectModal({ isOpen, onClose }: WalletSelectModalProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const mwaAvailable = wallets.some(
+    (w) => w.adapter.name === "Mobile Wallet Adapter" && (w.readyState === "Installed" || w.readyState === "Loadable")
+  );
+
   const handleWalletSelect = async (walletId: string, walletName?: string) => {
     setStatusMessage(null);
 
-    // If on mobile external browser (Safari/Chrome), open the wallet app directly
-    // via verified universal link so it loads OpenStock in its internal Web3 browser
-    if (mobile && !inApp) {
+    // Mobile external browser (Safari/Chrome): open the wallet app's in-app browser via its universal link.
+    if (mobile && !inApp && walletId !== "mwa") {
       const opened = openMobileWallet(walletId);
       if (opened) {
         onClose();
@@ -62,28 +65,12 @@ export function WalletSelectModal({ isOpen, onClose }: WalletSelectModalProps) {
       }
     }
 
-    // In-app mobile browser or desktop: connect directly using Wallet Adapter
     try {
-      if (walletName) {
-        // Try finding matching wallet in adapter
-        const matched = wallets.find(
-          (w) => w.adapter.name.toLowerCase() === walletName.toLowerCase() ||
-                 w.adapter.name.toLowerCase().includes(walletId.toLowerCase())
-        );
-        if (matched) {
-          select(matched.adapter.name);
-          await connect(matched.adapter.name);
-          onClose();
-          return;
-        }
-      }
-
-      await connect(walletId);
-      onClose();
+      const key = await connect(walletName ?? walletId);
+      if (key) onClose();
     } catch (err: unknown) {
       console.warn("Wallet connection cancelled or failed:", err);
-      const msg = err instanceof Error ? err.message : "Connection was cancelled.";
-      setStatusMessage(msg);
+      setStatusMessage(err instanceof Error ? err.message : "Connection was cancelled.");
     }
   };
 
@@ -279,6 +266,26 @@ export function WalletSelectModal({ isOpen, onClose }: WalletSelectModalProps) {
 
         <div className="wallet-modal-body">
           <div className="wallet-options-grid">
+            {/* Android: Mobile Wallet Adapter connects an installed wallet app without leaving this browser */}
+            {mobile && !inApp && isAndroid() && mwaAvailable && (
+              <button
+                className="wallet-option-card"
+                onClick={() => handleWalletSelect("mwa", "Mobile Wallet Adapter")}
+                type="button"
+                disabled={connecting}
+              >
+                <div className="wallet-option-icon">
+                  <PhantomIcon />
+                </div>
+                <div className="wallet-option-info">
+                  <div className="wallet-option-title-row">
+                    <strong>Use installed wallet app</strong>
+                  </div>
+                  <span>Stay in this browser (Mobile Wallet Adapter)</span>
+                </div>
+              </button>
+            )}
+
             {/* Phantom */}
             <button
               className="wallet-option-card"

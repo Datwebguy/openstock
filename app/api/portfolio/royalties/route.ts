@@ -3,10 +3,11 @@ import { type CreatorVaultItem, type RoyaltyClaimReceipt } from "@/lib/creator-r
 import { getCommunityTokens, type CommunityToken } from "@/lib/community-tokens";
 import { getCreatorPoolFees, prepareClaimCreatorTradingFeeTx } from "@/lib/meteora-dbc";
 import { isSolanaAddress } from "@/lib/solana";
+import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 
 const memoryClaims: Map<string, RoyaltyClaimReceipt[]> = new Map();
 
-function rawToUi(raw: string, decimals = 6): number {
+function rawToUi(raw: string, decimals: number): number {
   try {
     const n = Number(raw);
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -19,7 +20,7 @@ function rawToUi(raw: string, decimals = 6): number {
 async function getWalletVaults(wallet: string): Promise<(CreatorVaultItem & { poolAddress?: string; unclaimedQuoteRaw?: string })[]> {
   const allTokens = await getCommunityTokens().catch(() => [] as CommunityToken[]);
   const created = allTokens.filter(
-    (t) => t.creatorWallet && t.creatorWallet.toLowerCase() === wallet.toLowerCase()
+    (t) => t.source === "openstock" && t.creatorWallet === wallet
   );
 
   let onChainFees: Awaited<ReturnType<typeof getCreatorPoolFees>> = [];
@@ -34,7 +35,9 @@ async function getWalletVaults(wallet: string): Promise<(CreatorVaultItem & { po
   return created.map((t) => {
     const fee = t.poolAddress ? feeByPool.get(t.poolAddress) : undefined;
     const unclaimedQuoteRaw = fee?.unclaimedQuoteFeeRaw ?? "0";
-    const unclaimedStockShares = rawToUi(unclaimedQuoteRaw, 6);
+    // Quote side of a stock-paired pool is the xStock itself (8 decimals on Solana).
+    const quoteDecimals = VERIFIED_SOLANA_XSTOCKS_PAIRS.find((pair) => pair.symbol === t.pairedStockSymbol)?.decimals ?? 8;
+    const unclaimedStockShares = rawToUi(unclaimedQuoteRaw, quoteDecimals);
 
     return {
       id: `vault-${t.mint}`,
@@ -43,8 +46,8 @@ async function getWalletVaults(wallet: string): Promise<(CreatorVaultItem & { po
       tokenLogo: t.imageUrl,
       pairedStockSymbol: t.pairedStockSymbol,
       pairedStockName: t.pairedStockName,
-      venue: t.venue || "meteora",
-      feeBps: t.creatorFeeBps || 200,
+      venue: t.venue === "pumpfun" ? ("pumpfun" as const) : ("meteora" as const),
+      feeBps: t.creatorFeeBps,
       tradingVolume24hUsd: t.volume24hUsd || 0,
       unclaimedStockShares,
       claimedStockShares: 0,

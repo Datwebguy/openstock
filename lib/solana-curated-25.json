@@ -3,224 +3,224 @@
     "symbol": "NVDAx",
     "name": "NVIDIA xStock",
     "mint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/NVDAx.png"
   },
   "AAPLx": {
     "symbol": "AAPLx",
     "name": "Apple xStock",
     "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AAPLx.png"
   },
   "TSLAx": {
     "symbol": "TSLAx",
     "name": "Tesla xStock",
     "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/TSLAx.png"
   },
   "MSFTx": {
     "symbol": "MSFTx",
     "name": "Microsoft xStock",
     "mint": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MSFTx.png"
   },
   "AMZNx": {
     "symbol": "AMZNx",
     "name": "Amazon.com xStock",
     "mint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AMZNx.png"
   },
   "GOOGLx": {
     "symbol": "GOOGLx",
     "name": "Alphabet xStock",
     "mint": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GOOGLx.png"
   },
   "METAx": {
     "symbol": "METAx",
     "name": "Meta xStock",
     "mint": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/METAx.png"
   },
   "COINx": {
     "symbol": "COINx",
     "name": "Coinbase xStock",
     "mint": "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/COINx.png"
   },
   "MSTRx": {
     "symbol": "MSTRx",
     "name": "MicroStrategy xStock",
     "mint": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MSTRx.png"
   },
   "INTCx": {
     "symbol": "INTCx",
     "name": "Intel xStock",
     "mint": "XshPgPdXFRWB8tP1j82rebb2Q9rPgGX37RuqzohmArM",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/INTCx.png"
   },
   "SPYx": {
     "symbol": "SPYx",
     "name": "SP500 xStock",
     "mint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/SPYx.png"
   },
   "QQQx": {
     "symbol": "QQQx",
     "name": "Nasdaq xStock",
     "mint": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/QQQx.png"
   },
   "AMDx": {
     "symbol": "AMDx",
     "name": "AMD xStock",
     "mint": "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AMDx.png"
   },
   "PLTRx": {
     "symbol": "PLTRx",
     "name": "Palantir xStock",
     "mint": "XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/PLTRx.png"
   },
   "NFLXx": {
     "symbol": "NFLXx",
     "name": "Netflix xStock",
     "mint": "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/NFLXx.png"
   },
   "DISx": {
     "symbol": "DISx",
     "name": "The Walt Disney xStock",
     "mint": "Xsg93jDV656ULQ5u9yT2x5DS9b4xGD8aDCtfESSW6Bb",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DISx.png"
   },
   "UBERx": {
     "symbol": "UBERx",
     "name": "Uber xStock",
     "mint": "XsAsZLF4MmsvS1sDxRMrUz7REjHfwbC9UAMXSRBqgEB",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/UBERx.png"
   },
   "HOODx": {
     "symbol": "HOODx",
     "name": "Robinhood xStock",
     "mint": "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/HOODx.png"
   },
   "ABNBx": {
     "symbol": "ABNBx",
     "name": "Airbnb xStock",
     "mint": "XscSc1zjbVizEnhCzzehJ9fzztm3WRKdn9pjmriKDuN",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ABNBx.png"
   },
   "PYPLx": {
     "symbol": "PYPLx",
     "name": "PayPal xStock",
     "mint": "XshWQWYVp5ff8CrAEsGmLVKD47nBWi3Ygn5v8wXK27G",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/PYPLx.png"
   },
   "AVGOx": {
     "symbol": "AVGOx",
     "name": "Broadcom xStock",
     "mint": "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AVGOx.png"
   },
   "QCOMx": {
     "symbol": "QCOMx",
     "name": "Qualcomm xStock",
     "mint": "XsUUG8bjFN2KvzLTpzavvEKdAjMAeLTZiTeAQJ9uhvB",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/QCOMx.png"
   },
   "ARMx": {
     "symbol": "ARMx",
     "name": "ARM xStock",
     "mint": "XswUFSYE5CWsZM3X3yo6e2pZvxcAzx912DonGvgUFka",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/ARMx.png"
   },
   "CRCLx": {
     "symbol": "CRCLx",
     "name": "Circle xStock",
     "mint": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/CRCLx.png"
   },
   "GLDx": {
     "symbol": "GLDx",
     "name": "Gold xStock",
     "mint": "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GLDx.png"
   },
   "AIx": {
     "symbol": "AIx",
     "name": "C3.ai xStock",
     "mint": "Xs7QhN79WzM4hjfHbu2W46ZRkdyumim3ooJHhPxenoU",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/AIx.png"
   },
   "BETRx": {
     "symbol": "BETRx",
     "name": "Better Home & Finance xStock",
     "mint": "Xsv3MnH24RsSJwcBvkPUMsDAZqszgmxnbWcUDbfzaYW",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/BETRx.png"
   },
   "GDDYx": {
     "symbol": "GDDYx",
     "name": "GoDaddy xStock",
     "mint": "XsZLNUcjAVzNSbU5Z198ngop2mmoinZnw5ijBeMgWhW",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/GDDYx.png"
   },
   "QUBTx": {
     "symbol": "QUBTx",
     "name": "Quantum Computing xStock",
     "mint": "XsRJiWgqGJrDaidERfWfdZkaxdA4VPjVEqN6XFctpp3",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/QUBTx.png"
   },
   "MPx": {
     "symbol": "MPx",
     "name": "MP Materials xStock",
     "mint": "XsFARXCfXKCdu6BxV2WACBt3Dk88nxLujoqPzyyBib9",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/MPx.png"
   },
   "DVAx": {
     "symbol": "DVAx",
     "name": "DaVita xStock",
     "mint": "XsS3GWSysqkDJZYFSuMDFZ2ELSjQAWwMH28vxLThnb4",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DVAx.png"
   },
   "DRSx": {
     "symbol": "DRSx",
     "name": "Leonardo DRS xStock",
     "mint": "Xsf3NfLggzL9WXy4yaxJB3866ehq7y7sQxohwAkNiEu",
-    "decimals": 6,
+    "decimals": 8,
     "logo": "https://xstocks-metadata.backed.fi/logos/tokens/DRSx.png"
   }
 }

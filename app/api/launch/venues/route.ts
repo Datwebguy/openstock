@@ -1,91 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS, getClawPumpPairs } from "@/lib/clawpump";
-import {
-  checkMeteoraDbcBadgeSupport,
-  METEORA_DBC_CURVE_PRESETS,
-  resolveDbcConfigAddress,
-} from "@/lib/meteora-dbc";
+import { checkMeteoraDbcBadgeSupport, readDbcConfigSummary, resolveDbcConfigAddress } from "@/lib/meteora-dbc";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const symbol = searchParams.get("symbol") || "NVDAx";
-    let mint = searchParams.get("mint");
-
-    // Discover mint from symbol if not provided
-    if (!mint) {
-      const match = VERIFIED_SOLANA_XSTOCKS_PAIRS.find(
-        (p) => p.symbol.toLowerCase() === symbol.toLowerCase()
-      );
-      if (match) {
-        mint = match.mint;
-      }
-    }
-
-    if (!mint) {
-      return NextResponse.json(
-        { error: `Stock symbol ${symbol} not found in verified registry.` },
-        { status: 400 }
-      );
-    }
-
-    // 1. Check Pump.fun (ClawPump) support
-    const clawPumpData = await getClawPumpPairs();
-    const pumpSupported = clawPumpData.assets.some(
-      (a) => a.mint === mint || a.symbol.toLowerCase() === symbol.toLowerCase()
+    const requested = (searchParams.get("symbol") || "NVDAx").toLowerCase();
+    const mintParam = searchParams.get("mint");
+    const pair = VERIFIED_SOLANA_XSTOCKS_PAIRS.find(
+      (p) => p.mint === mintParam || p.symbol.toLowerCase() === requested || p.underlyingStock?.toLowerCase() === requested
     );
+    if (!pair) {
+      return NextResponse.json({ error: `Stock ${requested} is not in the verified registry.` }, { status: 400 });
+    }
 
-    // 2. Check Meteora DBC support via on-chain token badge check
-    const meteoraBadged = await checkMeteoraDbcBadgeSupport(mint);
-    // 3. Per-stock PoolConfig (quote mint is fixed on each config account)
-    // Only consider config ready if there's an explicit symbol-based config, not just fallback
-    const symbolKey = symbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    const explicitConfig = process.env[`METEORA_DBC_CONFIG_${symbolKey}`]?.trim();
-    const dbcConfigAddress = explicitConfig || resolveDbcConfigAddress({
-      quoteMint: mint,
-      pairedStockSymbol: symbol,
-      symbol,
-    });
-    const dbcConfigReady = Boolean(explicitConfig); // Only ready if explicitly configured
-    const meteoraLaunchReady = meteoraBadged && dbcConfigReady;
+    const pumpPairs = await getClawPumpPairs();
+    const pumpSupported = pumpPairs.source === "clawpump" && pumpPairs.assets.some((a) => a.mint === pair.mint);
+
+    const [meteoraBadged, config] = await Promise.all([
+      checkMeteoraDbcBadgeSupport(pair.mint),
+      (async () => {
+        const address = resolveDbcConfigAddress({ quoteMint: pair.mint, pairedStockSymbol: pair.symbol });
+        return address ? readDbcConfigSummary(address) : null;
+      })(),
+    ]);
+    // Ready only when the config exists on-chain AND is quoted in this exact stock.
+    const dbcConfig = config && config.quoteMint === pair.mint ? config : null;
+    const meteoraLaunchReady = meteoraBadged && Boolean(dbcConfig);
 
     return NextResponse.json({
-      symbol,
-      quoteMint: mint,
+      symbol: pair.symbol,
+      quoteMint: pair.mint,
       isBadged: meteoraBadged,
-      dbcConfigReady,
-      dbcConfigAddress,
+      dbcConfigReady: Boolean(dbcConfig),
+      dbcConfig,
       workingLaunchPath: pumpSupported ? "pumpfun" : meteoraLaunchReady ? "meteora" : null,
-      curvePresets: METEORA_DBC_CURVE_PRESETS,
       venues: {
         pumpfun: {
           id: "pumpfun",
           name: "Pump.fun (ClawPump)",
-          badge: "Working path",
-          description: "Pairs against tokenized equity on Pump.fun bonding curve. Primary launch path until a DBC PoolConfig is set.",
+          description: pumpSupported
+            ? `Pump.fun bonding curve quoted in ${pair.symbol}.`
+            : pumpPairs.source === "clawpump"
+            ? `ClawPump does not list ${pair.symbol} yet.`
+            : "Pump.fun launches are not available right now.",
           supported: pumpSupported,
-          creatorFeeRange: clawPumpData.creatorFeeBps ?? { min: 100, max: 300, default: 100 },
+          creatorFeeRange: pumpPairs.creatorFeeBps,
         },
         meteora: {
           id: "meteora",
           name: "Meteora DBC",
-          badge: dbcConfigReady ? "Dynamic Bonding Curve" : "Needs PoolConfig",
-          description: dbcConfigReady
-            ? `Dynamic Bonding Curve paired against ${symbol}, with migration into a Meteora pool.`
-            : `No PoolConfig for ${symbol} yet. Use Pump.fun, or create an xStock-quoted METEORA_DBC_CONFIG_${symbol.toUpperCase()}.`,
+          description: meteoraLaunchReady
+            ? `Dynamic Bonding Curve quoted in ${pair.symbol}; migrates to ${dbcConfig!.migrationTarget} after ${dbcConfig!.migrationThresholdUi} ${pair.symbol} is raised.`
+            : !meteoraBadged
+            ? `${pair.symbol} has no Meteora DBC token badge yet.`
+            : `No Meteora DBC config for ${pair.symbol} yet.`,
           supported: meteoraLaunchReady,
           isBadged: meteoraBadged,
-          dbcConfigReady,
-          dbcConfigAddress,
-          creatorFeeRange: { min: 100, max: 300, default: 150 },
+          dbcConfigReady: Boolean(dbcConfig),
         },
       },
     });
   } catch (error) {
     console.error("Error evaluating venue support:", error);
-    return NextResponse.json(
-      { error: "Failed to evaluate venue support" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to evaluate venue support" }, { status: 500 });
   }
 }

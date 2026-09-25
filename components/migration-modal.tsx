@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Connection, Transaction } from "@solana/web3.js";
+import { Transaction } from "@solana/web3.js";
+import { browserConnection, waitForSignature } from "@/lib/client-rpc";
 import { StockLogo } from "@/components/stock-logo";
 import { useWallet } from "@/components/wallet-session";
 import { translateWalletError } from "@/lib/solana-preflight";
@@ -23,7 +24,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalProps) {
-  const { address, connect } = useWallet();
+  const { address, connect, canSign, signAnyTransaction } = useWallet();
   const [isGraduated, setIsGraduated] = useState(
     token.bondingCurveProgress >= 100 || token.status === "graduated"
   );
@@ -64,26 +65,15 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
     setMigrationError("");
     setMigrationStep("Preparing move to full pool...");
 
-    type WindowSolana = {
-      signTransaction?: (tx: Transaction) => Promise<Transaction>;
-      signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>;
-    };
-    const win = window as unknown as {
-      solana?: WindowSolana;
-      phantom?: { solana?: WindowSolana };
-    };
-    const solanaProvider: WindowSolana | null = win.solana ?? win.phantom?.solana ?? null;
-
-    if (!solanaProvider || (!solanaProvider.signAndSendTransaction && !solanaProvider.signTransaction)) {
-      setMigrationError("Wallet not detected. Connect Phantom or Solflare to continue.");
+    if (!canSign) {
+      setMigrationError("Connect a Solana wallet that can sign to continue.");
       setIsMigrating(false);
       return;
     }
 
     try {
       const poolAddress = token.poolAddress || token.mint;
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-      const connection = new Connection(rpcUrl, "confirmed");
+      const connection = browserConnection();
 
       // Step 1: Prepare migration transaction from API
       const prepRes = await fetch("/api/migration/meteora", {
@@ -106,21 +96,12 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
       setMigrationStep("Please approve in your wallet...");
       const tx = Transaction.from(base64ToUint8Array(prepData.transactionBase64));
 
-      let txSignature = "";
-      if (solanaProvider.signAndSendTransaction) {
-        const sendRes = await solanaProvider.signAndSendTransaction(tx);
-        txSignature = sendRes.signature;
-      } else if (solanaProvider.signTransaction) {
-        const signed = await solanaProvider.signTransaction(tx);
-        setMigrationStep("Submitting transaction...");
-        txSignature = await connection.sendRawTransaction(signed.serialize(), {
-          skipPreflight: false,
-          maxRetries: 3,
-        });
-      }
+      const signed = await signAnyTransaction(tx);
+      setMigrationStep("Submitting transaction...");
+      const txSignature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 3 });
 
-      setMigrationStep("Finalizing move to full pool...");
-      await connection.confirmTransaction(txSignature, "confirmed");
+      setMigrationStep("Confirming on Solana...");
+      await waitForSignature(connection, txSignature);
 
       // Step 3: Confirm migration on registry
       const confirmRes = await fetch("/api/migration/meteora", {
@@ -137,11 +118,11 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
 
       const confirmData = await confirmRes.json();
       if (!confirmRes.ok || !confirmData.success) {
-        throw new Error(confirmData.error || "Payment didn’t go through. Try again.");
+        throw new Error(confirmData.error || "The migration could not be verified yet. Try again shortly.");
       }
 
       setIsGraduated(true);
-      setMeteoraPoolUrl(confirmData.meteoraUrl || `https://app.meteora.ag/dlmm/${prepData.dammPoolAddress}`);
+      setMeteoraPoolUrl(confirmData.meteoraUrl || `https://solscan.io/account/${prepData.dammPoolAddress}`);
       setMigrationTxHash(txSignature);
       setMigrationStep("Move to full pool complete!");
     } catch (err: unknown) {

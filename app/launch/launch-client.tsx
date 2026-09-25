@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 import { ShareToXModal } from "@/components/share-to-x-modal";
@@ -17,10 +17,27 @@ import {
   translateWalletError,
   type PriorityFeeTier,
 } from "@/lib/solana-preflight";
-import {
-  METEORA_DBC_CURVE_PRESETS,
-  type DbcCurvePresetKey,
-} from "@/lib/meteora-dbc";
+import { browserConnection, waitForSignature } from "@/lib/client-rpc";
+
+type DbcConfigSummary = {
+  quoteDecimals: number;
+  migrationThresholdUi: number;
+  baseFeeBps: number;
+  dynamicFee: boolean;
+  creatorTradingFeePercent: number;
+  migrationTarget: string;
+};
+
+/** A Pump.fun payment that landed but whose launch step has not completed — retried without paying again. */
+type PendingPumpLaunch = {
+  txSignature: string;
+  preflightToken: string;
+  agentId: string;
+  agentName: string;
+  body: Record<string, unknown>;
+  savedAt: string;
+};
+const PENDING_KEY = "openstock:pending-pump-launch";
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = window.atob(base64);
@@ -74,18 +91,13 @@ function matchesCategory(symbol: string, categoryId: string): boolean {
   return false;
 }
 
-export function isMeteoraCompatibleStock(symbol: string): boolean {
-  if (!symbol) return false;
-  const sym = symbol.toUpperCase().replace(/X$/, "");
-  return sym === "NVDA" || sym === "AAPL";
-}
 
 export function LaunchClient() {
   const searchParams = useSearchParams();
   const initialSymbol = searchParams.get("symbol") || "AAPLx";
   const quickMode = searchParams.get("quick") === "1";
 
-  const { address, ready, connect, connecting, canSign } = useWallet();
+  const { address, ready, connecting, canSign, signAnyTransaction } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
 
   // Supported Stock pairs
@@ -105,12 +117,17 @@ export function LaunchClient() {
   }>({ pumpfun: true, meteora: false, meteoraBadged: false, dbcConfigReady: false });
   const [loadingVenues, setLoadingVenues] = useState(false);
 
-  // Meteora DBC equity-tuned presets (Equity Standard / Momentum / Deep Book)
-  const [selectedCurvePreset, setSelectedCurvePreset] = useState<DbcCurvePresetKey>("linear");
+  // Stocks with a Meteora DBC PoolConfig on this deployment (from /api/launch/pairs), and the selected stock's on-chain config.
+  const [meteoraReadySymbols, setMeteoraReadySymbols] = useState<Set<string>>(new Set());
+  const isMeteoraCompatibleStock = (symbol: string) => meteoraReadySymbols.has(symbol);
+  const [dbcConfig, setDbcConfig] = useState<DbcConfigSummary | null>(null);
+  const [pumpFeeRange, setPumpFeeRange] = useState({ min: 100, max: 300, default: 100 });
+  const [pumpAvailable, setPumpAvailable] = useState(true);
+  const [pendingPump, setPendingPump] = useState<PendingPumpLaunch | null>(null);
+  const agentRef = useRef<{ id: string; name: string; forName: string } | null>(null);
 
   // Token-2022 Badge State — launches pair against the selected xStock only
   const [stockBadgeStatus, setStockBadgeStatus] = useState<"checking" | "badged" | "unbadged">("checking");
-  const quoteBadgeStatus = stockBadgeStatus;
   const effectiveQuoteMint = selectedPair?.mint;
   const effectiveQuoteSymbol = selectedPair?.symbol;
 
@@ -129,8 +146,9 @@ export function LaunchClient() {
   // Supply & Fee Economics (Fee strictly 0.5%–5%)
   const [tokenSupply, setTokenSupply] = useState<number>(1_000_000_000); // 1 Billion default
   const [customSupplyInput, setCustomSupplyInput] = useState("1,000,000,000");
-  const [creatorFeeBps, setCreatorFeeBps] = useState(100); // 1% default (50–500 bps)
-  const [feeBreakdown, setFeeBreakdown] = useState<{creatorFeePercent: string; platformFeePercent: string; totalFeePercent: string} | null>(null);
+  const [creatorFeeBps, setCreatorFeeBps] = useState(100); // Pump.fun only; bounds come from ClawPump
+  // Meteora creator share is fixed on-chain: base fee × creator percentage of the PoolConfig.
+  const meteoraCreatorFeeBps = dbcConfig ? Math.round((dbcConfig.baseFeeBps * dbcConfig.creatorTradingFeePercent) / 100) : null;
 
   // Deployer Initial Buy (Dev Buy / Pre-mine) State
   const [devBuyPercent, setDevBuyPercent] = useState<number>(0); // 0% default
@@ -151,6 +169,8 @@ export function LaunchClient() {
     explorerUrl: string;
     poolAddress?: string;
     venue: "pumpfun" | "meteora";
+    registered: boolean;
+    registryError?: string | null;
   } | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -220,8 +240,13 @@ export function LaunchClient() {
         const data = await res.json();
         const assetList: PumpPairAsset[] = data.assets ?? [];
         setPairs(assetList);
+        setMeteoraReadySymbols(new Set<string>(data.meteoraReady ?? []));
+        setPumpAvailable(data.source === "clawpump");
 
-        const matched = assetList.find((p) => p.symbol.toLowerCase() === initialSymbol.toLowerCase()) || assetList[0];
+        const wanted = initialSymbol.toLowerCase();
+        const matched =
+          assetList.find((p) => p.symbol.toLowerCase() === wanted || p.underlyingStock?.toLowerCase() === wanted) ||
+          assetList[0];
         setSelectedPair(matched || null);
 
         // Fetch stats for all pairs
@@ -247,7 +272,8 @@ export function LaunchClient() {
   // Update selected pair if query param changes
   useEffect(() => {
     if (pairs.length > 0 && initialSymbol) {
-      const matched = pairs.find((p) => p.symbol.toLowerCase() === initialSymbol.toLowerCase());
+      const wanted = initialSymbol.toLowerCase();
+      const matched = pairs.find((p) => p.symbol.toLowerCase() === wanted || p.underlyingStock?.toLowerCase() === wanted);
       if (matched) setSelectedPair(matched);
     }
   }, [initialSymbol, pairs]);
@@ -273,7 +299,7 @@ export function LaunchClient() {
     async function evaluateVenues() {
       try {
         setLoadingVenues(true);
-        const res = await fetch(`/api/launch/venues?symbol=${pairSymbol}&mint=${pairMint}`);
+        const res = await fetch(`/api/launch/venues?symbol=${encodeURIComponent(pairSymbol)}&mint=${encodeURIComponent(pairMint)}`);
         if (res.ok) {
           const data = await res.json();
           const pSupported = Boolean(data.venues?.pumpfun?.supported);
@@ -284,12 +310,16 @@ export function LaunchClient() {
           setStockBadgeStatus(isBadged ? "badged" : "unbadged");
           setVenueSupport({
             pumpfun: pSupported,
-            meteora: true, // Always show Meteora option, let filtering handle compatibility
+            meteora: mSupported,
             meteoraBadged: isBadged,
             dbcConfigReady,
           });
-
-          // Don't auto-switch venue - let user choose
+          setDbcConfig(mSupported ? (data.dbcConfig as DbcConfigSummary) : null);
+          const range = data.venues?.pumpfun?.creatorFeeRange;
+          if (range && Number.isFinite(range.min) && Number.isFinite(range.max)) {
+            setPumpFeeRange(range);
+            setCreatorFeeBps((current) => Math.min(range.max, Math.max(range.min, current)));
+          }
         }
       } catch (err) {
         console.warn("Could not evaluate venue support:", err);
@@ -369,8 +399,8 @@ export function LaunchClient() {
   // Handle local file selection for upload
   async function handleFileSelect(file: File) {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage("Image file must be under 5MB.");
+    if (file.size > 1024 * 1024) {
+      setErrorMessage("Image file must be under 1MB.");
       return;
     }
 
@@ -393,12 +423,18 @@ export function LaunchClient() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
         setImageUrl(data.url);
+      } else {
+        // A local data: preview is not a public URL — launch venues need a hosted image.
+        setImageUrl("");
+        setErrorMessage(data.error || "Artwork upload failed. Try again or paste an https image URL.");
       }
     } catch (err) {
-      console.warn("Background upload failed, continuing with local preview data:", err);
+      console.warn("Artwork upload failed:", err);
+      setImageUrl("");
+      setErrorMessage("Artwork upload failed. Try again or paste an https image URL.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -452,31 +488,96 @@ export function LaunchClient() {
       ? "Fast speed"
       : "Normal speed";
 
-  // Handle One-Click Launch Action with Hardened Preflight Simulator & Priority Fees
+  // Restore a Pump.fun payment that landed but never finished launching (tab closed, ClawPump error, …).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (raw) setPendingPump(JSON.parse(raw) as PendingPumpLaunch);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function savePending(value: PendingPumpLaunch | null) {
+    setPendingPump(value);
+    try {
+      if (value) localStorage.setItem(PENDING_KEY, JSON.stringify(value));
+      else localStorage.removeItem(PENDING_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function finishPumpLaunch(pending: PendingPumpLaunch) {
+    setStepState("confirming");
+    setErrorMessage("");
+    setStatusMessage(`Creating the Pump.fun market against ${String(pending.body.pairedSymbol ?? "the stock")}...`);
+    try {
+      const confirmRes = await fetch("/api/launch/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...pending.body,
+          agentId: pending.agentId,
+          agentName: pending.agentName,
+          txSignature: pending.txSignature,
+          preflightToken: pending.preflightToken,
+        }),
+      });
+      const confirmData = await confirmRes.json().catch(() => ({}));
+      if (!confirmRes.ok || !confirmData.success) {
+        throw new Error(confirmData.error || "The launch step failed. Your payment is saved — retry to finish.");
+      }
+      savePending(null);
+      setStepState("success");
+      setStatusMessage("Launch successful!");
+      setLaunchReceipt({
+        mintAddress: confirmData.mintAddress,
+        txHash: confirmData.txHash,
+        pumpUrl: confirmData.pumpUrl,
+        explorerUrl: confirmData.explorerUrl,
+        venue: "pumpfun",
+        registered: Boolean(confirmData.registered),
+        registryError: confirmData.registryError ?? null,
+      });
+    } catch (err) {
+      setStepState("error");
+      setErrorMessage(err instanceof Error ? err.message : "The launch step failed. Retry to finish without paying again.");
+    }
+  }
+
   async function handleLaunch() {
-    if (!address) {
+    if (!address || !canSign) {
       setShowWalletModal(true);
+      if (address && !canSign) setErrorMessage("Email and Google sessions cannot sign. Connect a Solana wallet to launch.");
       return;
     }
-
+    if (pendingPump) {
+      await finishPumpLaunch(pendingPump);
+      return;
+    }
     if (!selectedPair || !effectiveQuoteMint) {
       setErrorMessage("Please select a supported xStock market pair.");
       return;
     }
-
-    // Prevent launching an unbadged pair that cannot settle on-chain
-    if (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged") {
-      setErrorMessage("This xStock is not badged on Meteora DBC yet. Launch against it on Pump.fun, or pick a badged stock.");
+    if (selectedVenue === "meteora" && !venueSupport.meteora) {
+      setErrorMessage(`Meteora DBC is not available for ${selectedPair.symbol}. Launch on Pump.fun instead.`);
       return;
     }
-
+    if (selectedVenue === "pumpfun" && !venueSupport.pumpfun) {
+      setErrorMessage(`Pump.fun launches against ${selectedPair.symbol} are not available right now.`);
+      return;
+    }
     if (!tokenName.trim()) {
       setErrorMessage("Please provide a token name.");
       return;
     }
-
     if (!tokenSymbol.trim()) {
       setErrorMessage("Please provide a token ticker symbol.");
+      return;
+    }
+    if (!imageUrl.trim() || imageUrl.startsWith("data:")) {
+      setErrorMessage("Upload token artwork or paste an https image URL.");
       return;
     }
 
@@ -489,306 +590,165 @@ export function LaunchClient() {
       setErrorMessage("Description / thesis should be at least 10 characters.");
       return;
     }
-
-    if (!tokenSupply || tokenSupply < 1000) {
-      setErrorMessage("Token supply must be at least 1,000 tokens.");
+    if (selectedVenue === "pumpfun" && (creatorFeeBps < pumpFeeRange.min || creatorFeeBps > pumpFeeRange.max)) {
+      setErrorMessage(`Creator fee must be between ${(pumpFeeRange.min / 100).toFixed(1)}% and ${(pumpFeeRange.max / 100).toFixed(1)}%.`);
       return;
     }
-
-    // Creator fee validation: 0.5% to 5%
-    if (creatorFeeBps < 50 || creatorFeeBps > 500) {
-      setErrorMessage("Creator fee must be between 0.5% and 5.0% (50–500 bps).");
-      return;
-    }
-
-    // Calculate fee breakdown for display
-    const platformFeeBps = 100; // 1% platform surcharge
-    setFeeBreakdown({
-      creatorFeePercent: (creatorFeeBps / 100).toFixed(2) + '%',
-      platformFeePercent: (platformFeeBps / 100).toFixed(2) + '%',
-      totalFeePercent: ((creatorFeeBps + platformFeeBps) / 100).toFixed(2) + '%',
-    });
 
     setErrorMessage("");
+    const connection = browserConnection();
 
-    type WindowSolana = {
-      signTransaction?: (tx: Transaction) => Promise<Transaction>;
-      signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>;
-    };
-
-    const win = window as unknown as {
-      solana?: WindowSolana;
-      phantom?: { solana?: WindowSolana };
-    };
-    const solanaProvider: WindowSolana | null = win.solana ?? win.phantom?.solana ?? null;
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-    const connection = new Connection(rpcUrl, "confirmed");
-
-    // =========================================================================
-    // VENUE 1: Pump.fun (ClawPump) Integration
-    // =========================================================================
     if (selectedVenue === "pumpfun") {
       setStepState("quoting");
-      setStatusMessage("Preparing launch terms...");
+      setStatusMessage("Getting a launch quote from ClawPump...");
+
+      const launchBody = {
+        name: tokenName.trim(),
+        symbol: tokenSymbol.trim().toUpperCase(),
+        description: resolvedDescription,
+        imageUrl: imageUrl.trim(),
+        pumpQuoteMint: selectedPair.mint,
+        pumpCreatorFeeBps: creatorFeeBps,
+        walletAddress: address,
+        devBuySol: Number(devBuySolInput) > 0 ? Number(devBuySolInput) : 0,
+      };
 
       try {
-        // Step 1: Preflight quote
+        // Reuse the launcher agent from an earlier quote for the same token instead of creating another.
+        const reuse = agentRef.current && agentRef.current.forName === launchBody.name ? agentRef.current : null;
         const preflightRes = await fetch("/api/launch/preflight", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: tokenName.trim(),
-            symbol: tokenSymbol.trim().toUpperCase(),
-            description: resolvedDescription,
-            imageUrl: imageUrl.trim(),
-            pumpQuoteMint: selectedPair.mint,
-            pumpCreatorFeeBps: creatorFeeBps,
-            walletAddress: address,
-            supply: tokenSupply,
-            devBuySol: Number(devBuySolInput) > 0 ? Number(devBuySolInput) : 0,
-          }),
+          body: JSON.stringify({ ...launchBody, agentId: reuse?.id, agentName: reuse?.name }),
         });
-
-        const preflightData = await preflightRes.json();
+        const preflightData = await preflightRes.json().catch(() => ({}));
         if (!preflightRes.ok || !preflightData.payment) {
-          throw new Error(preflightData.error || "Payment didn’t go through. Try again.");
+          throw new Error(preflightData.error || "Could not get a launch quote. Try again.");
         }
-
         const { payment, retryWith, agentId, agentName } = preflightData;
-        const amountLamports = payment.amountLamports;
-        const payTo = payment.payTo;
-        const preflightToken = retryWith.preflightToken;
+        agentRef.current = { id: agentId, name: agentName, forName: launchBody.name };
 
-        // Step 2: Pay from user wallet directly in OpenStock
         setStepState("paying");
-        setStatusMessage("Preparing transaction...");
+        setStatusMessage(`Preparing payment of ${Number(payment.amountSol).toFixed(4)} SOL to ClawPump...`);
 
-        let txSignature = "";
+        const fromPubkey = new PublicKey(address);
+        const tx = new Transaction().add(
+          SystemProgram.transfer({ fromPubkey, toPubkey: new PublicKey(payment.payTo), lamports: payment.amountLamports })
+        );
+        const microLamports = await getDynamicPriorityFee(connection, priorityTier);
+        applyComputeBudget(tx, 160_000, microLamports);
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = fromPubkey;
 
-        if (solanaProvider && (solanaProvider.signAndSendTransaction || solanaProvider.signTransaction)) {
-          const fromPubkey = new PublicKey(address);
-          const toPubkey = new PublicKey(payTo);
+        setStatusMessage("Checking transaction...");
+        const sim = await preflightSimulate(connection, tx, fromPubkey);
+        if (!sim.success) throw new Error(sim.humanMessage || sim.error || "The payment would fail. Check your SOL balance.");
+        if (sim.unitsConsumed) setSimulatedUnits(sim.unitsConsumed);
 
-          const tx = new Transaction().add(
-            SystemProgram.transfer({
-              fromPubkey,
-              toPubkey,
-              lamports: amountLamports,
-            })
-          );
+        setStatusMessage(`Approve the ${Number(payment.amountSol).toFixed(4)} SOL payment in your wallet...`);
+        const signed = await signAnyTransaction(tx);
+        setStatusMessage("Submitting payment...");
+        const txSignature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 3 });
 
-          // Dynamic priority fee estimation
-          const microLamports = await getDynamicPriorityFee(connection, priorityTier);
-          applyComputeBudget(tx, 160_000, microLamports);
+        setStatusMessage("Confirming payment...");
+        await waitForSignature(connection, txSignature, { lastValidBlockHeight });
 
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-          tx.recentBlockhash = blockhash;
-          tx.feePayer = fromPubkey;
-
-          // Simulation check before wallet popup
-          setStatusMessage("Checking transaction...");
-          const sim = await preflightSimulate(connection, tx, fromPubkey);
-          if (!sim.success) {
-            throw new Error(sim.humanMessage || sim.error || "Payment didn’t go through. Try again.");
-          }
-          if (sim.unitsConsumed) {
-            setSimulatedUnits(sim.unitsConsumed);
-          }
-
-          setStatusMessage("Please approve in your wallet...");
-
-          if (solanaProvider.signAndSendTransaction) {
-            const sendRes = await solanaProvider.signAndSendTransaction(tx);
-            txSignature = sendRes.signature;
-          } else if (solanaProvider.signTransaction) {
-            const signed = await solanaProvider.signTransaction(tx);
-            setStatusMessage("Submitting transaction...");
-            txSignature = await connection.sendRawTransaction(signed.serialize(), {
-              skipPreflight: true,
-              maxRetries: 3,
-            });
-          }
-
-          setStatusMessage("Confirming transaction...");
-          const confirmation = await connection.confirmTransaction(
-            { signature: txSignature, blockhash, lastValidBlockHeight },
-            "confirmed"
-          );
-          if (confirmation.value.err) {
-            throw new Error(translateWalletError(confirmation.value.err));
-          }
-        } else {
-          throw new Error("Wallet not detected. Connect Phantom or Solflare to continue.");
-        }
-
-        // Step 3: Complete launch with txSignature proof
-        setStepState("confirming");
-        setStatusMessage(`Minting and pairing token on Pump.fun against ${selectedPair.symbol}...`);
-
-        const confirmRes = await fetch("/api/launch/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: tokenName.trim(),
-            symbol: tokenSymbol.trim().toUpperCase(),
-            description: resolvedDescription,
-            imageUrl: imageUrl.trim(),
-            pumpQuoteMint: selectedPair.mint,
-            pumpCreatorFeeBps: creatorFeeBps,
-            walletAddress: address,
-            agentId,
-            agentName,
-            txSignature,
-            preflightToken,
-            supply: tokenSupply,
-            devBuySol: Number(devBuySolInput) > 0 ? Number(devBuySolInput) : 0,
-          }),
-        });
-
-        const confirmData = await confirmRes.json();
-        if (!confirmRes.ok || !confirmData.success) {
-          throw new Error(confirmData.error || "Failed to confirm Pump.fun token launch.");
-        }
-
-        setStepState("success");
-        setStatusMessage("Launch successful!");
-        setLaunchReceipt({
-          mintAddress: confirmData.mintAddress,
-          txHash: confirmData.txHash,
-          pumpUrl: confirmData.pumpUrl,
-          explorerUrl: confirmData.explorerUrl,
-          venue: "pumpfun",
-        });
+        // Payment landed: persist everything needed to finish the launch without paying twice.
+        const pending: PendingPumpLaunch = {
+          txSignature,
+          preflightToken: retryWith.preflightToken,
+          agentId,
+          agentName,
+          body: { ...launchBody, pairedSymbol: selectedPair.symbol },
+          savedAt: new Date().toISOString(),
+        };
+        savePending(pending);
+        await finishPumpLaunch(pending);
       } catch (err: unknown) {
         console.error("Pump.fun launch failed:", err);
         setStepState("error");
-        const msg = translateWalletError(err);
-        setErrorMessage(msg);
+        setErrorMessage(translateWalletError(err));
       }
+      return;
     }
 
-    // =========================================================================
-    // VENUE 2: Meteora Dynamic Bonding Curve (DBC) Integration
-    // =========================================================================
-    else if (selectedVenue === "meteora") {
-      setStepState("quoting");
-      setStatusMessage("Preparing launch terms...");
-
-      try {
-        if (!solanaProvider || (!solanaProvider.signAndSendTransaction && !solanaProvider.signTransaction)) {
-          throw new Error("Wallet not detected. Connect Phantom or Solflare to continue.");
-        }
-
-        // Step 1: Request prepared pool transaction
-        const prepareRes = await fetch("/api/launch/meteora", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "prepare",
-            name: tokenName.trim(),
-            symbol: tokenSymbol.trim().toUpperCase(),
-            description: resolvedDescription,
-            imageUrl: imageUrl.trim(),
-            quoteMint: effectiveQuoteMint,
-            creatorWallet: address,
-            creatorFeeBps,
-            supply: tokenSupply,
-            curvePreset: selectedCurvePreset,
-          }),
-        });
-
-        const prepareData = await prepareRes.json();
-        if (!prepareRes.ok || !prepareData.transactionBase64) {
-          throw new Error(prepareData.error || "Failed to prepare pool. Please try again.");
-        }
-
-        const { transactionBase64, mintAddress, poolAddress } = prepareData;
-
-        // Step 2: Sign transaction with user wallet
-        setStepState("paying");
-        setStatusMessage("Preparing transaction...");
-
-        const fromPubkey = new PublicKey(address);
-        const txBytes = base64ToUint8Array(transactionBase64);
-        const tx = Transaction.from(txBytes);
-
-        // Preflight validation simulation
-        setStatusMessage("Checking transaction...");
-        try {
-          const sim = await preflightSimulate(connection, tx, fromPubkey);
-          if (sim.unitsConsumed) {
-            setSimulatedUnits(sim.unitsConsumed);
-          }
-        } catch (simErr) {
-          console.warn("Transaction check note:", simErr);
-        }
-
-        setStatusMessage("Please approve in your wallet...");
-
-        let txSignature = "";
-        if (solanaProvider.signAndSendTransaction) {
-          const sendRes = await solanaProvider.signAndSendTransaction(tx);
-          txSignature = sendRes.signature;
-        } else if (solanaProvider.signTransaction) {
-          const signed = await solanaProvider.signTransaction(tx);
-          setStatusMessage("Submitting transaction...");
-          txSignature = await connection.sendRawTransaction(signed.serialize(), {
-            skipPreflight: false,
-            maxRetries: 3,
-          });
-        }
-
-        setStatusMessage("Confirming launch...");
-        const confirmation = await connection.confirmTransaction(txSignature, "confirmed");
-        if (confirmation.value.err) {
-          throw new Error(translateWalletError(confirmation.value.err));
-        }
-
-        // Step 3: Confirm launch on OpenStock registry
-        setStepState("confirming");
-        setStatusMessage(`Finalizing launch against ${effectiveQuoteSymbol}...`);
-
-        const confirmRes = await fetch("/api/launch/meteora", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "confirm",
-            name: tokenName.trim(),
-            symbol: tokenSymbol.trim().toUpperCase(),
-            description: resolvedDescription,
-            imageUrl: imageUrl.trim(),
-            quoteMint: effectiveQuoteMint,
-            creatorWallet: address,
-            creatorFeeBps,
-            supply: tokenSupply,
-            curvePreset: selectedCurvePreset,
-            txSignature,
-            mintAddress,
-            poolAddress,
-          }),
-        });
-
-        const confirmData = await confirmRes.json();
-        if (!confirmRes.ok || !confirmData.success) {
-          throw new Error(confirmData.error || "Payment didn’t go through. Try again.");
-        }
-
-        setStepState("success");
-        setStatusMessage("Live!");
-        setLaunchReceipt({
-          mintAddress: confirmData.mintAddress,
-          poolAddress: confirmData.poolAddress,
-          txHash: confirmData.txHash,
-          pumpUrl: confirmData.meteoraUrl || `https://app.meteora.ag/dlmm/${confirmData.poolAddress}`,
-          explorerUrl: confirmData.explorerUrl || `https://solscan.io/tx/${confirmData.txHash}`,
-          venue: "meteora",
-        });
-      } catch (err: unknown) {
-        console.error("Meteora launch failed:", err);
-        setStepState("error");
-        const msg = translateWalletError(err);
-        setErrorMessage(msg);
+    // Meteora Dynamic Bonding Curve
+    setStepState("quoting");
+    setStatusMessage("Building the pool transaction...");
+    try {
+      const prepareRes = await fetch("/api/launch/meteora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "prepare",
+          name: tokenName.trim(),
+          symbol: tokenSymbol.trim().toUpperCase(),
+          description: resolvedDescription,
+          imageUrl: imageUrl.trim(),
+          quoteMint: effectiveQuoteMint,
+          creatorWallet: address,
+        }),
+      });
+      const prepareData = await prepareRes.json().catch(() => ({}));
+      if (!prepareRes.ok || !prepareData.transactionBase64) {
+        throw new Error(prepareData.error || "Failed to prepare the pool. Please try again.");
       }
+      const { transactionBase64, mintAddress, poolAddress } = prepareData;
+
+      setStepState("paying");
+      setStatusMessage("Checking transaction...");
+      const tx = Transaction.from(base64ToUint8Array(transactionBase64));
+      const sim = await preflightSimulate(connection, tx, new PublicKey(address));
+      if (!sim.success) throw new Error(sim.humanMessage || sim.error || "The pool transaction would fail on-chain.");
+      if (sim.unitsConsumed) setSimulatedUnits(sim.unitsConsumed);
+
+      setStatusMessage("Approve the pool creation in your wallet...");
+      const signed = await signAnyTransaction(tx);
+      setStatusMessage("Submitting transaction...");
+      const txSignature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 3 });
+      setStatusMessage("Confirming on Solana...");
+      await waitForSignature(connection, txSignature);
+
+      setStepState("confirming");
+      setStatusMessage(`Verifying the pool against ${effectiveQuoteSymbol}...`);
+      const confirmRes = await fetch("/api/launch/meteora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "confirm",
+          name: tokenName.trim(),
+          symbol: tokenSymbol.trim().toUpperCase(),
+          description: resolvedDescription,
+          imageUrl: imageUrl.trim(),
+          quoteMint: effectiveQuoteMint,
+          creatorWallet: address,
+          txSignature,
+          mintAddress,
+          poolAddress,
+        }),
+      });
+      const confirmData = await confirmRes.json().catch(() => ({}));
+      if (!confirmRes.ok || !confirmData.success) {
+        throw new Error(confirmData.error || `Pool transaction ${txSignature.slice(0, 8)}… landed but could not be verified yet.`);
+      }
+
+      setStepState("success");
+      setStatusMessage("Live!");
+      setLaunchReceipt({
+        mintAddress: confirmData.mintAddress,
+        poolAddress: confirmData.poolAddress,
+        txHash: confirmData.txHash,
+        pumpUrl: confirmData.poolUrl,
+        explorerUrl: confirmData.explorerUrl,
+        venue: "meteora",
+        registered: Boolean(confirmData.registered),
+        registryError: confirmData.registryError ?? null,
+      });
+    } catch (err: unknown) {
+      console.error("Meteora launch failed:", err);
+      setStepState("error");
+      setErrorMessage(translateWalletError(err));
     }
   }
 
@@ -830,7 +790,7 @@ export function LaunchClient() {
             <StockLogo symbol={selectedPair?.symbol || initialSymbol} logo={selectedPair?.imageUrl ?? undefined} size={40} />
             <div>
               <strong>{selectedPair?.symbol || initialSymbol}</strong>
-              <span>Quote locked · {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} · {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(1) + '%'} total fee ({feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(1) + '%')} creator + {feeBreakdown?.platformFeePercent || '1%'} platform)</span>
+              <span>Quote locked · {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} · {selectedVenue === "meteora" ? (meteoraCreatorFeeBps !== null ? `${(meteoraCreatorFeeBps / 100).toFixed(2)}% creator share (set on-chain)` : "creator share set on-chain") : `${(creatorFeeBps / 100).toFixed(1)}% creator fee`}</span>
             </div>
           </div>
           <div className="launch-quick-fields">
@@ -853,9 +813,9 @@ export function LaunchClient() {
               />
             </label>
           </div>
-          {!ready || !address ? (
+          {!ready || !address || !canSign ? (
             <button type="button" className="button button--gradient" onClick={() => setShowWalletModal(true)} disabled={connecting}>
-              {connecting ? "Connecting…" : "Connect Wallet to launch"}
+              {connecting ? "Connecting…" : address ? "Connect a signing wallet" : "Connect Wallet to launch"}
             </button>
           ) : (
             <button
@@ -865,14 +825,16 @@ export function LaunchClient() {
               onClick={() => void handleLaunch()}
             >
               {stepState === "idle" || stepState === "error" || stepState === "success"
-                ? `Launch ${tokenSymbol || "TOKEN"} × ${selectedPair?.symbol || initialSymbol}`
+                ? pendingPump
+                  ? "Finish paid launch"
+                  : `Launch ${tokenSymbol || "TOKEN"} × ${selectedPair?.symbol || initialSymbol}`
                 : statusMessage || "Launching…"}
             </button>
           )}
           {errorMessage ? <p className="launch-quick-error" role="alert">{errorMessage}</p> : null}
           <p className="launch-quick-note">
-            Working path: Pump.fun against {selectedPair?.symbol || "xStock"} · {feeBreakdown?.totalFeePercent || ((creatorFeeBps + 100) / 100).toFixed(1) + '%'} total fee ({feeBreakdown?.creatorFeePercent || ((creatorFeeBps / 100).toFixed(1) + '%')} creator + {feeBreakdown?.platformFeePercent || '1%'} platform) · 1B supply.
-            Meteora DBC unlocks after one PoolConfig is set.{" "}
+            {selectedVenue === "meteora" ? "Meteora DBC" : "Pump.fun"} against {selectedPair?.symbol || "xStock"} · {selectedVenue === "meteora" ? (meteoraCreatorFeeBps !== null ? `${(meteoraCreatorFeeBps / 100).toFixed(2)}% creator share (set on-chain)` : "creator share set on-chain") : `${(creatorFeeBps / 100).toFixed(1)}% creator fee`}.
+            {pendingPump ? " A paid launch is waiting to finish — press Launch to complete it without paying again." : ""}{" "}
             <Link href={`/launch?symbol=${encodeURIComponent(initialSymbol)}`}>Open full studio</Link>
           </p>
         </section>
@@ -886,7 +848,7 @@ export function LaunchClient() {
           const file = e.target.files?.[0];
           if (file) handleFileSelect(file);
         }}
-        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         style={{ display: "none" }}
       />
 
@@ -894,9 +856,14 @@ export function LaunchClient() {
         <section className="launch-quick-success" aria-live="polite">
           <h2>Launched {tokenSymbol} × {selectedPair?.symbol}</h2>
           <p>Mint <code>{launchReceipt.mintAddress}</code></p>
+          {!launchReceipt.registered ? <p className="launch-quick-error" role="status">{launchReceipt.registryError || "Live on Solana, but not yet listed on the OpenStock desk."}</p> : null}
           <div className="launch-quick-success-actions">
             <a className="button button--gradient" href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer">View tx</a>
-            <Link className="button button--light" href={`/app/community?mint=${encodeURIComponent(launchReceipt.mintAddress)}`}>Open on desk</Link>
+            {launchReceipt.registered ? (
+              <Link className="button button--light" href={`/token/${encodeURIComponent(launchReceipt.mintAddress)}`}>Open on desk</Link>
+            ) : (
+              <a className="button button--light" href={launchReceipt.pumpUrl} target="_blank" rel="noreferrer">Open pool</a>
+            )}
             <button type="button" className="button button--light" onClick={() => setShowShareModal(true)}>Share to X</button>
           </div>
         </section>
@@ -1251,8 +1218,11 @@ export function LaunchClient() {
                   {/* Pump Venue Option */}
                   <button
                     type="button"
-                    className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""}`}
+                    className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""} ${!venueSupport.pumpfun ? "is-disabled" : ""}`}
+                    disabled={!venueSupport.pumpfun}
+                    aria-disabled={!venueSupport.pumpfun}
                     onClick={() => {
+                      if (!venueSupport.pumpfun) return;
                       setSelectedVenue("pumpfun");
                       setSelectedCategory("all");
                     }}
@@ -1269,10 +1239,16 @@ export function LaunchClient() {
                       )}
                     </div>
                     <p className="launch-venue-card-desc">
-                      Bonding curve paired against 32 curated stock tokens.
+                      Pump.fun bonding curve quoted in the selected xStock, via ClawPump.
                     </p>
                     <div className="launch-venue-card-foot">
-                      <span>75% creator share of curve trading fees</span>
+                      <span>
+                        {!pumpAvailable
+                          ? "ClawPump is unreachable right now"
+                          : venueSupport.pumpfun
+                          ? `Creator fee ${(pumpFeeRange.min / 100).toFixed(1)}%–${(pumpFeeRange.max / 100).toFixed(1)}%`
+                          : `ClawPump does not list ${selectedPair?.symbol ?? "this stock"}`}
+                      </span>
                     </div>
                   </button>
 
@@ -1301,14 +1277,18 @@ export function LaunchClient() {
                       )}
                     </div>
                     <p className="launch-venue-card-desc">
-                      Dynamic bonding curve with graduation to full liquidity pool.
+                      Meteora Dynamic Bonding Curve quoted in the selected xStock; migrates to a Meteora pool when filled.
                     </p>
                     <div className="launch-venue-card-foot">
                       {isMeteoraAvailable ? (
-                        <span>Graduation to full pool</span>
+                        <span>
+                          {dbcConfig
+                            ? `Migrates after ${dbcConfig.migrationThresholdUi} ${selectedPair?.symbol} raised`
+                            : "Reading on-chain config…"}
+                        </span>
                       ) : (
                         <span className="launch-venue-card-note">
-                          Supports NVDA and Apple (AAPLx) only. Select NVDA or AAPLx in Step 1 to enable.
+                          Available for {[...meteoraReadySymbols].join(", ") || "no stocks yet"} on this deployment.
                         </span>
                       )}
                     </div>
@@ -1316,76 +1296,29 @@ export function LaunchClient() {
                 </div>
               </div>
 
-              {/* 2. Curve Style (Meteora Only) */}
+              {/* 2. On-chain curve terms (Meteora only) — read from the PoolConfig account, not chosen here */}
               {selectedVenue === "meteora" && (
                 <div className="launch-section">
                   <div className="launch-section-header">
-                    <label className="launch-section-label">Curve style</label>
-                    <span className="launch-section-hint">Select bonding curve dynamics and graduation liquidity</span>
+                    <label className="launch-section-label">Curve terms (on-chain)</label>
+                    <span className="launch-section-hint">Fixed by the Meteora PoolConfig for {selectedPair?.symbol}</span>
                   </div>
-
-                  <div className="launch-curve-rows" role="radiogroup" aria-label="Curve style">
-                    {(Object.keys(METEORA_DBC_CURVE_PRESETS) as DbcCurvePresetKey[]).map((presetKey) => {
-                      const preset = METEORA_DBC_CURVE_PRESETS[presetKey];
-                      const isChosen = selectedCurvePreset === presetKey;
-                      return (
-                        <button
-                          type="button"
-                          key={presetKey}
-                          className={`launch-curve-row ${isChosen ? "is-selected" : ""}`}
-                          onClick={() => setSelectedCurvePreset(presetKey)}
-                          role="radio"
-                          aria-checked={isChosen}
-                        >
-                          <div className="launch-curve-row-icon" aria-hidden="true">
-                            {presetKey === "linear" ? (
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                <path d="M4 20L20 4" />
-                              </svg>
-                            ) : presetKey === "exponential" ? (
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                <path d="M4 20C12 20 16 16 20 4" />
-                              </svg>
-                            ) : (
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                <path d="M4 20C8 12 14 8 20 4" />
-                              </svg>
-                            )}
-                          </div>
-
-                          <div className="launch-curve-row-main">
-                            <div className="launch-curve-row-title-line">
-                              <strong className="launch-curve-row-name">{preset.name}</strong>
-                              <span className="launch-curve-row-sub">
-                                {presetKey === "linear"
-                                  ? "Balanced price growth for community tokens"
-                                  : presetKey === "exponential"
-                                  ? "Fast price appreciation for high-momentum launches"
-                                  : "Deep liquidity with lower price impact"}
-                              </span>
-                            </div>
-                            <div className="launch-curve-row-values">
-                              <span className="launch-curve-row-stat">
-                                Curve trading fee: <strong>{(preset.baseFeeBps / 100).toFixed(1)}%</strong>
-                              </span>
-                              <span className="launch-curve-row-stat-sep">·</span>
-                              <span className="launch-curve-row-stat">
-                                Graduation to full pool at <strong>{preset.targetMarketCap}</strong>
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="launch-curve-row-check">
-                            {isChosen && <span className="launch-card-check" aria-hidden="true">✓</span>}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {dbcConfig ? (
+                    <div className="launch-fee-live-banner">
+                      Curve fee: <strong>{(dbcConfig.baseFeeBps / 100).toFixed(2)}%{dbcConfig.dynamicFee ? " + dynamic" : ""}</strong>
+                      <span className="launch-fee-live-sep">·</span>
+                      <span>Creator share: <strong>{dbcConfig.creatorTradingFeePercent}% of fees</strong></span>
+                      <span className="launch-fee-live-sep">·</span>
+                      <span>Migrates to {dbcConfig.migrationTarget} after <strong>{dbcConfig.migrationThresholdUi} {selectedPair?.symbol}</strong> is raised</span>
+                    </div>
+                  ) : (
+                    <div className="launch-fee-live-banner">Reading the pool config from Solana…</div>
+                  )}
                 </div>
               )}
 
-              {/* 3. Total Supply */}
+              {/* 3. Total Supply (Pump only — Meteora supply is defined by the PoolConfig) */}
+              {selectedVenue === "pumpfun" && (
               <div className="launch-section">
                 <div className="launch-section-header">
                   <label htmlFor="token-supply" className="launch-section-label">Total Supply</label>
@@ -1426,7 +1359,10 @@ export function LaunchClient() {
                 </div>
               </div>
 
-              {/* 4. Creator Fee */}
+              )}
+
+              {/* 4. Creator Fee (Pump only — Meteora's creator share is fixed on-chain) */}
+              {selectedVenue === "pumpfun" && (
               <div className="launch-section">
                 <div className="launch-section-header">
                   <label className="launch-section-label">
@@ -1436,24 +1372,16 @@ export function LaunchClient() {
                 </div>
 
                 <div className="launch-fee-live-banner">
-                  Total fee: <strong>{((creatorFeeBps + 100) / 100).toFixed(2)}% per trade</strong>
+                  Creator fee: <strong>{(creatorFeeBps / 100).toFixed(2)}% per trade</strong>
                   <span className="launch-fee-live-sep">·</span>
-                  <span>Creator share: <strong>{(creatorFeeBps / 100).toFixed(2)}%</strong></span>
-                  <span className="launch-fee-live-sep">·</span>
-                  <span>Platform share: <strong>1.00%</strong></span>
+                  <span>Pump.fun protocol fees apply on top</span>
                 </div>
 
                 <div className="launch-fee-chips" role="radiogroup" aria-label="Creator fee presets">
-                  {[
-                    { label: "0.5%", bps: 50 },
-                    { label: "1.0%", bps: 100 },
-                    { label: "1.5%", bps: 150 },
-                    { label: "2.0%", bps: 200 },
-                    { label: "2.5%", bps: 250 },
-                    { label: "3.0%", bps: 300 },
-                    { label: "4.0%", bps: 400 },
-                    { label: "5.0%", bps: 500 },
-                  ].map((tier) => {
+                  {[50, 100, 150, 200, 250, 300, 400, 500]
+                    .filter((bps) => bps >= pumpFeeRange.min && bps <= pumpFeeRange.max)
+                    .map((bps) => ({ label: `${(bps / 100).toFixed(1)}%`, bps }))
+                    .map((tier) => {
                     const isFeeActive = creatorFeeBps === tier.bps;
                     return (
                       <button
@@ -1471,6 +1399,7 @@ export function LaunchClient() {
                   })}
                 </div>
               </div>
+              )}
 
               {/* 5. Deployer Initial Buy (Dev Buy, Pump Only) */}
               {selectedVenue === "pumpfun" && (
@@ -1634,26 +1563,20 @@ export function LaunchClient() {
                     <span>Venue</span>
                     <strong>{selectedVenue === "pumpfun" ? "Pump" : "Meteora curve"}</strong>
                   </div>
-                  {selectedVenue === "meteora" && (
+                  {selectedVenue === "pumpfun" && (
                     <div className="launch-summary-row">
-                      <span>Curve style</span>
-                      <strong>{METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Equity Standard"}</strong>
+                      <span>Total supply</span>
+                      <strong>{new Intl.NumberFormat("en-US").format(tokenSupply)}</strong>
                     </div>
                   )}
                   <div className="launch-summary-row">
-                    <span>Total supply</span>
-                    <strong>{new Intl.NumberFormat("en-US").format(tokenSupply)}</strong>
-                  </div>
-                  <div className="launch-summary-row">
                     <span>Creator fee</span>
-                    <strong>
-                      {(creatorFeeBps / 100).toFixed(2)}% (Total: {((creatorFeeBps + 100) / 100).toFixed(2)}%)
-                    </strong>
+                    <strong>{selectedVenue === "meteora" ? (meteoraCreatorFeeBps !== null ? `${(meteoraCreatorFeeBps / 100).toFixed(2)}% creator share (set on-chain)` : "creator share set on-chain") : `${(creatorFeeBps / 100).toFixed(1)}% creator fee`}</strong>
                   </div>
                   <div className="launch-summary-row">
-                    <span>Estimated cost</span>
+                    <span>You pay</span>
                     <strong>
-                      ~0.02 SOL platform fee
+                      {selectedVenue === "pumpfun" ? "ClawPump launch quote (shown before you sign)" : "Network fees + account rent"}
                       {devBuyPercent > 0 && selectedVenue === "pumpfun" ? (
                         <> + {Number(devBuySolInput).toFixed(3)} SOL dev buy</>
                       ) : null}
@@ -1688,20 +1611,27 @@ export function LaunchClient() {
                     stepState === "quoting" ||
                     stepState === "paying" ||
                     stepState === "confirming" ||
-                    (selectedVenue === "meteora" && quoteBadgeStatus === "unbadged")
+                    (selectedVenue === "meteora" && !venueSupport.meteora) ||
+                    (selectedVenue === "pumpfun" && !venueSupport.pumpfun)
                   }
                   onClick={handleLaunch}
                 >
                   {!address ? (
                     "Connect Wallet to Launch"
+                  ) : !canSign ? (
+                    "Connect a signing wallet"
+                  ) : pendingPump && stepState !== "quoting" && stepState !== "paying" && stepState !== "confirming" ? (
+                    "Finish paid launch"
                   ) : stepState === "quoting" ? (
                     "Calculating Terms..."
                   ) : stepState === "paying" ? (
                     "Approve in Wallet..."
                   ) : stepState === "confirming" ? (
                     "Creating Market on Solana..."
-                  ) : selectedVenue === "meteora" && quoteBadgeStatus === "unbadged" ? (
-                    "This stock is not on Meteora DBC yet"
+                  ) : selectedVenue === "meteora" && !venueSupport.meteora ? (
+                    `Meteora DBC is not available for ${selectedPair?.symbol ?? "this stock"}`
+                  ) : selectedVenue === "pumpfun" && !venueSupport.pumpfun ? (
+                    `Pump.fun is not available for ${selectedPair?.symbol ?? "this stock"}`
                   ) : (
                     `Launch $${cleanTokenSymbol} × ${displayStockSymbol}`
                   )}
@@ -1719,8 +1649,11 @@ export function LaunchClient() {
                       <h3>{tokenName || "Token"} is Live!</h3>
                     </div>
                     <p>
-                      Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump" : "Meteora curve"}.
+                      Your token is live and trading against {selectedPair?.symbol} on {launchReceipt.venue === "pumpfun" ? "Pump.fun" : "Meteora DBC"}.
                     </p>
+                    {!launchReceipt.registered ? (
+                      <p role="status">{launchReceipt.registryError || "It is not listed on the OpenStock desk yet."}</p>
+                    ) : null}
                     <div className="launch-receipt-grid">
                       <div className="launch-receipt-item">
                         <span>Market Pairing</span>
@@ -1737,9 +1670,15 @@ export function LaunchClient() {
                       <a href={launchReceipt.explorerUrl} target="_blank" rel="noreferrer" className="launch-btn-solscan">
                         View transaction ↗
                       </a>
-                      <Link href={`/app/asset/${selectedPair?.symbol}`} className="launch-btn-market">
-                        View market ↗
-                      </Link>
+                      {launchReceipt.registered ? (
+                        <Link href={`/token/${encodeURIComponent(launchReceipt.mintAddress)}`} className="launch-btn-market">
+                          Open on desk ↗
+                        </Link>
+                      ) : (
+                        <a href={launchReceipt.pumpUrl} target="_blank" rel="noreferrer" className="launch-btn-market">
+                          Open pool ↗
+                        </a>
+                      )}
                       <button
                         type="button"
                         className="launch-btn-share-x"
@@ -1810,14 +1749,6 @@ export function LaunchClient() {
                     {selectedVenue === "pumpfun" ? "Pump" : "Meteora curve"}
                   </strong>
                 </div>
-                {selectedVenue === "meteora" && (
-                  <div className="launch-holo-spec-row">
-                    <span>Curve Preset</span>
-                    <strong style={{ color: "var(--solana-green, #14f195)" }}>
-                      {METEORA_DBC_CURVE_PRESETS[selectedCurvePreset]?.name || "Standard"}
-                    </strong>
-                  </div>
-                )}
                 <div className="launch-holo-spec-row">
                   <span>Total Supply</span>
                   <strong className="launch-holo-highlight">
@@ -1835,16 +1766,16 @@ export function LaunchClient() {
                 <div className="launch-holo-spec-row">
                   <span>Creator Royalty</span>
                   <strong className="launch-holo-highlight">
-                    {(creatorFeeBps / 100).toFixed(1)}% in {effectiveQuoteSymbol || selectedPair?.symbol}
+                    {selectedVenue === "meteora" ? (meteoraCreatorFeeBps !== null ? `${(meteoraCreatorFeeBps / 100).toFixed(2)}%` : "On-chain") : `${(creatorFeeBps / 100).toFixed(1)}%`} in {effectiveQuoteSymbol || selectedPair?.symbol}
                   </strong>
                 </div>
                 <div className="launch-holo-spec-row">
-                  <span>Liquidity Target</span>
-                  <strong>Full Trading Pool</strong>
+                  <span>Graduation</span>
+                  <strong>{selectedVenue === "meteora" ? (dbcConfig ? `${dbcConfig.migrationThresholdUi} ${selectedPair?.symbol} raised` : "On-chain") : "Pump.fun curve completes"}</strong>
                 </div>
                 <div className="launch-holo-spec-row">
                   <span>Settlement</span>
-                  <strong>Instant on Solana</strong>
+                  <strong>Solana mainnet</strong>
                 </div>
                 {selectedVenue === "pumpfun" && devBuyPercent > 0 && (
                   <div className="launch-holo-spec-row" style={{ borderTop: "1px solid rgba(153,69,255,0.25)", marginTop: 4, paddingTop: 8 }}>
@@ -1872,7 +1803,7 @@ export function LaunchClient() {
             name: tokenName || "Community Token",
             symbol: tokenSymbol || "TOKEN",
             pairedStockSymbol: selectedPair?.symbol || "AAPLx",
-            creatorFeeBps,
+            creatorFeeBps: launchReceipt.venue === "meteora" ? meteoraCreatorFeeBps ?? 0 : creatorFeeBps,
             venue: launchReceipt.venue,
             mintAddress: launchReceipt.mintAddress,
             txHash: launchReceipt.txHash,

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import crypto from "crypto";
+import { publicStoreError, writeRaw } from "@/lib/json-store";
 
-const MAX_BYTES = 5 * 1024 * 1024;
+// Kept under 1MB so a single upload fits one Upstash Redis request.
+const MAX_BYTES = 1024 * 1024;
 const WINDOW_MS = 60_000;
 const MAX_UPLOADS_PER_WINDOW = 8;
 const recentUploads = new Map<string, number[]>();
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
     if (file.size <= 0 || file.size > MAX_BYTES) {
-      return NextResponse.json({ error: "Image size must be under 5MB" }, { status: 400 });
+      return NextResponse.json({ error: "Image size must be under 1MB" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -54,18 +54,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File must be a PNG, JPG, WebP, or GIF image." }, { status: 400 });
     }
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
     const filename = `token_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
-    await fs.writeFile(path.join(uploadsDir, filename), buffer);
+    await writeRaw("upload:" + filename, buffer.toString("base64"));
 
     return NextResponse.json({
       success: true,
-      url: `/uploads/${filename}`,
+      url: `/api/uploads/${filename}`,
       filename,
       size: buffer.length,
     });
-  } catch {
-    return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: publicStoreError(error, "Failed to upload image") }, { status: 500 });
   }
 }

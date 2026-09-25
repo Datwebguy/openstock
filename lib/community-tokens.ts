@@ -1,5 +1,5 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { readJson, writeJson } from "@/lib/json-store";
+import curatedPairs from "./solana-curated-25.json";
 
 export type CommunityToken = {
   mint: string;
@@ -9,18 +9,22 @@ export type CommunityToken = {
   imageUrl: string;
   pairedStockSymbol: string; // e.g. "AAPLx", "NVDAx", "CRCLx"
   pairedStockName: string;
+  /** Launch wallet for OpenStock launches. Empty for discovered pools (creator unknown). */
   creatorWallet: string;
   supply: number;
   creatorFeeBps: number;
-  platformFeeBps?: number; // Platform surcharge fee
-  totalFeeBps?: number; // Total fee (creator + platform)
   priceSol: number;
+  /** Price of one token denominated in the paired xStock (0 when unknown). */
+  priceInPairedStock?: number;
   priceUsd: number;
   marketCapUsd: number;
   volume24hUsd: number;
   change24h: number;
-  bondingCurveProgress: number; // 0 to 100
+  /** 0–100. Only meaningful when progressKnown is true. */
+  bondingCurveProgress: number;
+  progressKnown?: boolean;
   status: "new" | "graduating" | "graduated";
+  /** 0 when not measured. */
   holdersCount: number;
   txSignature: string;
   pumpUrl: string;
@@ -28,377 +32,247 @@ export type CommunityToken = {
   createdAt: string;
   poolAddress?: string;
   meteoraUrl?: string;
-  venue?: "pumpfun" | "meteora";
-  platformTreasury?: string; // Treasury wallet that receives platform fees
+  venue?: "pumpfun" | "meteora" | "other";
+  /** DexScreener dex id of the tracked pool (pumpfun, pumpswap, meteora, raydium, …). */
+  dexId?: string;
+  /** "openstock" = launched through OpenStock; "discovered" = an existing pool found on DexScreener. */
+  source?: "openstock" | "discovered";
   isStale?: boolean;
   marketStatus?: "live" | "stale" | "unlisted";
 };
 
 export { formatTokenPrice, formatTokenVolume } from "./community-token-utils";
 
-import curatedPairs from "./solana-curated-25.json";
+type CommunityTokenStore = { version: 2; tokens: CommunityToken[] };
 
-// Real on-chain Solana tokens paired against tokenized equities (xStocks)
-export const SEED_COMMUNITY_TOKENS: CommunityToken[] = [
-  {
-    mint: "8dJpCw1JurBZQGNeYwqVJkqs3DTjtYW5wcFXzCpmpump",
-    name: "Uber Eats",
-    symbol: "EATS",
-    description: "Community token paired directly against Uber xStock (UBERx) on Solana via Pump.fun.",
-    imageUrl: "https://xstocks-metadata.backed.fi/logos/tokens/UBERx.png",
-    pairedStockSymbol: "UBERx",
-    pairedStockName: "Uber Technologies",
-    creatorWallet: "7neX...fBbA",
-    supply: 1_000_000_000,
-    creatorFeeBps: 100, // 1%
-    priceSol: 0.0000000547,
-    priceUsd: 0,
-    marketCapUsd: 0,
-    volume24hUsd: 0,
-    change24h: 0,
-    bondingCurveProgress: 0.5,
-    status: "new",
-    holdersCount: 1,
-    txSignature: "7neXyY8xuQ3NBqkYzRtXPxR7PQXE7sq6jYKRoRFTfBbA",
-    pumpUrl: "https://pump.fun/coin/8dJpCw1JurBZQGNeYwqVJkqs3DTjtYW5wcFXzCpmpump",
-    explorerUrl: "https://solscan.io/token/8dJpCw1JurBZQGNeYwqVJkqs3DTjtYW5wcFXzCpmpump",
-    poolAddress: "7neXyY8xuQ3NBqkYzRtXPxR7PQXE7sq6jYKRoRFTfBbA",
-    venue: "pumpfun",
-    createdAt: "2026-09-09T22:33:23.000Z",
-  },
-];
+type CuratedPair = { symbol: string; name: string; mint: string };
+const STOCKS = new Map<string, CuratedPair>(
+  (Object.values(curatedPairs) as CuratedPair[]).filter((entry) => entry?.mint).map((entry) => [entry.mint, entry])
+);
 
-type CommunityTokenStore = {
-  version: 1;
-  tokens: CommunityToken[];
-};
-
-const STORE_PATH = path.join(process.cwd(), ".data", "community-tokens.json");
-
-const MOCK_MINTS = new Set([
-  "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
-  "SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
-  "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
-  "98sMhvDwXj1RQi5c5Mndm3vPe9cBqPrbLaufMXFNMh5g",
-  "BgCeigJo2iY3dJhqS2z9w4pjjufFd4F9oKS3FrkMbmbJ",
-  "ByCds9p6tXfF5HEg6aJDdrEypCWTi7Jui5nLs7QbyYuw",
-  "6oxWqT3Pkt97NEVDvthztC59vTGxSwSmsTL6eFFLoBGu",
-  "3JUj6ZdRreqNH5gkdL2dZWn477kB97NxdkqSv2GeXWG9",
-]);
+/** Tickers that impersonate majors/stablecoins or the stocks themselves — flagged, never hidden. */
+const LOOKALIKE_TICKERS = new Set(["USDC", "USDT", "SOL", "WSOL", "BTC", "ETH", "JUP", "BONK"]);
+export function isLookalikeTicker(symbol: string): boolean {
+  const upper = symbol.toUpperCase().replace(/^\$/, "");
+  if (LOOKALIKE_TICKERS.has(upper)) return true;
+  for (const stock of STOCKS.values()) {
+    const base = stock.symbol.replace(/x$/i, "").toUpperCase();
+    if (upper === base || upper === stock.symbol.toUpperCase()) return true;
+  }
+  return false;
+}
 
 async function readStore(): Promise<CommunityTokenStore> {
-  try {
-    const raw = await fs.readFile(STORE_PATH, "utf8");
-    const data = JSON.parse(raw) as Partial<CommunityTokenStore>;
-    if (Array.isArray(data.tokens) && data.tokens.length > 0) {
-      // Purge legacy mock/demo tokens so only authentic on-chain tokens are stored
-      const realTokens = data.tokens.filter(
-        (t) =>
-          !MOCK_MINTS.has(t.mint) &&
-          !t.mint.startsWith("Compute7b") &&
-          !t.mint.startsWith("CyberXs")
-      );
-      if (realTokens.length > 0) {
-        return { version: 1, tokens: realTokens };
-      }
-    }
-  } catch {
-    // Store does not exist yet, write seed
-  }
+  const data = await readJson<CommunityTokenStore>("community-tokens");
+  return { version: 2, tokens: Array.isArray(data?.tokens) ? data.tokens : [] };
+}
 
-  const initialStore: CommunityTokenStore = { version: 1, tokens: SEED_COMMUNITY_TOKENS };
+async function readStoreSafe(): Promise<CommunityTokenStore> {
   try {
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-    await fs.writeFile(STORE_PATH, JSON.stringify(initialStore, null, 2), "utf8");
+    return await readStore();
   } catch (err) {
-    console.warn("Failed to write initial community tokens store:", err);
+    console.warn("Community token registry unavailable:", err instanceof Error ? err.message : err);
+    return { version: 2, tokens: [] };
   }
-  return initialStore;
 }
 
-async function writeStore(store: CommunityTokenStore) {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-  const tmp = STORE_PATH + "." + process.pid + ".tmp";
-  await fs.writeFile(tmp, JSON.stringify(store, null, 2), "utf8");
-  await fs.rename(tmp, STORE_PATH);
-}
+// ---------------------------------------------------------------------------
+// DexScreener
+// ---------------------------------------------------------------------------
 
-// In-memory cache for live DexScreener & market enrichment
-interface EnrichedTokenData {
-  priceUsd: number;
-  priceSol: number;
-  volume24hUsd: number;
-  change24h: number;
-  marketCapUsd: number;
-  fetchedAt: number;
-}
+type DexPair = {
+  chainId?: string;
+  dexId?: string;
+  url?: string;
+  pairAddress?: string;
+  labels?: string[];
+  baseToken?: { address?: string; name?: string; symbol?: string };
+  quoteToken?: { address?: string; name?: string; symbol?: string };
+  priceNative?: string;
+  priceUsd?: string;
+  volume?: { h24?: number };
+  priceChange?: { h24?: number };
+  marketCap?: number;
+  fdv?: number;
+  pairCreatedAt?: number;
+  info?: { imageUrl?: string };
+};
 
-// Persistent in-memory cache storing the last good verified live data per mint
-const lastGoodLiveCache = new Map<string, EnrichedTokenData>();
+const DEXSCREENER_BATCH = 30; // documented max addresses per /tokens request
 
-let lastFetchTimestamp = 0;
-const CACHE_TTL_MS = 10_000; // 10 seconds between upstream DexScreener API calls
-
-export async function enrichTokensWithLiveMarketData(tokens: CommunityToken[]): Promise<CommunityToken[]> {
-  const now = Date.now();
-  const shouldFetch = now - lastFetchTimestamp > CACHE_TTL_MS;
-
-  if (shouldFetch) {
-    const mintsSet = new Set<string>();
-    for (const t of tokens) {
-      if (t.mint && t.mint.length > 20) {
-        mintsSet.add(t.mint);
-      }
-    }
-    const mintsArray = Array.from(mintsSet);
-
-    if (mintsArray.length > 0) {
+async function fetchPairsForMints(mints: string[]): Promise<DexPair[]> {
+  const pairs: DexPair[] = [];
+  const batches: string[][] = [];
+  for (let i = 0; i < mints.length; i += DEXSCREENER_BATCH) batches.push(mints.slice(i, i + DEXSCREENER_BATCH));
+  await Promise.all(
+    batches.map(async (batch) => {
       try {
-        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mintsArray.join(",")}`, {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${batch.join(",")}`, {
           headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(5000), // 5000ms timeout
+          signal: AbortSignal.timeout(6000),
+          next: { revalidate: 30 },
         });
-
-        if (res.ok) {
-          const json = await res.json();
-          type DexScreenerPair = {
-            baseToken?: { address?: string };
-            quoteToken?: { address?: string };
-            priceUsd?: string;
-            priceNative?: string;
-            volume?: { h24?: number };
-            priceChange?: { h24?: number };
-            marketCap?: number;
-            fdv?: number;
-          };
-          const pairs: DexScreenerPair[] = Array.isArray(json?.pairs) ? json.pairs : [];
-
-          const stockMintsSet = new Set(
-            Object.values(curatedPairs).map((c: any) => c.mint)
-          );
-
-          for (const pair of pairs) {
-            const baseAddress = pair.baseToken?.address;
-            const quoteAddress = pair.quoteToken?.address;
-            if (!baseAddress) continue;
-
-            // Only count pair volume if the pool is directly paired against a tokenized equity
-            const isStockPaired = stockMintsSet.has(quoteAddress ?? "") || stockMintsSet.has(baseAddress);
-            const pUsd = parseFloat(pair.priceUsd ?? "") || 0;
-            const pSol = parseFloat(pair.priceNative ?? "") || 0;
-            const vol = isStockPaired && typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
-            const chg = typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0;
-            const mcap = pair.marketCap || pair.fdv || 0;
-
-            const existing = lastGoodLiveCache.get(baseAddress);
-            if (!existing || vol >= existing.volume24hUsd) {
-              lastGoodLiveCache.set(baseAddress, {
-                priceUsd: pUsd,
-                priceSol: pSol,
-                volume24hUsd: vol,
-                change24h: chg,
-                marketCapUsd: mcap,
-                fetchedAt: now,
-              });
-            }
-          }
-
-          lastFetchTimestamp = now;
-        }
-      } catch (err) {
-        // Fall back gracefully to last good live data in memory without inventing volume
-        console.warn(
-          "DexScreener live sync notice: using cached/stale data (",
-          err instanceof Error ? err.message : err,
-          ")"
-        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { pairs?: DexPair[] };
+        if (Array.isArray(data.pairs)) pairs.push(...data.pairs.filter((pair) => pair.chainId === "solana"));
+      } catch {
+        // A failed batch leaves those tokens unlisted — never invented.
       }
-    }
+    })
+  );
+  return pairs;
+}
+
+/** Which side of a DexScreener pair is the token, and which is its xStock. */
+function orient(pair: DexPair, tokenMint?: string) {
+  const base = pair.baseToken?.address;
+  const quote = pair.quoteToken?.address;
+  if (!base || !quote) return null;
+  if (STOCKS.has(quote) && !STOCKS.has(base) && (!tokenMint || tokenMint === base)) {
+    return { token: pair.baseToken!, stock: STOCKS.get(quote)!, tokenIsBase: true };
   }
+  if (STOCKS.has(base) && !STOCKS.has(quote) && (!tokenMint || tokenMint === quote)) {
+    return { token: pair.quoteToken!, stock: STOCKS.get(base)!, tokenIsBase: false };
+  }
+  return null;
+}
 
-  return tokens.map((t) => {
-    const live = lastGoodLiveCache.get(t.mint);
+/** DexScreener prices the BASE token. Convert to the token's own price when the token is the quote side. */
+function tokenPrices(pair: DexPair, tokenIsBase: boolean) {
+  const baseUsd = parseFloat(pair.priceUsd ?? "") || 0;
+  const baseInQuote = parseFloat(pair.priceNative ?? "") || 0;
+  if (tokenIsBase) return { priceUsd: baseUsd, priceInStock: baseInQuote };
+  if (baseUsd <= 0 || baseInQuote <= 0) return { priceUsd: 0, priceInStock: 0 };
+  return { priceUsd: baseUsd / baseInQuote, priceInStock: 1 / baseInQuote };
+}
 
-    if (live) {
-      const isStale = now - live.fetchedAt > 60_000;
-      const isGraduated = t.status === "graduated" || t.bondingCurveProgress >= 100;
-      const progress = isGraduated
-        ? 100
-        : Math.min(99.5, Math.max(10, +((live.marketCapUsd / 69_000) * 100).toFixed(1)));
+function isCurvePool(pair: DexPair) {
+  return pair.dexId === "pumpfun" || (pair.labels ?? []).some((label) => /dbc|bonding/i.test(label));
+}
 
-      return {
-        ...t,
-        priceUsd: live.priceUsd > 0 ? live.priceUsd : t.priceUsd,
-        priceSol: live.priceSol > 0 ? live.priceSol : t.priceSol,
-        volume24hUsd: live.volume24hUsd,
-        change24h: live.change24h,
-        marketCapUsd: live.marketCapUsd > 0 ? live.marketCapUsd : t.marketCapUsd,
-        bondingCurveProgress: progress,
-        status: progress >= 100 ? "graduated" : t.status,
-        isStale,
-        marketStatus: isStale ? "stale" : "live",
-      };
-    }
+function venueFor(dexId?: string): CommunityToken["venue"] {
+  if (dexId === "pumpfun" || dexId === "pumpswap") return "pumpfun";
+  if (dexId === "meteora") return "meteora";
+  return "other";
+}
 
-    // Token has no verified DexScreener pair (e.g. unlisted / pre-graduated curve)
-    // NEVER invent volume or carry forward a stale market cap: zero both, mark unlisted
+const DISCOVERY_STOCKS = [
+  "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg", // HOODx
+  "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1", // CRCLx
+  "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re", // GLDx
+  "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo", // AVGOx
+  "XsAsZLF4MmsvS1sDxRMrUz7REjHfwbC9UAMXSRBqgEB", // UBERx
+  "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", // NVDAx
+  "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp", // AAPLx
+].filter((mint) => STOCKS.has(mint));
+
+/** Existing pools on DexScreener where some token trades directly against an xStock. Not OpenStock launches. */
+async function discoverStockPairedPools(): Promise<CommunityToken[]> {
+  const pairs = await fetchPairsForMints(DISCOVERY_STOCKS);
+  const tokens: CommunityToken[] = [];
+  const seen = new Set<string>();
+  for (const pair of pairs) {
+    const side = orient(pair);
+    if (!side?.token.address || seen.has(side.token.address)) continue;
+    seen.add(side.token.address);
+    const { priceUsd, priceInStock } = tokenPrices(pair, side.tokenIsBase);
+    const onCurve = isCurvePool(pair);
+    tokens.push({
+      mint: side.token.address,
+      name: side.token.name || side.token.symbol || "Unknown token",
+      symbol: side.token.symbol || "?",
+      description: `Existing ${pair.dexId ?? "DEX"} pool trading against ${side.stock.symbol}. Discovered on DexScreener.`,
+      imageUrl: side.tokenIsBase ? pair.info?.imageUrl || "" : "",
+      pairedStockSymbol: side.stock.symbol,
+      pairedStockName: side.stock.name.replace(/ xStock$/, ""),
+      creatorWallet: "",
+      supply: 0,
+      creatorFeeBps: 0,
+      priceSol: 0,
+      priceInPairedStock: priceInStock,
+      priceUsd,
+      marketCapUsd: side.tokenIsBase ? pair.marketCap || pair.fdv || 0 : 0,
+      volume24hUsd: typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0,
+      change24h: side.tokenIsBase && typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0,
+      bondingCurveProgress: onCurve ? 0 : 100,
+      progressKnown: !onCurve,
+      status: onCurve ? "new" : "graduated",
+      holdersCount: 0,
+      txSignature: "",
+      pumpUrl: pair.url || `https://dexscreener.com/solana/${pair.pairAddress}`,
+      explorerUrl: `https://solscan.io/token/${side.token.address}`,
+      poolAddress: pair.pairAddress,
+      meteoraUrl: pair.dexId === "meteora" ? pair.url : undefined,
+      venue: venueFor(pair.dexId),
+      dexId: pair.dexId,
+      source: "discovered",
+      marketStatus: "live",
+      createdAt: pair.pairCreatedAt ? new Date(pair.pairCreatedAt).toISOString() : new Date(0).toISOString(),
+    });
+  }
+  return tokens;
+}
+
+/** Live price/volume for OpenStock-launched tokens, taken only from pools paired against their own xStock. */
+async function enrichLaunchedTokens(tokens: CommunityToken[]): Promise<CommunityToken[]> {
+  if (tokens.length === 0) return tokens;
+  const pairs = await fetchPairsForMints(tokens.map((token) => token.mint));
+  return tokens.map((token) => {
+    const matches = pairs
+      .map((pair) => ({ pair, side: orient(pair, token.mint) }))
+      .filter((entry) => entry.side && entry.side.stock.symbol === token.pairedStockSymbol)
+      .sort((a, b) => (b.pair.volume?.h24 ?? 0) - (a.pair.volume?.h24 ?? 0));
+    const best = matches[0];
+    if (!best?.side) return { ...token, volume24hUsd: 0, marketStatus: "unlisted" as const };
+    const { priceUsd, priceInStock } = tokenPrices(best.pair, best.side.tokenIsBase);
+    const graduated = !isCurvePool(best.pair);
     return {
-      ...t,
-      volume24hUsd: 0,
-      marketCapUsd: 0,
-      isStale: false,
-      marketStatus: "unlisted",
+      ...token,
+      priceUsd: priceUsd || token.priceUsd,
+      priceInPairedStock: priceInStock || token.priceInPairedStock,
+      volume24hUsd: matches.reduce((sum, entry) => sum + (entry.pair.volume?.h24 ?? 0), 0),
+      change24h: best.side.tokenIsBase ? best.pair.priceChange?.h24 ?? 0 : token.change24h,
+      marketCapUsd: best.side.tokenIsBase ? best.pair.marketCap || best.pair.fdv || 0 : token.marketCapUsd,
+      status: graduated ? "graduated" : token.status,
+      bondingCurveProgress: graduated ? 100 : token.bondingCurveProgress,
+      progressKnown: graduated ? true : token.progressKnown,
+      dexId: best.pair.dexId,
+      marketStatus: "live" as const,
     };
   });
 }
 
+let listCache: { at: number; tokens: CommunityToken[] } | null = null;
+const LIST_TTL_MS = 20_000;
+
 export async function getCommunityTokens(): Promise<CommunityToken[]> {
-  const store = await readStore();
-  const sorted = store.tokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  
-  // Try to fetch real tokens from DexScreener that are paired against xStocks
-  try {
-    const dexscreenerTokens = await fetchDexScreenerMemeTokens();
-    if (dexscreenerTokens.length > 0) {
-      // Merge real tokens with seed data, avoiding duplicates
-      const existingMints = new Set(sorted.map(t => t.mint));
-      const newTokens = dexscreenerTokens.filter(t => !existingMints.has(t.mint));
-      return enrichTokensWithLiveMarketData([...newTokens, ...sorted]);
-    }
-  } catch (err) {
-    console.warn("Failed to fetch DexScreener tokens, using seed data:", err);
-  }
-  
-  return enrichTokensWithLiveMarketData(sorted);
+  if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.tokens;
+  const store = await readStoreSafe();
+  const launched = store.tokens.map((token) => ({ ...token, source: "openstock" as const }));
+  const [enrichedLaunched, discovered] = await Promise.all([
+    enrichLaunchedTokens(launched).catch(() => launched),
+    discoverStockPairedPools().catch(() => [] as CommunityToken[]),
+  ]);
+  const launchedMints = new Set(enrichedLaunched.map((token) => token.mint));
+  const byNewest = (a: CommunityToken, b: CommunityToken) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const tokens = [
+    ...enrichedLaunched.sort(byNewest),
+    ...discovered.filter((token) => !launchedMints.has(token.mint)).sort(byNewest),
+  ];
+  listCache = { at: Date.now(), tokens };
+  return tokens;
 }
 
-async function fetchDexScreenerMemeTokens(): Promise<CommunityToken[]> {
-  try {
-    const stockEntries = Object.values(curatedPairs) as { symbol: string; name: string; mint: string }[];
-    const stockMap = new Map<string, { symbol: string; name: string }>();
-    for (const entry of stockEntries) {
-      if (entry?.mint) {
-        stockMap.set(entry.mint, { symbol: entry.symbol, name: entry.name });
-      }
-    }
-
-    const commonMints = new Set([
-      "So11111111111111111111111111111111111111112", // SOL
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
-      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
-      "USDXv8nTu9GsrU4y5q7gJzZk8C9R7f7Yk3G4r2z8L4w", // USDX
-      "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4", // JLP
-      "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh", // WBTC
-      "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij", // cbBTC
-    ]);
-
-    // Active stock mints to query for paired community tokens
-    const queryMints = [
-      stockMap.get("XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg") ? "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg" : "", // HOODx
-      stockMap.get("XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1") ? "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1" : "", // CRCLx
-      stockMap.get("Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re") ? "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re" : "", // GLDx
-      stockMap.get("XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo") ? "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo" : "", // AVGOx
-      stockMap.get("XsAsZLF4MmsvS1sDxRMrUz7REjHfwbC9UAMXSRBqgEB") ? "XsAsZLF4MmsvS1sDxRMrUz7REjHfwbC9UAMXSRBqgEB" : "", // UBERx
-      stockMap.get("Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh") ? "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh" : "", // NVDAx
-      stockMap.get("XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp") ? "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp" : "", // AAPLx
-    ].filter(Boolean);
-
-    const allPairs: any[] = [];
-    await Promise.all(
-      queryMints.map(async (mint) => {
-        try {
-          const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
-            headers: { Accept: "application/json" },
-            signal: AbortSignal.timeout(5000),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.pairs)) {
-              allPairs.push(...data.pairs);
-            }
-          }
-        } catch {
-          // ignore individual timeout
-        }
-      })
-    );
-
-    const tokens: CommunityToken[] = [];
-    const seenMints = new Set<string>();
-
-    for (const pair of allPairs) {
-      if (pair.chainId !== "solana") continue;
-      const baseAddr = pair.baseToken?.address;
-      const quoteAddr = pair.quoteToken?.address;
-      if (!baseAddr || !quoteAddr) continue;
-
-      let stockMeta: { symbol: string; name: string } | null = null;
-      let memeToken: any = null;
-
-      if (stockMap.has(quoteAddr) && !stockMap.has(baseAddr) && !commonMints.has(baseAddr)) {
-        stockMeta = stockMap.get(quoteAddr)!;
-        memeToken = pair.baseToken;
-      } else if (stockMap.has(baseAddr) && !stockMap.has(quoteAddr) && !commonMints.has(quoteAddr)) {
-        stockMeta = stockMap.get(baseAddr)!;
-        memeToken = pair.quoteToken;
-      }
-
-      if (!stockMeta || !memeToken || seenMints.has(memeToken.address)) continue;
-      seenMints.add(memeToken.address);
-
-      const venue = pair.dexId === "meteora" ? ("meteora" as const) : ("pumpfun" as const);
-      const pUsd = parseFloat(pair.priceUsd || "0");
-      const pSol = parseFloat(pair.priceNative || "0");
-      const vol = typeof pair.volume?.h24 === "number" ? Math.round(pair.volume.h24) : 0;
-      const mcap = pair.marketCap || pair.fdv || 0;
-
-      tokens.push({
-        mint: memeToken.address,
-        name: memeToken.name || memeToken.symbol || "Community Token",
-        symbol: memeToken.symbol || "MEME",
-        description: `Community token paired against ${stockMeta.symbol} on ${venue === "meteora" ? "Meteora DLMM" : "Pump.fun"}.`,
-        imageUrl: pair.info?.imageUrl || "",
-        pairedStockSymbol: stockMeta.symbol,
-        pairedStockName: stockMeta.name,
-        creatorWallet: memeToken.address.slice(0, 8) + "..." + memeToken.address.slice(-4),
-        supply: pair.fdv && pUsd > 0 ? Math.round(pair.fdv / pUsd) : 1_000_000_000,
-        creatorFeeBps: 100,
-        priceSol: pSol,
-        priceUsd: pUsd,
-        marketCapUsd: mcap,
-        volume24hUsd: vol,
-        change24h: typeof pair.priceChange?.h24 === "number" ? pair.priceChange.h24 : 0,
-        bondingCurveProgress: 100,
-        status: "graduated" as const,
-        holdersCount: 0,
-        txSignature: pair.pairAddress || "",
-        pumpUrl: pair.url || `https://solscan.io/token/${memeToken.address}`,
-        explorerUrl: `https://solscan.io/token/${memeToken.address}`,
-        poolAddress: pair.pairAddress,
-        meteoraUrl: pair.dexId === "meteora" ? pair.url : undefined,
-        venue,
-        createdAt: pair.pairCreatedAt ? new Date(pair.pairCreatedAt).toISOString() : new Date().toISOString(),
-      });
-    }
-
-    return tokens;
-  } catch (err) {
-    console.warn("Error fetching DexScreener meme tokens:", err);
-    return [];
-  }
-}
-
+/** Throws StoreUnavailableError when the registry cannot be written — callers must surface that. */
 export async function addCommunityToken(token: CommunityToken): Promise<CommunityToken> {
   const store = await readStore();
-  // Prepend so newly created token appears immediately at the very top
+  const record = { ...token, source: "openstock" as const };
   const existingIdx = store.tokens.findIndex((t) => t.mint === token.mint);
-  if (existingIdx >= 0) {
-    store.tokens[existingIdx] = token;
-  } else {
-    store.tokens.unshift(token);
-  }
-  await writeStore(store);
-  return token;
+  if (existingIdx >= 0) store.tokens[existingIdx] = record;
+  else store.tokens.unshift(record);
+  await writeJson("community-tokens", store);
+  listCache = null;
+  return record;
 }
 
 export async function updateCommunityTokenStatus(
@@ -413,37 +287,28 @@ export async function updateCommunityTokenStatus(
   token.status = status;
   if (status === "graduated") {
     token.bondingCurveProgress = 100;
+    token.progressKnown = true;
   }
   if (poolAddress) token.poolAddress = poolAddress;
   if (meteoraUrl) token.meteoraUrl = meteoraUrl;
-  await writeStore(store);
+  await writeJson("community-tokens", store);
+  listCache = null;
   return token;
 }
 
 export async function getCommunityMarketKPIs() {
   const tokens = await getCommunityTokens();
-  const totalLaunches = tokens.length;
+  const launched = tokens.filter((t) => t.source === "openstock");
   const totalVolumeUsd = tokens.reduce((acc, t) => acc + t.volume24hUsd, 0);
-  const graduatedCount = tokens.filter((t) => t.status === "graduated" || t.bondingCurveProgress >= 100).length;
-  const newCount = tokens.filter((t) => {
-    const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
-    return ageHours <= 24;
-  }).length;
-  const avgBondingCurve = Math.round(tokens.reduce((acc, t) => acc + t.bondingCurveProgress, 0) / (tokens.length || 1));
-  const avgChange24h = tokens.length > 0
-    ? +(tokens.reduce((acc, t) => acc + (t.change24h || 0), 0) / tokens.length).toFixed(1)
-    : 0;
-
   return {
-    totalLaunches,
+    launchedCount: launched.length,
+    discoveredCount: tokens.length - launched.length,
+    totalPools: tokens.length,
     totalVolumeUsd,
-    totalVolumeFormatted: totalVolumeUsd >= 1_000_000
-      ? `$${(totalVolumeUsd / 1_000_000).toFixed(2)}M`
-      : `$${(totalVolumeUsd / 1_000).toFixed(1)}K`,
-    graduatedCount,
-    newCount,
-    avgBondingCurve,
-    avgChange24h,
+    totalVolumeFormatted:
+      totalVolumeUsd >= 1_000_000 ? `$${(totalVolumeUsd / 1_000_000).toFixed(2)}M` : `$${(totalVolumeUsd / 1_000).toFixed(1)}K`,
+    ammPoolCount: tokens.filter((t) => t.status === "graduated").length,
+    newCount: tokens.filter((t) => Date.now() - new Date(t.createdAt).getTime() <= 24 * 3600_000).length,
     lastUpdated: new Date().toISOString(),
   };
 }
@@ -451,6 +316,6 @@ export async function getCommunityMarketKPIs() {
 export async function getCommunityTokenByMint(mint: string): Promise<CommunityToken | null> {
   if (!mint) return null;
   const tokens = await getCommunityTokens();
-  const cleanMint = mint.trim().toLowerCase();
-  return tokens.find((t) => t.mint.toLowerCase() === cleanMint) ?? null;
+  const cleanMint = mint.trim();
+  return tokens.find((t) => t.mint === cleanMint) ?? null;
 }

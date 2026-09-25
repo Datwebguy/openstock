@@ -5,8 +5,10 @@ import {
   checkMeteoraDbcBadgeSupport,
   executeMeteoraDbcLaunch,
   prepareMeteoraDbcPoolTx,
-  type DbcCurvePresetKey,
+  readDbcConfigSummary,
+  resolveDbcConfigAddress,
 } from "@/lib/meteora-dbc";
+import { publicStoreError, writeJson } from "@/lib/json-store";
 import { resolvePublicImageUrl } from "@/lib/safe-image-url";
 import { isSolanaAddress } from "@/lib/solana";
 
@@ -21,9 +23,7 @@ export async function POST(req: NextRequest) {
       imageUrl,
       quoteMint,
       creatorWallet,
-      creatorFeeBps,
       supply,
-      curvePreset = "linear",
       txSignature,
       mintAddress,
       poolAddress,
@@ -56,7 +56,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, req.nextUrl.origin || "http://localhost:3000") ?? "";
+    const origin = req.nextUrl.origin || "http://localhost:3000";
+    const resolvedImageUrl = resolvePublicImageUrl(imageUrl, origin) ?? "";
+    if (!resolvedImageUrl || resolvedImageUrl.startsWith("data:")) {
+      return NextResponse.json({ error: "Upload token artwork or paste an https image URL." }, { status: 400 });
+    }
 
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1_000_000_000;
     const launchPayload = {
@@ -66,15 +70,25 @@ export async function POST(req: NextRequest) {
       imageUrl: resolvedImageUrl || "",
       quoteMint,
       creatorWallet,
-      creatorFeeBps: Number(creatorFeeBps) || 150,
+      // Creator share is fixed by the on-chain PoolConfig — the client value is ignored.
+      creatorFeeBps: 0,
       supply: tokenSupply,
-      curvePreset: (curvePreset as DbcCurvePresetKey) || "linear",
       pairedStockSymbol: pairedStock.symbol,
+      metadataUri: "",
     };
 
     // Mode 1: Prepare the authentic on-chain Meteora DBC transaction
     if (mode === "prepare") {
-      const prepared = await prepareMeteoraDbcPoolTx(launchPayload);
+      // The mint keypair is generated inside prepare; metadata is stored under that mint before the tx is built.
+      const prepared = await prepareMeteoraDbcPoolTx(launchPayload, async (mintAddress) => {
+        await writeJson("meta:" + mintAddress, {
+          name: launchPayload.name,
+          symbol: launchPayload.symbol,
+          description: launchPayload.description || `${launchPayload.name} paired against ${pairedStock.symbol} on Solana.`,
+          image: resolvedImageUrl,
+        });
+        return `${origin}/api/token-metadata/${mintAddress}`;
+      });
       return NextResponse.json({
         success: true,
         mode: "prepare",
@@ -83,23 +97,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Mode 2: Confirm launch with the signed transaction signature
-    if (!txSignature) {
-      return NextResponse.json(
-        { error: "A valid signed Solana transaction signature is required to confirm pool initialization." },
-        { status: 400 }
-      );
+    if (typeof txSignature !== "string" || typeof mintAddress !== "string" || typeof poolAddress !== "string" || !isSolanaAddress(mintAddress) || !isSolanaAddress(poolAddress)) {
+      return NextResponse.json({ error: "Missing transaction signature, mint, or pool." }, { status: 400 });
     }
 
-    const launchResult = await executeMeteoraDbcLaunch(
-      launchPayload,
-      txSignature,
-      mintAddress,
-      poolAddress
-    );
+    let launchResult;
+    try {
+      launchResult = await executeMeteoraDbcLaunch(launchPayload, txSignature, mintAddress, poolAddress);
+    } catch (verifyError) {
+      return NextResponse.json({ error: verifyError instanceof Error ? verifyError.message : "Pool not verified." }, { status: 409 });
+    }
 
     // Record the newly created community stock-pair token in the live registry
     const pairedAsset = pairedStock;
 
+    const configAddress = resolveDbcConfigAddress({ quoteMint, pairedStockSymbol: pairedStock.symbol });
+    const summary = configAddress ? await readDbcConfigSummary(configAddress) : null;
+    const creatorFeeOnChainBps = summary ? Math.round((summary.baseFeeBps * summary.creatorTradingFeePercent) / 100) : 0;
+
+    let registered = true;
+    let registryError: string | null = null;
     try {
       await addCommunityToken({
         mint: launchResult.mintAddress,
@@ -111,7 +128,7 @@ export async function POST(req: NextRequest) {
         pairedStockName: pairedAsset.name.replace(/ xStock$/, ""),
         creatorWallet,
         supply: tokenSupply,
-        creatorFeeBps: Number(creatorFeeBps) || 150,
+        creatorFeeBps: creatorFeeOnChainBps,
         priceSol: 0,
         priceUsd: 0,
         marketCapUsd: 0,
@@ -120,24 +137,29 @@ export async function POST(req: NextRequest) {
         bondingCurveProgress: 0,
         status: "new",
         holdersCount: 1,
+        progressKnown: true,
         txSignature: launchResult.txHash,
-        pumpUrl: launchResult.meteoraUrl,
+        pumpUrl: launchResult.poolUrl,
         explorerUrl: launchResult.explorerUrl,
         poolAddress: launchResult.poolAddress,
-        meteoraUrl: launchResult.meteoraUrl,
         venue: "meteora",
+        dexId: "meteora",
         createdAt: new Date().toISOString(),
       });
     } catch (storeErr) {
-      console.warn("Could not record token into community store:", storeErr);
+      registered = false;
+      registryError = publicStoreError(storeErr, "The token is live on Solana but could not be added to the OpenStock desk.");
     }
 
     return NextResponse.json({
       mode: "confirm",
       ...launchResult,
+      registered,
+      registryError,
     });
   } catch (error: unknown) {
     console.error("Meteora DBC launch error:", error);
-    return NextResponse.json({ error: "Meteora DBC launch failed" }, { status: 500 });
+    const message = error instanceof Error && /not configured|metadata|Storage/.test(error.message) ? error.message : "Meteora DBC launch failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
