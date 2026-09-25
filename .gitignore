@@ -16,10 +16,6 @@ test-results/
 # Local data stores (user sessions, receipts, tokens)
 .data/
 
-# User-generated uploads
-public/uploads/*
-!public/uploads/.gitkeep
-
 # Environment and secrets
 .env
 .env.*
@@ -72,3 +68,12 @@ video_assets/
 *.wav
 
 .env*
+
+# Local scratch work and generated artifacts
+scratch/
+meteora-dbc-configs.json
+
+# Never commit wallet keys
+*keypair*
+*.key
+id.json

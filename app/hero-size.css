@@ -5,10 +5,8 @@
   margin-left: auto;
 }
 
-.hero-scene .stock-network { min-height: 520px; }
 .hero-card, .hero-stamp { display: none !important; }
 
 @media (max-width: 800px) {
   .hero-scene { min-height: 470px; max-width: none; }
-  .hero-scene .stock-network { min-height: 470px; }
 }
