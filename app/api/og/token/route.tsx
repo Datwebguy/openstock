@@ -15,6 +15,20 @@ export const runtime = "nodejs";
 
 const curatedStocks: Record<string, { symbol: string; name: string; logo: string }> = curated25Data;
 
+/** Fetches an image and inlines it, so the card never renders an empty circle for a broken or blocked URL. */
+async function fetchAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000), next: { revalidate: 86400 } });
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") || "image/png";
+    if (!type.startsWith("image/")) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    return `data:${type};base64,${bytes.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
@@ -30,8 +44,15 @@ export async function GET(req: NextRequest) {
   // 2. Resolve stock information & fallback color
   const stockUpper = stockParam.toUpperCase();
   const stockConfig = getStockCompany(stockUpper);
-  const matchedStockMeta = curatedStocks[stockUpper] || curatedStocks[stockUpper.endsWith("X") ? stockUpper : `${stockUpper}X`];
-  const stockLogoUrl = matchedStockMeta?.logo || `https://xstocks-metadata.backed.fi/logos/tokens/${stockUpper.endsWith("X") ? stockUpper : `${stockUpper}x`}.png`;
+  // Registry keys are mixed case ("NVDAx"); match case-insensitively, with or without the trailing x.
+  const baseTicker = stockUpper.replace(/X$/, "");
+  const matchedStockMeta = Object.values(curatedStocks).find(
+    (meta) => meta.symbol.toUpperCase() === stockUpper || meta.symbol.toUpperCase() === `${baseTicker}X`
+  );
+  const stockSymbol = matchedStockMeta?.symbol ?? `${baseTicker}x`;
+  // Backed's logo URLs are case-sensitive: /tokens/NVDAx.png works, /tokens/NVDAX.png is 403.
+  const stockLogoSource = matchedStockMeta?.logo || `https://xstocks-metadata.backed.fi/logos/tokens/${stockSymbol}.png`;
+  const stockLogoUrl = await fetchAsDataUrl(stockLogoSource);
 
   // 3. Resolve accent color with strict safety clamping
   let accentHex = DEFAULT_ACCENT_HEX;
@@ -238,18 +259,22 @@ export async function GET(req: NextRequest) {
                 overflow: "hidden",
               }}
             >
-              <img
-                src={stockLogoUrl}
-                alt={stockParam}
-                width="110"
-                height="110"
-                style={{
-                  width: "110px",
-                  height: "110px",
-                  objectFit: "cover",
-                  borderRadius: "55px",
-                }}
-              />
+              {stockLogoUrl ? (
+                <img
+                  src={stockLogoUrl}
+                  alt={stockSymbol}
+                  width="110"
+                  height="110"
+                  style={{
+                    width: "110px",
+                    height: "110px",
+                    objectFit: "cover",
+                    borderRadius: "55px",
+                  }}
+                />
+              ) : (
+                <div style={{ display: "flex", fontSize: "30px", fontWeight: 700, color: "#161321" }}>{baseTicker.slice(0, 5)}</div>
+              )}
             </div>
           </div>
 
