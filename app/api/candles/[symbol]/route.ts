@@ -13,6 +13,8 @@ const FRAMES: Record<string, { unit: "minute" | "hour" | "day"; aggregate: numbe
 
 type GeckoPool = { attributes?: { address?: string; name?: string; reserve_in_usd?: string } };
 const poolCache = new Map<string, { at: number; pool: { address: string; name: string } | null }>();
+/** Last successful response per symbol+timeframe, served when GeckoTerminal rate-limits (free API). */
+const lastGood = new Map<string, { at: number; body: Record<string, unknown> }>();
 
 /** Most liquid Solana pool for the mint, per GeckoTerminal (cached 10 minutes). */
 async function topPool(mint: string) {
@@ -48,12 +50,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ symb
       .map(([t, o, h, l, c, v]) => ({ timestamp: t * 1000, open: o, high: h, low: l, close: c, volume: v }))
       .filter((c) => [c.open, c.high, c.low, c.close].every((n) => Number.isFinite(n) && n > 0))
       .sort((a, b) => a.timestamp - b.timestamp);
-    return NextResponse.json(
-      { symbol, timeframe: tf, candles, source: { provider: "GeckoTerminal", pool: pool.name, poolAddress: pool.address } },
-      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } }
-    );
+    const body = { symbol, timeframe: tf, candles, source: { provider: "GeckoTerminal", pool: pool.name, poolAddress: pool.address } };
+    if (candles.length > 0) lastGood.set(`${symbol}:${tf}`, { at: Date.now(), body });
+    return NextResponse.json(body, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=300" } });
   } catch (error) {
     console.warn("candles failed", symbol, error instanceof Error ? error.message : error);
+    const cached = lastGood.get(`${symbol}:${tf}`);
+    if (cached && Date.now() - cached.at < 30 * 60_000) {
+      return NextResponse.json({ ...cached.body, stale: true, fetchedAt: new Date(cached.at).toISOString() }, { headers: { "Cache-Control": "no-store" } });
+    }
     return NextResponse.json({ symbol, candles: [], error: "Chart data is unavailable right now." }, { status: 502 });
   }
 }

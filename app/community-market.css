@@ -3218,10 +3218,13 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
 
 /* Real top-holders list (replaces the illustrative cluster SVG) */
 .bubblemaps-holder-list { list-style: decimal inside; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
-.bubblemaps-holder-list li { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: rgba(153, 69, 255, 0.06); font-size: 13px; }
-.bubblemaps-holder-list li a { font-family: ui-monospace, monospace; color: inherit; }
-.bubblemaps-holder-list li strong { margin-left: auto; }
-.bubblemaps-holder-tag { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; background: rgba(20, 241, 149, 0.15); color: #0a8754; }
+.bubblemaps-holder-list { color: #ece8ff; }
+.bubblemaps-holder-list li { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); font-size: 13px; color: #ece8ff; }
+.bubblemaps-holder-list li::marker { color: #a99bd6; }
+.bubblemaps-holder-list li a { font-family: ui-monospace, monospace; color: #d9ccff; text-decoration: none; }
+.bubblemaps-holder-list li a:hover { text-decoration: underline; }
+.bubblemaps-holder-list li strong { margin-left: auto; color: #ffffff; }
+.bubblemaps-holder-tag { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; background: rgba(20, 241, 149, 0.18); color: #5cf0b0; }
 
 /* Status cells are buttons now (keyboard + 44px targets) */
 button.bonding-progress-cell,
