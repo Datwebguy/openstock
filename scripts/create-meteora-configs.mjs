@@ -1,25 +1,30 @@
 #!/usr/bin/env node
-
 /**
- * OpenStock Meteora DBC Config Initializer
+ * OpenStock × Meteora DBC — per-stock PoolConfig builder (three curve styles).
  *
- * Strictly initializes ONE Meteora DBC Config on Solana Mainnet:
- * - Quote Mint: NVDAx (Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh)
- * - Curve Type: Standard / Linear
- * - Quote Token Badge PDA: mfacWnGh1Kn5ttHMMaNZhRZbCjvGrDQyDyZgqaR9vBM
- * - Migration Target: DAMM v2 (cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG)
+ * For each xStock quote mint it builds three PoolConfig accounts:
+ *   standard — uniform liquidity (linear-feeling price path)
+ *   momentum — thin early liquidity, deeper late (steep early price, exponential-feeling)
+ *   deep     — deep early liquidity, thinner late (low early slippage, "long" curve)
+ *
+ * Market caps are given in USD and converted to the quote xStock at the live Jupiter price,
+ * because DBC expresses market cap in quote-token units. xStocks have 8 decimals on Solana.
  *
  * Usage:
- *   node scripts/create-meteora-configs.mjs --dry-run --fee-claimer <ADDRESS>
- *   node scripts/create-meteora-configs.mjs --broadcast --fee-claimer <ADDRESS> --keypair <PATH_TO_KEYPAIR>
+ *   Dry run (default, spends nothing):
+ *     node scripts/create-meteora-configs.mjs --symbols NVDAx,AAPLx --fee-claimer <PUBKEY>
+ *   Broadcast:
+ *     node scripts/create-meteora-configs.mjs --broadcast --symbols NVDAx,AAPLx --fee-claimer <PUBKEY> --keypair <PATH>
+ *
+ * Output: config addresses + the METEORA_DBC_CONFIGS value to paste into Vercel.
  */
 
 import fs from "node:fs";
-import path from "node:path";
+import { createRequire } from "node:module";
 import { Connection, PublicKey, Keypair, sendAndConfirmTransaction } from "@solana/web3.js";
 import {
   DynamicBondingCurveClient,
-  buildCurveWithMarketCap,
+  buildCurveWithLiquidityWeights,
   TokenType,
   TokenDecimal,
   TokenAuthorityOption,
@@ -32,128 +37,88 @@ import {
   DYNAMIC_BONDING_CURVE_PROGRAM_ID,
 } from "@meteora-ag/dynamic-bonding-curve-sdk";
 
-const DEFAULT_RPC = process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-const NVDAX_MINT = new PublicKey("Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh");
+const require = createRequire(import.meta.url);
+const curated = require("../lib/solana-curated-25.json");
+
+const RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const CONFIG_ACCOUNT_BYTES = 1048; // size of an on-chain DBC PoolConfig account
+
+/** Curve presets. Market caps in USD; fees in bps; creator share = % of trading fees paid to the pool creator. */
+const CURVES = {
+  standard: {
+    label: "Equity Standard",
+    initialMarketCapUsd: 5_000,
+    migrationMarketCapUsd: 69_000,
+    baseFeeBps: 150,
+    weights: Array.from({ length: 16 }, () => 1),
+  },
+  momentum: {
+    label: "Equity Momentum",
+    initialMarketCapUsd: 5_000,
+    migrationMarketCapUsd: 85_000,
+    baseFeeBps: 200,
+    weights: Array.from({ length: 16 }, (_, i) => 1.2 ** i),
+  },
+  deep: {
+    label: "Equity Deep Book",
+    initialMarketCapUsd: 10_000,
+    migrationMarketCapUsd: 100_000,
+    baseFeeBps: 100,
+    weights: Array.from({ length: 16 }, (_, i) => 1.2 ** (15 - i)),
+  },
+};
+const CREATOR_TRADING_FEE_PERCENT = 50;
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const options = {
-    dryRun: true,
-    broadcast: false,
-    feeClaimer: process.env.OPENSTOCK_FEE_CLAIMER || "",
-    leftoverReceiver: process.env.OPENSTOCK_LEFTOVER_RECEIVER || "",
-    keypairPath: process.env.KEYPAIR_PATH || "",
-    rpcUrl: DEFAULT_RPC,
-  };
-
+  const opts = { broadcast: false, symbols: ["NVDAx", "AAPLx"], curves: Object.keys(CURVES), feeClaimer: "", keypair: "", rpc: RPC };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--dry-run") {
-      options.dryRun = true;
-      options.broadcast = false;
-    } else if (args[i] === "--broadcast") {
-      options.broadcast = true;
-      options.dryRun = false;
-    } else if (args[i] === "--fee-claimer" && args[i + 1]) {
-      options.feeClaimer = args[++i];
-    } else if (args[i] === "--leftover-receiver" && args[i + 1]) {
-      options.leftoverReceiver = args[++i];
-    } else if (args[i] === "--keypair" && args[i + 1]) {
-      options.keypairPath = args[++i];
-    } else if (args[i] === "--rpc" && args[i + 1]) {
-      options.rpcUrl = args[++i];
-    }
+    const a = args[i];
+    if (a === "--broadcast") opts.broadcast = true;
+    else if (a === "--dry-run") opts.broadcast = false;
+    else if (a === "--symbols") opts.symbols = args[++i].split(",").map((s) => s.trim());
+    else if (a === "--curves") opts.curves = args[++i].split(",").map((s) => s.trim());
+    else if (a === "--fee-claimer") opts.feeClaimer = args[++i];
+    else if (a === "--keypair") opts.keypair = args[++i];
+    else if (a === "--rpc") opts.rpc = args[++i];
   }
-
-  if (!options.leftoverReceiver && options.feeClaimer) {
-    options.leftoverReceiver = options.feeClaimer;
-  }
-
-  return options;
+  return opts;
 }
 
-async function main() {
-  const options = parseArgs();
+async function usdPrice(mint) {
+  const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${mint}`);
+  if (!res.ok) throw new Error(`Jupiter price ${res.status}`);
+  const body = await res.json();
+  const price = Number(body[mint]?.usdPrice);
+  if (!Number.isFinite(price) || price <= 0) throw new Error(`No USD price for ${mint}`);
+  return price;
+}
 
-  console.log("\n=======================================================");
-  console.log("   OpenStock × Meteora DBC: Single NVDAx Config Builder");
-  console.log("=======================================================\n");
-
-  const connection = new Connection(options.rpcUrl, "confirmed");
-  const client = DynamicBondingCurveClient.create(connection, "confirmed");
-
-  // Verify on-chain Token Badge for NVDAx
-  const tokenBadgePda = deriveTokenBadgeAddress(NVDAX_MINT);
-  const badgeInfo = await connection.getAccountInfo(tokenBadgePda);
-  if (!badgeInfo) {
-    throw new Error(`Token Badge PDA (${tokenBadgePda.toBase58()}) for NVDAx not found on mainnet.`);
-  }
-
-  console.log("1. Quote Token & Token Badge:");
-  console.log(`   - Quote Token: NVDAx (${NVDAX_MINT.toBase58()})`);
-  console.log(`   - On-Chain Badge PDA: ${tokenBadgePda.toBase58()} (Verified: ${badgeInfo.data.length} bytes, Owner: ${badgeInfo.owner.toBase58()})\n`);
-
-  // Rent Exemption Estimation
-  const poolConfigSize = 2680;
-  const rentLamports = await connection.getMinimumBalanceForRentExemption(poolConfigSize);
-  const rentSol = rentLamports / 1e9;
-
-  console.log("2. Rent & Cost Calculation:");
-  console.log(`   - Account Space: ${poolConfigSize} bytes`);
-  console.log(`   - Exact Rent: ${rentSol.toFixed(6)} SOL (${rentLamports} lamports)`);
-  console.log(`   - Estimated Network Fee: ~0.000010 SOL\n`);
-
-  if (!options.feeClaimer) {
-    console.log("⚠️  [NOTICE] No fee-claimer address provided yet.");
-    console.log("   Run with --fee-claimer <SOLANA_PUBKEY> to simulate or execute.\n");
-    return;
-  }
-
-  const feeClaimerPubkey = new PublicKey(options.feeClaimer);
-  const leftoverReceiverPubkey = new PublicKey(options.leftoverReceiver);
-
-  console.log("3. Royalty & Payer Configuration:");
-  console.log(`   - feeClaimer: ${feeClaimerPubkey.toBase58()}`);
-  console.log(`   - leftoverReceiver: ${leftoverReceiverPubkey.toBase58()}\n`);
-
-  // Generate new keypair for the config account
-  const configKeypair = Keypair.generate();
-  console.log("4. Generated Config Account Address:");
-  console.log(`   - Proposed Config Pubkey: ${configKeypair.publicKey.toBase58()}`);
-  console.log(`   - Signer required: Config Keypair + Payer\n`);
-
-  // Curve Parameters: Standard / Linear ($5k initial -> $69k migration market cap)
-  const curveParams = buildCurveWithMarketCap({
+function buildParams(curve, priceUsd) {
+  return buildCurveWithLiquidityWeights({
     token: {
       tokenType: TokenType.SPLToken,
       tokenBaseDecimal: TokenDecimal.SIX,
-      tokenQuoteDecimal: TokenDecimal.SIX,
+      tokenQuoteDecimal: TokenDecimal.EIGHT, // xStocks are 8 decimals on Solana
       tokenAuthorityOption: TokenAuthorityOption.Immutable,
       totalTokenSupply: 1_000_000_000,
-      leftover: 0,
+      leftover: 100, // smallest buffer the SDK accepts for weighted curves; goes to the leftover receiver
     },
     fee: {
       baseFeeParams: {
         baseFeeMode: BaseFeeMode.FeeSchedulerLinear,
-        feeSchedulerParam: {
-          startingFeeBps: 150,
-          endingFeeBps: 150,
-          numberOfPeriod: 0,
-          totalDuration: 0,
-        },
+        feeSchedulerParam: { startingFeeBps: curve.baseFeeBps, endingFeeBps: curve.baseFeeBps, numberOfPeriod: 0, totalDuration: 0 },
       },
       dynamicFeeEnabled: false,
       collectFeeMode: CollectFeeMode.QuoteToken,
-      creatorTradingFeePercentage: 100,
+      creatorTradingFeePercentage: CREATOR_TRADING_FEE_PERCENT,
       poolCreationFee: 0,
       enableFirstSwapWithMinFee: false,
     },
     migration: {
       migrationOption: MigrationOption.MET_DAMM_V2,
       migrationFeeOption: MigrationFeeOption.FixedBps25,
-      migrationFee: {
-        feePercentage: 0,
-        creatorFeePercentage: 0,
-      },
+      migrationFee: { feePercentage: 0, creatorFeePercentage: 0 },
     },
     liquidityDistribution: {
       partnerPermanentLockedLiquidityPercentage: 100,
@@ -161,80 +126,94 @@ async function main() {
       creatorPermanentLockedLiquidityPercentage: 0,
       creatorLiquidityPercentage: 0,
     },
-    lockedVesting: {
-      totalLockedVestingAmount: 0,
-      numberOfVestingPeriod: 0,
-      cliffUnlockAmount: 0,
-      totalVestingDuration: 0,
-      cliffDurationFromMigrationTime: 0,
-    },
+    lockedVesting: { totalLockedVestingAmount: 0, numberOfVestingPeriod: 0, cliffUnlockAmount: 0, totalVestingDuration: 0, cliffDurationFromMigrationTime: 0 },
     activationType: ActivationType.Slot,
-    initialMarketCap: 5000,
-    migrationMarketCap: 69000,
+    // DBC market caps are denominated in the quote token (the xStock), not USD.
+    initialMarketCap: curve.initialMarketCapUsd / priceUsd,
+    migrationMarketCap: curve.migrationMarketCapUsd / priceUsd,
+    liquidityWeights: curve.weights,
   });
+}
 
-  // Build Transaction
-  let payerPubkey = feeClaimerPubkey;
-  let payerKeypair = null;
+async function main() {
+  const opts = parseArgs();
+  if (!opts.feeClaimer) throw new Error("Pass --fee-claimer <PUBKEY> (the wallet that claims the platform share of fees).");
+  const feeClaimer = new PublicKey(opts.feeClaimer);
+  const connection = new Connection(opts.rpc, "confirmed");
+  const client = DynamicBondingCurveClient.create(connection, "confirmed");
+  const rentLamports = await connection.getMinimumBalanceForRentExemption(CONFIG_ACCOUNT_BYTES);
 
-  if (options.keypairPath && fs.existsSync(options.keypairPath)) {
-    const raw = JSON.parse(fs.readFileSync(options.keypairPath, "utf-8"));
-    payerKeypair = Keypair.fromSecretKey(new Uint8Array(raw));
-    payerPubkey = payerKeypair.publicKey;
+  let payer = null;
+  if (opts.broadcast) {
+    if (!opts.keypair || !fs.existsSync(opts.keypair)) throw new Error("Broadcast needs --keypair <PATH> to a funded payer keypair JSON.");
+    payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(opts.keypair, "utf8"))));
+    const balance = await connection.getBalance(payer.publicKey);
+    const needed = rentLamports * opts.symbols.length * opts.curves.length + 50_000 * opts.symbols.length * opts.curves.length;
+    console.log(`Payer ${payer.publicKey.toBase58()} balance ${(balance / 1e9).toFixed(6)} SOL, needs ~${(needed / 1e9).toFixed(6)} SOL`);
+    if (balance < needed) throw new Error("Payer balance too low.");
   }
 
-  const tx = await client.partner.createConfig({
-    config: configKeypair.publicKey,
-    feeClaimer: feeClaimerPubkey,
-    leftoverReceiver: leftoverReceiverPubkey,
-    quoteMint: NVDAX_MINT,
-    payer: payerPubkey,
-    tokenBadge: tokenBadgePda,
-    ...curveParams,
-  });
+  console.log(`\n${opts.broadcast ? "BROADCAST" : "DRY RUN (nothing is sent)"} · RPC ${opts.rpc.replace(/api-key=[^&]+/, "api-key=***")}`);
+  console.log(`Fee claimer / leftover receiver: ${feeClaimer.toBase58()}`);
+  console.log(`Rent per config: ${(rentLamports / 1e9).toFixed(8)} SOL · total rent: ${((rentLamports * opts.symbols.length * opts.curves.length) / 1e9).toFixed(8)} SOL\n`);
 
-  console.log("5. Transaction Preflight Inspection:");
-  console.log(`   - Target Program: ${DYNAMIC_BONDING_CURVE_PROGRAM_ID.toBase58()}`);
-  console.log(`   - Instructions: ${tx.instructions.length}`);
-  console.log(`   - Accounts: ${tx.instructions[0].keys.length}`);
-  tx.instructions[0].keys.forEach((k, i) => {
-    console.log(`     [${i}] ${k.pubkey.toBase58()} (signer: ${k.isSigner}, writable: ${k.isWritable})`);
-  });
+  const result = {};
+  for (const symbol of opts.symbols) {
+    const meta = curated[symbol];
+    if (!meta) throw new Error(`${symbol} is not in lib/solana-curated-25.json`);
+    const quoteMint = new PublicKey(meta.mint);
+    const badge = deriveTokenBadgeAddress(quoteMint);
+    if (!(await connection.getAccountInfo(badge))) {
+      console.log(`✗ ${symbol}: no Meteora DBC token badge (${badge.toBase58()}) — skipped.`);
+      continue;
+    }
+    const priceUsd = await usdPrice(meta.mint);
+    result[symbol] = {};
+    console.log(`${symbol} @ $${priceUsd.toFixed(2)} · badge ${badge.toBase58()}`);
 
-  if (options.dryRun || !options.broadcast) {
-    console.log("\n=======================================================");
-    console.log("   DRY RUN COMPLETE — ZERO SOL SPENT — NO TX BROADCAST");
-    console.log("=======================================================\n");
-    return;
+    for (const key of opts.curves) {
+      const curve = CURVES[key];
+      if (!curve) throw new Error(`Unknown curve ${key}`);
+      const params = buildParams(curve, priceUsd);
+      const thresholdUi = Number(params.migrationQuoteThreshold.toString()) / 1e8;
+      const configKeypair = Keypair.generate();
+      console.log(
+        `  ${key.padEnd(9)} ${curve.label.padEnd(18)} fee ${(curve.baseFeeBps / 100).toFixed(2)}% · creator ${CREATOR_TRADING_FEE_PERCENT}% · ` +
+          `$${curve.initialMarketCapUsd.toLocaleString()} → $${curve.migrationMarketCapUsd.toLocaleString()} · migrates after ${thresholdUi.toFixed(4)} ${symbol} (~$${(thresholdUi * priceUsd).toFixed(0)}) raised`
+      );
+
+      const tx = await client.partner.createConfig({
+        config: configKeypair.publicKey,
+        feeClaimer,
+        leftoverReceiver: feeClaimer,
+        quoteMint,
+        payer: payer ? payer.publicKey : feeClaimer,
+        tokenBadge: badge,
+        ...params,
+      });
+
+      if (!opts.broadcast) {
+        result[symbol][key] = `(dry-run) ${configKeypair.publicKey.toBase58()}`;
+        continue;
+      }
+      tx.feePayer = payer.publicKey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
+      const sig = await sendAndConfirmTransaction(connection, tx, [payer, configKeypair], { commitment: "confirmed" });
+      const created = await connection.getAccountInfo(configKeypair.publicKey);
+      if (!created?.owner.equals(DYNAMIC_BONDING_CURVE_PROGRAM_ID)) throw new Error(`Config ${configKeypair.publicKey.toBase58()} not owned by DBC program`);
+      result[symbol][key] = configKeypair.publicKey.toBase58();
+      console.log(`    ✓ ${configKeypair.publicKey.toBase58()} · https://solscan.io/tx/${sig}`);
+    }
   }
 
-  // Broadcast mode: requires payer keypair
-  if (!payerKeypair) {
-    throw new Error("Cannot broadcast: No valid payer keypair provided (--keypair <PATH>).");
+  console.log(`\nMETEORA_DBC_CONFIGS=${JSON.stringify(result)}`);
+  if (opts.broadcast) {
+    fs.writeFileSync("meteora-dbc-configs.json", JSON.stringify(result, null, 2));
+    console.log("Saved to meteora-dbc-configs.json — paste the METEORA_DBC_CONFIGS line above into Vercel (Production).");
   }
-
-  console.log("\n⚠️  BROADCASTING TRANSACTION TO SOLANA MAINNET...");
-  tx.feePayer = payerPubkey;
-  tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
-  tx.partialSign(configKeypair);
-  tx.partialSign(payerKeypair);
-
-  const txSignature = await sendAndConfirmTransaction(connection, tx, [payerKeypair, configKeypair], {
-    commitment: "confirmed",
-  });
-
-  console.log("\n🎉 CONFIG CREATION SUCCESSFUL!");
-  console.log(`   - Config Address: ${configKeypair.publicKey.toBase58()}`);
-  console.log(`   - Tx Signature: ${txSignature}`);
-  console.log(`   - Solscan: https://solscan.io/account/${configKeypair.publicKey.toBase58()}`);
-  console.log(`   - Tx Explorer: https://solscan.io/tx/${txSignature}`);
-
-  // Confirm ownership
-  const createdInfo = await connection.getAccountInfo(configKeypair.publicKey);
-  console.log(`   - Account Owner: ${createdInfo?.owner.toBase58()} (Expected: ${DYNAMIC_BONDING_CURVE_PROGRAM_ID.toBase58()})\n`);
 }
 
 main().catch((err) => {
-  console.error("\n❌ Error:", err);
+  console.error("\n✗", err instanceof Error ? err.message : err);
   process.exit(1);
 });

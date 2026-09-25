@@ -19,7 +19,10 @@ import {
 } from "@/lib/solana-preflight";
 import { browserConnection, waitForSignature } from "@/lib/client-rpc";
 
+type CurveKey = "standard" | "momentum" | "deep";
 type DbcConfigSummary = {
+  name?: string;
+  blurb?: string;
   quoteDecimals: number;
   migrationThresholdUi: number;
   baseFeeBps: number;
@@ -120,7 +123,9 @@ export function LaunchClient() {
   // Stocks with a Meteora DBC PoolConfig on this deployment (from /api/launch/pairs), and the selected stock's on-chain config.
   const [meteoraReadySymbols, setMeteoraReadySymbols] = useState<Set<string>>(new Set());
   const isMeteoraCompatibleStock = (symbol: string) => meteoraReadySymbols.has(symbol);
-  const [dbcConfig, setDbcConfig] = useState<DbcConfigSummary | null>(null);
+  const [dbcConfigs, setDbcConfigs] = useState<Partial<Record<CurveKey, DbcConfigSummary>>>({});
+  const [selectedCurve, setSelectedCurve] = useState<CurveKey>("standard");
+  const dbcConfig: DbcConfigSummary | null = dbcConfigs[selectedCurve] ?? null;
   const [pumpFeeRange, setPumpFeeRange] = useState({ min: 100, max: 300, default: 100 });
   const [pumpAvailable, setPumpAvailable] = useState(true);
   const [pendingPump, setPendingPump] = useState<PendingPumpLaunch | null>(null);
@@ -314,7 +319,9 @@ export function LaunchClient() {
             meteoraBadged: isBadged,
             dbcConfigReady,
           });
-          setDbcConfig(mSupported ? (data.dbcConfig as DbcConfigSummary) : null);
+          const configs = (mSupported ? data.dbcConfigs ?? {} : {}) as Partial<Record<CurveKey, DbcConfigSummary>>;
+          setDbcConfigs(configs);
+          setSelectedCurve((current) => (configs[current] ? current : ((Object.keys(configs)[0] as CurveKey | undefined) ?? "standard")));
           const range = data.venues?.pumpfun?.creatorFeeRange;
           if (range && Number.isFinite(range.min) && Number.isFinite(range.max)) {
             setPumpFeeRange(range);
@@ -688,6 +695,7 @@ export function LaunchClient() {
           imageUrl: imageUrl.trim(),
           quoteMint: effectiveQuoteMint,
           creatorWallet: address,
+          curve: selectedCurve,
         }),
       });
       const prepareData = await prepareRes.json().catch(() => ({}));
@@ -723,6 +731,7 @@ export function LaunchClient() {
           imageUrl: imageUrl.trim(),
           quoteMint: effectiveQuoteMint,
           creatorWallet: address,
+          curve: selectedCurve,
           txSignature,
           mintAddress,
           poolAddress,
@@ -1283,7 +1292,7 @@ export function LaunchClient() {
                       {isMeteoraAvailable ? (
                         <span>
                           {dbcConfig
-                            ? `Migrates after ${dbcConfig.migrationThresholdUi} ${selectedPair?.symbol} raised`
+                            ? `Migrates after ${dbcConfig.migrationThresholdUi.toFixed(2)} ${selectedPair?.symbol} raised`
                             : "Reading on-chain config…"}
                         </span>
                       ) : (
@@ -1301,15 +1310,44 @@ export function LaunchClient() {
                 <div className="launch-section">
                   <div className="launch-section-header">
                     <label className="launch-section-label">Curve terms (on-chain)</label>
-                    <span className="launch-section-hint">Fixed by the Meteora PoolConfig for {selectedPair?.symbol}</span>
+                    <span className="launch-section-hint">Each curve is its own Meteora PoolConfig for {selectedPair?.symbol}</span>
                   </div>
+                  {Object.keys(dbcConfigs).length > 1 ? (
+                    <div className="launch-curve-rows" role="radiogroup" aria-label="Curve style">
+                      {(Object.entries(dbcConfigs) as [CurveKey, DbcConfigSummary][]).map(([key, cfg]) => (
+                        <button
+                          type="button"
+                          key={key}
+                          role="radio"
+                          aria-checked={selectedCurve === key}
+                          className={`launch-curve-row ${selectedCurve === key ? "is-selected" : ""}`}
+                          onClick={() => setSelectedCurve(key)}
+                        >
+                          <div className="launch-curve-row-main">
+                            <div className="launch-curve-row-title-line">
+                              <strong className="launch-curve-row-name">{cfg.name ?? key}</strong>
+                              <span className="launch-curve-row-sub">{cfg.blurb}</span>
+                            </div>
+                            <div className="launch-curve-row-values">
+                              <span className="launch-curve-row-stat">Fee <strong>{(cfg.baseFeeBps / 100).toFixed(2)}%</strong></span>
+                              <span className="launch-curve-row-stat-sep">·</span>
+                              <span className="launch-curve-row-stat">Migrates after <strong>{cfg.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong></span>
+                            </div>
+                          </div>
+                          <div className="launch-curve-row-check">
+                            {selectedCurve === key && <span className="launch-card-check" aria-hidden="true">✓</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {dbcConfig ? (
                     <div className="launch-fee-live-banner">
                       Curve fee: <strong>{(dbcConfig.baseFeeBps / 100).toFixed(2)}%{dbcConfig.dynamicFee ? " + dynamic" : ""}</strong>
                       <span className="launch-fee-live-sep">·</span>
                       <span>Creator share: <strong>{dbcConfig.creatorTradingFeePercent}% of fees</strong></span>
                       <span className="launch-fee-live-sep">·</span>
-                      <span>Migrates to {dbcConfig.migrationTarget} after <strong>{dbcConfig.migrationThresholdUi} {selectedPair?.symbol}</strong> is raised</span>
+                      <span>Migrates to {dbcConfig.migrationTarget} after <strong>{dbcConfig.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong> is raised</span>
                     </div>
                   ) : (
                     <div className="launch-fee-live-banner">Reading the pool config from Solana…</div>
@@ -1771,7 +1809,7 @@ export function LaunchClient() {
                 </div>
                 <div className="launch-holo-spec-row">
                   <span>Graduation</span>
-                  <strong>{selectedVenue === "meteora" ? (dbcConfig ? `${dbcConfig.migrationThresholdUi} ${selectedPair?.symbol} raised` : "On-chain") : "Pump.fun curve completes"}</strong>
+                  <strong>{selectedVenue === "meteora" ? (dbcConfig ? `${dbcConfig.migrationThresholdUi.toFixed(2)} ${selectedPair?.symbol} raised` : "On-chain") : "Pump.fun curve completes"}</strong>
                 </div>
                 <div className="launch-holo-spec-row">
                   <span>Settlement</span>

@@ -8,28 +8,60 @@ import {
 
 const DEFAULT_RPC = process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
+export type DbcCurveKey = "standard" | "momentum" | "deep";
+export const DBC_CURVE_KEYS: DbcCurveKey[] = ["standard", "momentum", "deep"];
+export const DBC_CURVE_LABELS: Record<DbcCurveKey, { name: string; blurb: string }> = {
+  standard: { name: "Equity Standard", blurb: "Even liquidity across the curve" },
+  momentum: { name: "Equity Momentum", blurb: "Thin early liquidity — price moves fast at the start" },
+  deep: { name: "Equity Deep Book", blurb: "Deep early liquidity — low slippage for first buyers" },
+};
+
 /**
- * PoolConfig per xStock quote mint. The quote mint is fixed on each config account, so every stock needs its own.
- * Lookup order: METEORA_DBC_CONFIG_BY_MINT JSON map, then METEORA_DBC_CONFIG_<SYMBOL> (e.g. METEORA_DBC_CONFIG_NVDAX).
- * There is no global fallback — reusing one stock's config for another would fail on-chain.
+ * PoolConfigs for one xStock, by curve style. The quote mint is fixed on each config account.
+ * Sources, in order:
+ *   METEORA_DBC_CONFIGS = {"NVDAx":{"standard":"<pubkey>","momentum":"<pubkey>","deep":"<pubkey>"}, ...}
+ *   METEORA_DBC_CONFIG_BY_MINT = {"<mint>":"<pubkey>"}          (legacy, treated as "standard")
+ *   METEORA_DBC_CONFIG_<SYMBOL> (e.g. METEORA_DBC_CONFIG_NVDAx) (legacy, treated as "standard")
  */
-export function resolveDbcConfigAddress(opts: { quoteMint: string; pairedStockSymbol?: string | null }): string | null {
+export function listDbcConfigs(opts: { quoteMint: string; pairedStockSymbol?: string | null }): Partial<Record<DbcCurveKey, string>> {
+  const symbol = (opts.pairedStockSymbol || "").trim();
+  const raw = process.env.METEORA_DBC_CONFIGS?.trim();
+  if (raw) {
+    try {
+      const all = JSON.parse(raw) as Record<string, Partial<Record<DbcCurveKey, string>>>;
+      const entry = all[symbol] ?? all[opts.quoteMint];
+      if (entry) {
+        const out: Partial<Record<DbcCurveKey, string>> = {};
+        for (const key of DBC_CURVE_KEYS) if (entry[key] && isValidPubkey(entry[key]!)) out[key] = entry[key];
+        if (Object.keys(out).length > 0) return out;
+      }
+    } catch {
+      console.error("METEORA_DBC_CONFIGS is not valid JSON");
+    }
+  }
   const mapRaw = process.env.METEORA_DBC_CONFIG_BY_MINT?.trim();
   if (mapRaw) {
     try {
       const hit = (JSON.parse(mapRaw) as Record<string, string>)[opts.quoteMint.trim()];
-      if (typeof hit === "string" && isValidPubkey(hit)) return hit;
+      if (typeof hit === "string" && isValidPubkey(hit)) return { standard: hit };
     } catch {
       console.error("METEORA_DBC_CONFIG_BY_MINT is not valid JSON");
     }
   }
-  const symbolKey = (opts.pairedStockSymbol || "").replace(/[^a-zA-Z0-9]/g, "");
-  if (!symbolKey) return null;
-  for (const key of [symbolKey, symbolKey.toUpperCase()]) {
+  const symbolKey = symbol.replace(/[^a-zA-Z0-9]/g, "");
+  for (const key of symbolKey ? [symbolKey, symbolKey.toUpperCase()] : []) {
     const bySymbol = process.env[`METEORA_DBC_CONFIG_${key}`]?.trim();
-    if (bySymbol && isValidPubkey(bySymbol)) return bySymbol;
+    if (bySymbol && isValidPubkey(bySymbol)) return { standard: bySymbol };
   }
-  return null;
+  return {};
+}
+
+/** Config for one curve style (defaults to "standard", then any configured curve). */
+export function resolveDbcConfigAddress(opts: { quoteMint: string; pairedStockSymbol?: string | null; curve?: string | null }): string | null {
+  const configs = listDbcConfigs(opts);
+  const wanted = (opts.curve ?? "standard") as DbcCurveKey;
+  if (opts.curve && DBC_CURVE_KEYS.includes(wanted)) return configs[wanted] ?? null;
+  return configs.standard ?? configs.momentum ?? configs.deep ?? null;
 }
 
 function isValidPubkey(value: string): boolean {
@@ -154,6 +186,8 @@ export type MeteoraDbcLaunchPayload = {
   supply: number;
   /** Underlying xStock ticker (NVDAx / AAPLx) for per-stock PoolConfig lookup. */
   pairedStockSymbol?: string;
+  /** Curve style; selects which of the stock's PoolConfigs is used. */
+  curve?: DbcCurveKey;
   /** Metaplex-style JSON metadata URL (≤200 chars) — must point at JSON, not the image. */
   metadataUri: string;
 };
@@ -211,6 +245,7 @@ export async function prepareMeteoraDbcPoolTx(
   const configAddress = resolveDbcConfigAddress({
     quoteMint: payload.quoteMint,
     pairedStockSymbol: payload.pairedStockSymbol,
+    curve: payload.curve ?? "standard",
   });
   if (!configAddress) {
     throw new Error(`Meteora DBC is not configured for ${payload.pairedStockSymbol ?? "this stock"}. Launch on Pump.fun instead.`);
@@ -342,8 +377,8 @@ export async function executeMeteoraDbcLaunch(
   mintAddress: string,
   poolAddress: string
 ): Promise<MeteoraDbcLaunchResult> {
-  const configAddress = resolveDbcConfigAddress({ quoteMint: payload.quoteMint, pairedStockSymbol: payload.pairedStockSymbol });
-  if (!configAddress) throw new Error("Meteora DBC is not configured for this stock.");
+  const configAddress = resolveDbcConfigAddress({ quoteMint: payload.quoteMint, pairedStockSymbol: payload.pairedStockSymbol, curve: payload.curve ?? "standard" });
+  if (!configAddress) throw new Error("Meteora DBC is not configured for this stock and curve.");
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,100}$/.test(userSignature)) throw new Error("A valid transaction signature is required.");
 
   // The pool address must be the one derived from (quote, mint, config) — a client cannot register an arbitrary pool.
