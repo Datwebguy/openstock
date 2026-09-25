@@ -1,10 +1,10 @@
 import type { OpenStockAsset } from "@/lib/xstocks";
+import { fetchJupiterPrices } from "@/lib/jupiter-price";
 import { rawToUi } from "@/lib/scaled-amounts";
 import { SOL_MINT, USDC_MINT } from "@/lib/solana";
 const JUPITER_QUOTE_URL = process.env.JUPITER_QUOTE_URL ?? "https://lite-api.jup.ag/swap/v1/quote";
 const METEORA_POOLS_URL = process.env.METEORA_POOLS_URL ?? "https://dlmm.datapi.meteora.ag/pools";
 const PYTH_HERMES_URL = process.env.PYTH_HERMES_URL ?? "https://hermes.pyth.network/v2/updates/price/latest";
-const JUPITER_PRICE_URL = process.env.JUPITER_PRICE_URL ?? "https://api.jup.ag/price/v3";
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
 type JsonRecord = Record<string, unknown>; type SourceState = "ok" | "unavailable";
 export type SourceResult<T> = { state: SourceState; data: T | null };
@@ -14,7 +14,7 @@ export type CorporateActionData = { eventId?: string; xstockSymbol?: string | nu
 export type JupiterEvidence = { inputMint: string; outputMint: string; inputRaw: string; outputRaw: string; outputUi: number | null; executablePrice: number | null; priceImpactPct: number | null; route: string[]; fetchedAt: string; contextSlot?: number };
 export type MeteoraPool = { address: string; name: string; tvl: number | null; currentPrice: number | null; priceUsd: number | null; volume24h: number | null; feePct: number | null; tokenXSymbol: string; tokenYSymbol: string; isBlacklisted: boolean };
 function finiteNumber(value: unknown) { const numeric = Number(value); return Number.isFinite(numeric) ? numeric : null; }
-export type PythEvidence = { feedId: string; price: number; confidence: number | null; publishedAt: string | null; freshnessSeconds: number | null; deviationPct: number | null };
+export type PythEvidence = { /** "pyth" = Hermes feed; "jupiter" = Jupiter Price v3 fallback when no Pyth feed is available. */ source: "pyth" | "jupiter"; feedId: string; price: number; confidence: number | null; publishedAt: string | null; freshnessSeconds: number | null; deviationPct: number | null };
 export type MeteoraCandle = { timestamp: number; timestamp_str?: string; open: number; high: number; low: number; close: number; volume: number };
 export type MarketEvidence = { reserves: SourceResult<ReserveData>; oracles: SourceResult<OracleData[]>; corporateActions: SourceResult<CorporateActionData[]>; jupiter: SourceResult<JupiterEvidence>; meteora: SourceResult<MeteoraPool[]>; pyth: SourceResult<PythEvidence>; tokenDecimals: SourceResult<number>; solPriceUsd: number | null };
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { ...init, headers: { Accept: "application/json", ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(8000) }); if (!response.ok) throw new Error(`Source returned ${response.status}`); return response.json() as Promise<T>; }
@@ -54,6 +54,7 @@ async function getPyth(oracles: OracleData[], officialPrice: number | null, mint
         const publishedAt = price?.publish_time ? new Date(price.publish_time * 1000) : null;
         const freshnessSeconds = publishedAt ? Math.max(0, (Date.now() - publishedAt.getTime()) / 1000) : null;
         const result: PythEvidence = {
+          source: "pyth",
           feedId,
           price: numericPrice,
           confidence: price?.conf && Number.isInteger(exponent) ? Number(price.conf) * (10 ** exponent) : null,
@@ -71,17 +72,15 @@ async function getPyth(oracles: OracleData[], officialPrice: number | null, mint
 
   if (mint) {
     try {
-      const response = await fetchJson<Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> & { data?: Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> }>(
-        `${JUPITER_PRICE_URL}?ids=${mint}`,
-        process.env.JUPITER_API_KEY ? { headers: { "x-api-key": process.env.JUPITER_API_KEY } } : undefined
-      );
+      const response = (await fetchJupiterPrices([mint], 8000)) as Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> & { data?: Record<string, { usdPrice?: number | string; price?: number | string; stockData?: { updatedAt?: string } }> };
       const quote = response[mint] ?? response.data?.[mint];
       const numericPrice = Number(quote?.usdPrice ?? quote?.price);
       if (Number.isFinite(numericPrice) && numericPrice > 0) {
         const publishedAt = quote?.stockData?.updatedAt ? new Date(quote.stockData.updatedAt) : new Date();
         const freshnessSeconds = Math.max(0, (Date.now() - publishedAt.getTime()) / 1000);
         const result: PythEvidence = {
-          feedId: feedId ?? `oracle-${mint}`,
+          source: "jupiter",
+          feedId: feedId ?? `jupiter-${mint}`,
           price: numericPrice,
           confidence: null,
           publishedAt: publishedAt.toISOString(),
@@ -102,7 +101,7 @@ async function getPyth(oracles: OracleData[], officialPrice: number | null, mint
 
   throw new Error("Oracle price cross-check unavailable");
 }
-export async function getSolPriceUsd(): Promise<number> { const response = await fetchJson<Record<string, { usdPrice?: number | string; price?: number | string }> & { data?: Record<string, { usdPrice?: number | string; price?: number | string }> }>(`${JUPITER_PRICE_URL}?ids=${SOL_MINT}`, process.env.JUPITER_API_KEY ? { headers: { "x-api-key": process.env.JUPITER_API_KEY } } : undefined); const quote = response[SOL_MINT] ?? response.data?.[SOL_MINT]; const price = Number(quote?.usdPrice ?? quote?.price); if (!Number.isFinite(price) || price <= 0) throw new Error("SOL price unavailable"); return price; }
+export async function getSolPriceUsd(): Promise<number> { const response = await fetchJupiterPrices([SOL_MINT], 8000); const quote = response[SOL_MINT] ?? response.data?.[SOL_MINT]; const price = Number(quote?.usdPrice ?? quote?.price); if (!Number.isFinite(price) || price <= 0) throw new Error("SOL price unavailable"); return price; }
 const evidenceCache = new Map<string, { data: MarketEvidence; timestamp: number }>();
 const EVIDENCE_CACHE_TTL_MS = 25_000;
 

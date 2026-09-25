@@ -54,63 +54,6 @@ function compact(value: number | null | undefined) {
     : "$" + value.toFixed(0);
 }
 
-// Generate realistic synthetic candles based on timeframe resolution and true 24h direction
-function generateCandlesForTimeframe(
-  basePrice: number,
-  tf: "1m" | "5m" | "15m" | "1h" | "4h" | "1d",
-  change24hPct: number | null = null
-): Candle[] {
-  const count = tf === "1m" ? 60 : tf === "5m" ? 48 : tf === "15m" ? 40 : tf === "1h" ? 36 : tf === "4h" ? 30 : 28;
-  const stepMs =
-    tf === "1m"
-      ? 60 * 1000
-      : tf === "5m"
-      ? 5 * 60 * 1000
-      : tf === "15m"
-      ? 15 * 60 * 1000
-      : tf === "1h"
-      ? 3600 * 1000
-      : tf === "4h"
-      ? 4 * 3600 * 1000
-      : 24 * 3600 * 1000;
-
-  const candles: Candle[] = [];
-  const now = Date.now();
-  const volMult = tf === "1m" ? 0.08 : tf === "5m" ? 0.2 : tf === "15m" ? 0.5 : tf === "1h" ? 1.0 : tf === "4h" ? 2.5 : 8.0;
-  const volatility = tf === "1m" ? 0.003 : tf === "5m" ? 0.006 : tf === "15m" ? 0.009 : tf === "1h" ? 0.014 : tf === "4h" ? 0.022 : 0.035;
-
-  // If change is negative (e.g. -2.45%), startPrice is higher than basePrice, trending downward (red chart).
-  // If change is positive (e.g. +3.14%), startPrice is lower than basePrice, trending upward (green chart).
-  const timeframeRatio = Math.min(1.0, count / 36);
-  // No invented 24h direction — flat synthetic path when live change is unknown
-  const directedChange = typeof change24hPct === "number" && Number.isFinite(change24hPct) ? change24hPct : 0;
-  const effectiveChange = (directedChange / 100) * timeframeRatio;
-  const startPrice = Math.max(0.01, basePrice / (1 + effectiveChange));
-  const trendStep = (basePrice - startPrice) / count;
-  let prevClose = startPrice;
-
-  for (let i = 0; i < count; i++) {
-    const timestamp = now - (count - i) * stepMs;
-    const targetTrend = startPrice + trendStep * i;
-    const wave = Math.sin(i * 0.45) * volatility + ((i % 4) - 1.5) * (volatility * 0.35);
-    const open = prevClose;
-    const close = i === count - 1 ? basePrice : Math.max(0.01, targetTrend * (1 + wave));
-    const high = Math.max(open, close) * (1 + Math.abs(Math.cos(i * 0.5)) * (volatility * 0.6));
-    const low = Math.min(open, close) * (1 - Math.abs(Math.sin(i * 0.8)) * (volatility * 0.6));
-    const volume = (35000 + Math.abs(Math.sin(i * 1.2)) * 140000) * volMult;
-    candles.push({ timestamp, open, high, low, close, volume });
-    prevClose = close;
-  }
-  // Ensure the final candle ends right at basePrice
-  if (candles.length > 0) {
-    const last = candles[candles.length - 1];
-    last.close = basePrice;
-    last.high = Math.max(last.high, basePrice);
-    last.low = Math.min(last.low, basePrice);
-  }
-  return candles;
-}
-
 export function AssetPriceChart({
   symbol,
   name,
@@ -146,9 +89,11 @@ export function AssetPriceChart({
   const [chartStyle, setChartStyle] = useState<"candles" | "line" | "area">("candles");
   const [showGrid, setShowGrid] = useState(true);
 
-  // Live dynamic price simulation (makes the chart actively tick and move in real time!)
-  const initialPrice = referencePrice ?? 166.01;
-  const [livePrice, setLivePrice] = useState<number>(initialPrice);
+  // Live quote from /api/market-stream (polled below); drives the last candle and the price label.
+  // 0 until a real quote or candle arrives — never a placeholder price.
+  const [livePrice, setLivePrice] = useState<number>(referencePrice ?? 0);
+  const [rawCandles, setRawCandles] = useState<Candle[]>([]);
+  const [chartSource, setChartSource] = useState<string | null>(null);
   const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
   const [assetMarketStats, setAssetMarketStats] = useState<Awaited<ReturnType<typeof getAssetMarketStats>> | null>(null);
 
@@ -208,27 +153,61 @@ export function AssetPriceChart({
     };
   }, [symbol]);
 
-  // Generate candles dynamically for current timeframe and anchor to livePrice
-  const candles = useMemo(() => {
-    return generateCandlesForTimeframe(livePrice, timeframe, assetMarketStats?.change24h);
-  }, [symbol, timeframe, assetMarketStats?.change24h, Math.floor(livePrice * 10)]);
-
-  // Keep last candle close synced with livePrice
+  // Real USD OHLCV from the stock's most liquid Solana pool (GeckoTerminal) — no synthetic candles.
   useEffect(() => {
-    if (candles.length > 0) {
-      const last = candles[candles.length - 1];
-      last.close = livePrice;
-      last.high = Math.max(last.high, livePrice);
-      last.low = Math.min(last.low, livePrice);
+    let cancelled = false;
+    async function loadCandles() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/candles/${encodeURIComponent(symbol)}?tf=${timeframe}`);
+        const body = (await res.json()) as { candles?: Candle[]; source?: { provider: string; pool: string } | null; error?: string };
+        if (cancelled) return;
+        const list = Array.isArray(body.candles) ? body.candles : [];
+        setRawCandles(list);
+        setChartSource(body.source ? `${body.source.provider} · ${body.source.pool}` : null);
+        if (list.length === 0) setError(body.error ?? "No on-chain price history for this stock yet.");
+        const lastClose = list.at(-1)?.close;
+        if (lastClose) setLivePrice((current) => (current > 0 ? current : lastClose));
+      } catch {
+        if (!cancelled) {
+          setRawCandles([]);
+          setError("Chart data is unavailable right now.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [livePrice, candles]);
+    void loadCandles();
+    const timer = setInterval(loadCandles, timeframe === "1m" || timeframe === "5m" ? 60_000 : 300_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [symbol, timeframe]);
+
+  // The last candle follows the live quote between refreshes.
+  const candles = useMemo(() => {
+    if (rawCandles.length === 0 || livePrice <= 0) return rawCandles;
+    const copy = rawCandles.slice();
+    const last = { ...copy[copy.length - 1] };
+    last.close = livePrice;
+    last.high = Math.max(last.high, livePrice);
+    last.low = Math.min(last.low, livePrice);
+    copy[copy.length - 1] = last;
+    return copy;
+  }, [rawCandles, livePrice]);
 
   // Price bounds & Y-scale
   const { minPrice, maxPrice, priceTicks } = useMemo(() => {
     const highs = candles.map((c) => c.high);
     const lows = candles.map((c) => c.low);
-    const min = Math.min(...lows, livePrice);
-    const max = Math.max(...highs, livePrice);
+    const reference = livePrice > 0 ? [livePrice] : [];
+    const min = Math.min(...lows, ...reference);
+    const max = Math.max(...highs, ...reference);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return { minPrice: 0, maxPrice: 1, priceTicks: [1, 0.8, 0.6, 0.4, 0.2, 0] };
+    }
     const buffer = (max - min) * 0.09 || min * 0.02 || 1;
     const floor = Math.max(0, min - buffer);
     const ceil = max + buffer;
@@ -437,11 +416,7 @@ export function AssetPriceChart({
               type="button"
               key={tf}
               className={`pro-chart-tf-btn ${timeframe === tf ? "is-active" : ""}`}
-              onClick={() => {
-                setTimeframe(tf);
-                setLoading(true);
-                setTimeout(() => setLoading(false), 200);
-              }}
+              onClick={() => setTimeframe(tf)}
             >
               {tf}
             </button>
@@ -1089,20 +1064,20 @@ export function AssetPriceChart({
       {/* Chart Footer Ribbon */}
       <div className="asset-chart-foot pro-chart-foot">
         <div className="pro-chart-foot__stat">
-          <span>Pool Liquidity</span>
+          <span>Liquidity (all pools)</span>
           <strong>{assetMarketStats?.liquidity}</strong>
         </div>
         <div className="pro-chart-foot__stat">
-          <span>24h DEX Volume</span>
+          <span>24h DEX volume (all pools)</span>
           <strong>{assetMarketStats?.volume24h}</strong>
         </div>
         <div className="pro-chart-foot__stat">
-          <span>Oracle Engine</span>
-          <strong>Pyth Network &amp; Backed</strong>
+          <span>Chart data</span>
+          <strong>{chartSource ?? "Unavailable"}</strong>
         </div>
         <div className="pro-chart-foot__status">
           <span className="live-dot" aria-hidden="true" />
-          <span>SOLANA MAINNET LIVE</span>
+          <span>{loading ? "Loading…" : "Solana mainnet"}</span>
         </div>
       </div>
     </section>

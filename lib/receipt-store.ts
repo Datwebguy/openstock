@@ -1,6 +1,6 @@
 import { readJson, writeJson } from "@/lib/json-store";
 
-export type StoredReceipt = { id: string; wallet: string; signature: string; symbol: string; name: string; side: "buy" | "sell"; shares: number; referencePrice: number; multiplier: number; priceSource: "official" | "onchain_pool"; createdAt: string };
+export type StoredReceipt = { id: string; wallet: string; signature: string; symbol: string; name: string; side: "buy" | "sell"; shares: number; referencePrice: number; multiplier: number; priceSource: "official" | "onchain_pool" | "jupiter_quote"; createdAt: string };
 type Store = { version: 1; receipts: Record<string, StoredReceipt> };
 async function read(): Promise<Store> { const value = await readJson<Store>("receipts"); return { version: 1, receipts: value?.receipts ?? {} }; }
 async function write(store: Store) { await writeJson("receipts", store); }

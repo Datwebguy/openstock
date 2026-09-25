@@ -22,16 +22,20 @@ type Props = {
   hardBlock?: boolean;
   hardBlockReason?: string | null;
   pythPrice?: number | null;
+  /** Where the oracle cross-check came from: a Pyth feed, or the Jupiter price when the stock has no Pyth feed. */
+  pythSource?: "pyth" | "jupiter" | null;
   poolPrice?: number | null;
-  mintAddress?: string;
   underlyingSymbol?: string;
 };
 
 type OrderMode = "market" | "limit" | "dca";
-type Prepared = { transaction?: string; requestId?: string; lastValidBlockHeight?: number; multiplier?: number; decimals?: number; priceSource?: "official" | "onchain_pool"; error?: string };
+type Prepared = { transaction?: string; requestId?: string; lastValidBlockHeight?: number; multiplier?: number; decimals?: number; priceSource?: "official" | "onchain_pool" | "jupiter_quote"; quotedOutUi?: number | null; inputUi?: number; error?: string };
+
+/** Refuse to sign when Jupiter's quote would deliver materially less than the slip showed. */
+const MAX_QUOTE_DRIFT = 0.01;
 type Executed = { status?: string; signature?: string; error?: string };
 
-function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "1.0000×"; }
+function rounded(value: number | null) { return value !== null && Number.isFinite(value) ? value.toFixed(4) + "×" : "—"; }
 function decode(value: string) { return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)); }
 function encode(value: Uint8Array) { let binary = ""; for (let i = 0; i < value.length; i += 0x8000) binary += String.fromCharCode(...value.subarray(i, i + 0x8000)); return btoa(binary); }
 
@@ -49,11 +53,11 @@ export function PaperOrderForm({
   hardBlock = false,
   hardBlockReason = null,
   pythPrice,
+  pythSource = null,
   poolPrice,
-  mintAddress = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
   underlyingSymbol,
 }: Props) {
-  const { address: wallet, connect, signTransaction } = useWallet();
+  const { address: wallet, canSign, connect, signTransaction } = useWallet();
   const [orderMode, setOrderMode] = useState<OrderMode>("market");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [shares, setShares] = useState("1");
@@ -92,6 +96,11 @@ export function PaperOrderForm({
 
   function handleOpenSlip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // The button says "Connect wallet" — do exactly that instead of opening the trade summary.
+    if (liveTrading && (!wallet || !canSign)) {
+      void connect().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Wallet connection was cancelled."));
+      return;
+    }
     if (hardBlock) {
       setMessage(hardBlockReason || "Orders are blocked until market evidence clears the safety checks.");
       return;
@@ -132,7 +141,7 @@ export function PaperOrderForm({
           referencePrice: effectivePrice ?? price,
           priceSource: priceIsIndicative ? "onchain_pool" : "official",
           createdAt: new Date().toISOString(),
-          route: orderMode === "market" ? "Paper review (Jupiter Lite)" : `Paper ${orderMode.toUpperCase()}`,
+          route: orderMode === "market" ? "Paper review (not executed)" : `Paper ${orderMode.toUpperCase()} (not executed)`,
           signature: null,
           wallet,
         };
@@ -147,7 +156,7 @@ export function PaperOrderForm({
       return;
     }
 
-    if (!wallet) {
+    if (!wallet || !canSign) {
       setSubmitting(true);
       setMessage(null);
       try {
@@ -201,6 +210,17 @@ export function PaperOrderForm({
         throw new Error("The stock details changed while your order was being prepared. Review the amount again.");
       }
 
+      const expectedOut = side === "buy" ? numericShares : numericShares * price;
+      if (typeof prepared.quotedOutUi !== "number" || !Number.isFinite(prepared.quotedOutUi)) {
+        throw new Error("Jupiter did not return an output amount for this order. Nothing was signed.");
+      }
+      if (prepared.quotedOutUi < expectedOut * (1 - MAX_QUOTE_DRIFT)) {
+        const unit = side === "buy" ? symbol : "USDC";
+        throw new Error(
+          `The live route would deliver ${prepared.quotedOutUi.toFixed(side === "buy" ? 6 : 2)} ${unit}, more than 1% below the ${expectedOut.toFixed(side === "buy" ? 6 : 2)} shown. Nothing was signed — review the order again.`
+        );
+      }
+
       const signed = await signTransaction(VersionedTransaction.deserialize(decode(prepared.transaction)));
       const executeResponse = await fetch("/api/trade/execute", {
         method: "POST",
@@ -225,7 +245,7 @@ export function PaperOrderForm({
         name,
         side,
         orderMode: "market",
-        uiAmount: conversion.uiAmount,
+        uiAmount: side === "buy" ? prepared.quotedOutUi : conversion.uiAmount,
         baseAmount: conversion.baseAmount,
         rawAmount: conversion.rawAmount,
         multiplier,
@@ -233,7 +253,7 @@ export function PaperOrderForm({
         referencePrice: price,
         priceSource: prepared.priceSource ?? (priceIsIndicative ? "onchain_pool" : "official"),
         createdAt: new Date().toISOString(),
-        route: "Jupiter Lite & Meteora DLMM",
+        route: "Jupiter (quoted amount; final fill on Solscan)",
         signature: execution.signature,
         wallet,
       };
@@ -249,7 +269,7 @@ export function PaperOrderForm({
             symbol,
             name,
             side,
-            shares: conversion.uiAmount,
+            shares: side === "buy" ? prepared.quotedOutUi : conversion.uiAmount,
             referencePrice: price,
             multiplier,
             priceSource: receipt.priceSource,
@@ -275,6 +295,8 @@ export function PaperOrderForm({
     ? (!liveTrading ? "Saving" : !wallet ? "Connecting" : "Broadcasting")
     : !wallet
     ? "Connect wallet"
+    : !canSign && liveTrading
+    ? "Connect a signing wallet"
     : orderMode === "market"
     ? `Review ${side === "buy" ? "Buy" : "Sell"} ${symbol}`
     : orderMode === "limit"
@@ -283,7 +305,9 @@ export function PaperOrderForm({
 
   const totalLabel = side === "buy" ? "Estimated cost" : "Estimated proceeds";
   const totalValue = estimatedUsd === null ? "0.00 USDC" : `${estimatedUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`;
-  const solValue = estimatedSol === null ? "Updating" : `${estimatedSol.toFixed(4)} SOL`;
+  const solValue = estimatedSol === null ? "—" : `${estimatedSol.toFixed(4)} SOL`;
+  const spreadPct = pythPrice && poolPrice && pythPrice > 0 ? Math.abs(poolPrice - pythPrice) / pythPrice * 100 : null;
+  const oracleLabel = pythSource === "pyth" ? "Pyth oracle" : pythSource === "jupiter" ? "Jupiter price (no Pyth feed)" : "Oracle";
 
   return (
     <>
@@ -507,9 +531,9 @@ export function PaperOrderForm({
             {/* Invariance Check Notice */}
             <div style={{ padding: "10px 14px", background: "rgba(20, 241, 149, 0.08)", border: "1px solid rgba(20, 241, 149, 0.3)", borderRadius: 12, marginBottom: 16, fontSize: 11, lineHeight: 1.5 }}>
               <strong style={{ color: "#0a8754", display: "block", marginBottom: 2 }}>
-                ✓ Share Multiplier Verified
+                Share multiplier from the issuer
               </strong>
-              Active Multiplier: <strong>{rounded(multiplier)}</strong>. 1 token unit represents {rounded(multiplier)} underlying shares. Corporate action protection active.
+              Current multiplier: <strong>{rounded(multiplier)}</strong>. One token represents {rounded(multiplier)} underlying shares; the raw amount below already includes it.
             </div>
 
             {/* Parameter Grid */}
@@ -519,7 +543,7 @@ export function PaperOrderForm({
                 <strong>{orderMode.toUpperCase()} ({side.toUpperCase()})</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Requested Shares</span>
+                <span style={{ color: "var(--muted)" }}>{side === "buy" ? "Target shares" : "Shares to sell"}</span>
                 <strong>{conversion.uiAmount} {symbol}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -527,24 +551,26 @@ export function PaperOrderForm({
                 <code style={{ fontFamily: "monospace", color: "var(--muted)" }}>{conversion.rawAmount} units ({decimals ?? 6} dec)</code>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Oracle Benchmark</span>
-                <strong>${(pythPrice ?? price)?.toFixed(2)} (Pyth Hermes)</strong>
+                <span style={{ color: "var(--muted)" }}>{oracleLabel}</span>
+                <strong>{pythPrice ? `$${pythPrice.toFixed(2)}` : "Unavailable"}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Meteora DLMM Pool</span>
-                <strong>${(poolPrice ?? price)?.toFixed(2)}</strong>
+                <span style={{ color: "var(--muted)" }}>Deepest pool</span>
+                <strong>{poolPrice ? `$${poolPrice.toFixed(2)}` : "Unavailable"}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "var(--muted)" }}>Price Spread</span>
-                <span style={{ color: "#0db36f", fontWeight: 700 }}>{priceDiscrepancy} (Healthy)</span>
+                <span style={{ color: spreadPct !== null && spreadPct > 1 ? "#d97706" : "#0db36f", fontWeight: 700 }}>
+                  {spreadPct === null ? "—" : `${priceDiscrepancy} ${spreadPct > 1 ? "(wide)" : "(normal)"}`}
+                </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Max Slippage</span>
+                <span style={{ color: "var(--muted)" }}>Requested max slippage</span>
                 <strong>0.50%</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Execution Route</span>
-                <strong>Jupiter Lite → Meteora DLMM</strong>
+                <span style={{ color: "var(--muted)" }}>Execution</span>
+                <strong>Jupiter best route · {side === "buy" ? "spends the USDC shown" : "sells the shares shown"}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 6, borderTop: "1px dashed var(--line, rgba(0,0,0,0.1))", fontSize: 14 }}>
                 <strong>{totalLabel}</strong>
@@ -561,7 +587,13 @@ export function PaperOrderForm({
                 disabled={submitting}
                 style={{ width: "100%", padding: "12px", fontSize: 14, fontWeight: 800 }}
               >
-                {submitting ? "Broadcasting to Solana..." : wallet ? `Sign & Execute via ${shortWallet(wallet)}` : "Connect Wallet & Sign"}
+                {submitting
+                  ? liveTrading ? "Broadcasting to Solana..." : "Saving..."
+                  : !liveTrading
+                  ? "Save paper review (live trading is off)"
+                  : wallet && canSign
+                  ? `Sign & execute with ${shortWallet(wallet)}`
+                  : "Connect a wallet to sign"}
               </button>
 
               <button
@@ -576,7 +608,7 @@ export function PaperOrderForm({
             </div>
 
             <p style={{ margin: "14px 0 0", fontSize: 10, color: "var(--muted)", textAlign: "center", lineHeight: 1.4 }}>
-              Non-custodial cryptographic execution. OpenStock never holds private keys. All transactions settle natively on Solana Mainnet-Beta.
+              Your wallet signs the Jupiter transaction; OpenStock never holds keys. If the live quote is more than 1% worse than shown, nothing is signed.
             </p>
           </div>
         </div>

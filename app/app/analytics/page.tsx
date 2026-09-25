@@ -15,14 +15,14 @@ export default function AnalyticsPage() {
           <div className="workspace-heading__body">
             <div className="workspace-kicker">
               <span className="live-dot" aria-hidden="true" />
-              <span>Solana Mainnet · Real-Time Market Feed &amp; DLMM Depth</span>
+              <span>Solana mainnet · pools, price sources, reserves</span>
             </div>
-            <h1>Institutional Analytics</h1>
-            <p>On-chain pool depth, real-time tick engine, and oracle consensus on Solana.</p>
+            <h1>Stock Analytics</h1>
+            <p>Real price history, Meteora pools, the oracle cross-check and issuer reserves for each xStock.</p>
           </div>
           <div className="workspace-heading__actions">
             <Link className="workspace-pill-link" href="/app">
-              25 Equities Desk ↗
+              {CURATED_SYMBOLS.length} stocks desk ↗
             </Link>
             <Link className="workspace-pill-link workspace-pill-link--secondary" href="/app/community">
               Memes &amp; Pairs ↗
