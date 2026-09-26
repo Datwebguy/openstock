@@ -1,3 +1,6 @@
+import curatedXStocks from "@/lib/solana-curated-25.json";
+
+const CURATED_XSTOCK_SYMBOLS = Object.keys(curatedXStocks);
 /**
  * Single source of truth for tokenized stock descriptions, company names,
  * brand colors, and compliant tweet templates.
@@ -105,8 +108,12 @@ export function getStockCompany(symbolOrStock: string): StockCompanyConfig {
  * Format stock symbol with trailing 'x' for display
  */
 export function formatStockTicker(symbol: string): string {
-  const upper = symbol.toUpperCase().trim();
-  return upper.endsWith("X") ? upper : `${upper}x`;
+  // xStock tickers are the uppercase stock ticker plus a lowercase "x" (NVDAx), whatever case comes in.
+  const clean = symbol.trim();
+  const upper = clean.toUpperCase();
+  const known = CURATED_XSTOCK_SYMBOLS.find((s) => s.toUpperCase() === upper || s.toUpperCase() === `${upper}X`);
+  if (known) return known;
+  return clean.endsWith("x") ? `${clean.slice(0, -1).toUpperCase()}x` : `${upper}x`;
 }
 
 /**
