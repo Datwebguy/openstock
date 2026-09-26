@@ -1,4 +1,5 @@
 "use client";
+import { tokenImageSrc } from "@/lib/community-token-utils";
 
 import { StockLogo } from "@/components/stock-logo";
 import type { CommunityToken } from "@/lib/community-tokens";
@@ -51,7 +52,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
                   <div className="radar-card-identity">
                     <div className="radar-avatar-stage">
                       <img
-                        src={item.imageUrl}
+                        src={tokenImageSrc(item)}
                         alt={item.name}
                         className="radar-avatar-main"
                         onError={(e) => {

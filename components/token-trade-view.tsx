@@ -1,4 +1,5 @@
 "use client";
+import { tokenImageSrc } from "@/lib/community-token-utils";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -8,6 +9,7 @@ import { StockLogo } from "@/components/stock-logo";
 import { shortWallet, useWallet } from "@/components/wallet-session";
 import { ShareToXModal } from "@/components/share-to-x-modal";
 import { BubblemapsModal } from "@/components/bubblemaps-modal";
+import { TokenMarketPanel } from "@/components/token-market-panel";
 import { getStockCompany, formatStockTicker, TOKENIZED_STOCK_SAFE_WORDING } from "@/lib/tokenized-stock-wording";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isLookalikeTicker, isOnAmmPool } from "@/lib/community-token-utils";
@@ -132,9 +134,9 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
       <div className="token-trade-hero">
         <div className="token-trade-hero__left">
           <div className="token-trade-avatar-wrap">
-            {token.imageUrl ? (
+            {(
               <img
-                src={token.imageUrl}
+                src={tokenImageSrc(token)}
                 alt={token.name}
                 className="token-trade-avatar"
                 onError={(e) => {
@@ -143,10 +145,10 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
                   if (fallback) fallback.style.display = "grid";
                 }}
               />
-            ) : null}
+            )}
             <div
               className="token-trade-avatar token-trade-avatar--fallback"
-              style={{ display: token.imageUrl ? "none" : "grid" }}
+              style={{ display: "none" }}
             >
               {cleanSymbol.slice(0, 2)}
             </div>
@@ -239,6 +241,8 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
               <div className="token-metric-sub">DexScreener</div>
             </div>
           </div>
+
+          <TokenMarketPanel mint={token.mint} symbol={cleanSymbol} />
 
           {/* Bonding Curve Card */}
           <div className="token-curve-card">

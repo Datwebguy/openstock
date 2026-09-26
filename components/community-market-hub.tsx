@@ -1,4 +1,5 @@
 "use client";
+import { tokenImageSrc } from "@/lib/community-token-utils";
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
@@ -251,7 +252,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                     <td className="trends-td--asset">
                       <div className="trends-brand-cell">
                         <img
-                          src={item.imageUrl}
+                          src={tokenImageSrc(item)}
                           alt={item.name}
                           className="community-token-avatar"
                           onError={(e) => {
@@ -406,7 +407,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
                 <div className="community-card__top">
                   <div className="community-card__avatars">
                     <img
-                      src={item.imageUrl}
+                      src={tokenImageSrc(item)}
                       alt={item.name}
                       className="community-card__avatar"
                       onError={(e) => {

@@ -1,4 +1,5 @@
 "use client";
+import { tokenImageSrc } from "@/lib/community-token-utils";
 
 import { useEffect, useState } from "react";
 import { executeCommunitySwap, NoRouteError, quoteCommunitySwap } from "@/lib/community-swap";
@@ -121,7 +122,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
         <div className="community-swap-head">
           <div className="community-swap-token-identity">
             <img
-              src={token.imageUrl}
+              src={tokenImageSrc(token)}
               alt={token.name}
               className="community-swap-avatar"
               onError={(e) => {
@@ -237,7 +238,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                   ) : (
                     <>
                       <img
-                        src={token.imageUrl}
+                        src={tokenImageSrc(token)}
                         alt=""
                         style={{ width: 18, height: 18, borderRadius: "50%" }}
                         onError={(e) => {
@@ -286,7 +287,7 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
                   {side === "buy" ? (
                     <>
                       <img
-                        src={token.imageUrl}
+                        src={tokenImageSrc(token)}
                         alt=""
                         style={{ width: 18, height: 18, borderRadius: "50%" }}
                         onError={(e) => {

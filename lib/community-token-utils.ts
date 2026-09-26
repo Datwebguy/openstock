@@ -90,3 +90,8 @@ export function isLookalikeTicker(symbol: string): boolean {
   const upper = symbol.toUpperCase().replace(/^\$/, "");
   return LOOKALIKE_TICKERS.has(upper) || STOCK_TICKERS.has(upper);
 }
+
+/** Image source for a community token: DexScreener's logo, else its on-chain metadata image. */
+export function tokenImageSrc(token: { imageUrl?: string; mint: string }) {
+  return token.imageUrl || `/api/token-image/${token.mint}`;
+}

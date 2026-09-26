@@ -3240,3 +3240,55 @@ button.community-card__bonding { appearance: none; border: 0; background: transp
 .token-trade-hero__actions .share-btn-secondary { color: var(--ink, #161321); background: var(--surface, #fff); border-color: rgba(22, 19, 33, 0.14); }
 .token-trade-hero__actions .share-btn-secondary:hover { border-color: #7c32c5; color: #7c32c5; }
 .page:not(.story) input.token-swap-input { background: transparent; color: #fff; }
+
+/* Token market panel: chart, buy/sell flow, trades and holders (DexScreener-style). */
+.token-market-panel { background: var(--surface, #fff); border: 1px solid rgba(22, 19, 33, 0.08); border-radius: 18px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.token-market-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.token-market-kicker { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7c32c5; }
+.token-market-price { font-size: 28px; font-weight: 700; color: var(--ink, #161321); margin-top: 4px; }
+.token-market-sub { font-size: 13px; color: var(--muted, #5b5670); }
+.token-market-buckets, .token-market-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(22, 19, 33, 0.05); }
+.token-market-buckets button, .token-market-tabs button { border: 0; background: transparent; color: var(--muted, #5b5670); font: 600 12px/1 inherit; padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+.token-market-buckets button.is-active, .token-market-tabs button.is-active { background: var(--surface, #fff); color: var(--ink, #161321); box-shadow: 0 1px 3px rgba(22, 19, 33, 0.12); }
+.token-market-tabs { justify-self: start; }
+.token-chart-svg { width: 100%; height: 260px; display: block; background: #fbfaff; border-radius: 12px; }
+.token-chart-grid { stroke: rgba(22, 19, 33, 0.07); stroke-dasharray: 3 4; }
+.token-chart-axis { font-size: 11px; fill: #8a85a0; }
+.is-up .token-chart-body, .is-up .token-chart-wick { fill: #10b981; stroke: #10b981; }
+.is-down .token-chart-body, .is-down .token-chart-wick { fill: #ef4444; stroke: #ef4444; }
+.is-up .token-chart-vol { fill: rgba(16, 185, 129, 0.25); }
+.is-down .token-chart-vol { fill: rgba(239, 68, 68, 0.25); }
+.token-chart-empty, .token-market-empty { display: grid; place-items: center; min-height: 120px; border-radius: 12px; background: #fbfaff; color: var(--muted, #5b5670); font-size: 14px; text-align: center; padding: 16px; }
+.token-chart-empty { min-height: 220px; }
+.token-market-windows { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.token-market-windows button { display: grid; gap: 4px; padding: 10px; border-radius: 12px; border: 1px solid rgba(22, 19, 33, 0.08); background: transparent; cursor: pointer; font: inherit; }
+.token-market-windows button.is-active { border-color: #7c32c5; background: rgba(124, 50, 197, 0.06); }
+.token-market-windows span, .token-market-flow__stat span { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #8a85a0; }
+.token-market-windows strong, .token-market-flow__stat strong { font-size: 15px; color: var(--ink, #161321); }
+.token-market-panel .is-positive { color: #059669; }
+.token-market-panel .is-negative { color: #dc2626; }
+.token-market-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.token-market-flow__stat { display: grid; gap: 3px; }
+.token-market-flow__bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: #ef4444; overflow: hidden; }
+.token-market-flow__bar i { display: block; height: 100%; background: #10b981; }
+.token-market-table { display: grid; max-height: 420px; overflow-y: auto; border-top: 1px solid rgba(22, 19, 33, 0.06); }
+.token-market-row { display: grid; grid-template-columns: 52px 56px 1fr 1fr 1fr 110px; gap: 8px; align-items: center; padding: 9px 4px; font-size: 13px; color: var(--ink, #161321); text-decoration: none; border-bottom: 1px solid rgba(22, 19, 33, 0.05); font-variant-numeric: tabular-nums; }
+a.token-market-row:hover { background: rgba(124, 50, 197, 0.04); }
+.token-market-row--head { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a85a0; position: sticky; top: 0; background: var(--surface, #fff); }
+.token-market-row.is-buy .token-market-side, .token-market-row.is-buy span:nth-child(3) { color: #059669; font-weight: 600; }
+.token-market-row.is-sell .token-market-side, .token-market-row.is-sell span:nth-child(3) { color: #dc2626; font-weight: 600; }
+.token-market-trader { color: #7c32c5; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.token-market-row--holder { grid-template-columns: 44px 1fr 1fr 1.2fr; }
+.token-market-pct { position: relative; display: flex; align-items: center; gap: 8px; }
+.token-market-pct i { display: block; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #9945ff, #14f195); max-width: 60%; }
+.token-market-holders-note { font-size: 12px; color: var(--muted, #5b5670); padding: 10px 4px; }
+.token-market-source { font-size: 11px; color: #8a85a0; }
+@media (max-width: 680px) {
+  .token-market-panel { padding: 14px; }
+  .token-chart-svg { height: 200px; }
+  .token-market-flow { grid-template-columns: repeat(2, 1fr); }
+  .token-market-row { grid-template-columns: 38px 42px 1fr 1fr 84px; font-size: 12px; }
+  .token-market-row > span:nth-child(5) { display: none; }
+  .token-market-row--holder { grid-template-columns: 34px 1fr 1fr 1fr; }
+  .token-market-row--holder > span:nth-child(5) { display: initial; }
+}
