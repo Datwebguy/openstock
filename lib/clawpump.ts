@@ -115,7 +115,13 @@ export async function getOrCreateLauncherAgent(tokenName: string): Promise<{ id:
   if (!res.ok) {
     const errText = await res.text();
     console.error("ClawPump agent creation failed", res.status, errText.slice(0, 400));
-    throw new Error("Launcher agent could not be created. Try again in a moment.");
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("Pump.fun launches are temporarily unavailable. Nothing was charged — you can launch on Meteora now, or try Pump.fun again later.");
+    }
+    if (res.status === 429) {
+      throw new Error("Pump.fun is busy right now. Nothing was charged — wait a minute and try again.");
+    }
+    throw new Error("Pump.fun couldn't start this launch. Nothing was charged — please try again in a moment.");
   }
 
   const data = await res.json();
