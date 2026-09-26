@@ -649,6 +649,12 @@ export function LaunchClient() {
         tx.feePayer = fromPubkey;
 
         setStatusMessage("Checking transaction...");
+        // Payment + network/priority fee headroom; the wallet must also stay rent-exempt.
+        const neededLamports = Number(payment.amountLamports) + 1_000_000;
+        const balanceLamports = await connection.getBalance(fromPubkey, "confirmed");
+        if (balanceLamports < neededLamports) {
+          throw new Error(`Not enough SOL. This launch needs about ${(neededLamports / 1e9).toFixed(4)} SOL (ClawPump fee plus network fees); your wallet has ${(balanceLamports / 1e9).toFixed(4)} SOL. Nothing was charged.`);
+        }
         const sim = await preflightSimulate(connection, tx, fromPubkey);
         if (!sim.success) throw new Error(sim.humanMessage || sim.error || "The payment would fail. Check your SOL balance.");
         if (sim.unitsConsumed) setSimulatedUnits(sim.unitsConsumed);

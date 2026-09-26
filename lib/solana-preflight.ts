@@ -62,7 +62,8 @@ export function translateWalletError(error: unknown): string {
   if (
     /insufficient lamports/i.test(message) ||
     /insufficient funds/i.test(message) ||
-    /Attempt to debit an account but found no record of a prior credit/i.test(message)
+    /Attempt to debit an account but found no record of a prior credit/i.test(message) ||
+    /InsufficientFundsForRent/i.test(message)
   ) {
     return "Insufficient SOL in your wallet to cover rent exemption and network priority fees.";
   }
@@ -198,7 +199,7 @@ export async function preflightSimulate(
         unitsConsumed: value.unitsConsumed,
         logs: value.logs ?? undefined,
         error: errStr,
-        humanMessage: translateWalletError(errStr),
+        humanMessage: translateWalletError([errStr, ...(value.logs ?? [])].join(" ")),
       };
     }
 
