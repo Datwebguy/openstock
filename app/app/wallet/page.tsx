@@ -84,10 +84,10 @@ export default function WalletPage() {
           </div>
         )}
       </section>
+      {address ? <AccountIdentity /> : null}
       <PortfolioDashboard hideConnect />
       <section className="settings-grid">
         <article className="panel settings-card"><h2>Watches</h2><Link className="button button--light" href="/app/alerts">Manage</Link></article>
-        <AccountIdentity />
       </section>
     </div>
     <AppFooterNav />
