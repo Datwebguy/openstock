@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     try {
       launchResult = await executeClawPumpLaunch({
         name: name.trim(),
-        symbol: symbol.trim().toUpperCase(),
+        symbol: symbol.trim(),
         description: resolvedDescription,
         imageUrl: resolvedImageUrl,
         pumpQuoteMint,
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       await addCommunityToken({
         mint: launchResult.mintAddress,
         name: name.trim(),
-        symbol: symbol.trim().toUpperCase(),
+        symbol: symbol.trim(),
         description: resolvedDescription,
         imageUrl: resolvedImageUrl,
         pairedStockSymbol: pairedAsset.symbol,

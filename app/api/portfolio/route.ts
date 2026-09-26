@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getSolPriceUsd } from "@/lib/market-evidence";
 import { getPortfolioSnapshots, portfolioChange, recordPortfolioSnapshot, type PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 import { USDC_DECIMALS, USDC_MINT, isSolanaAddress } from "@/lib/solana";
-import { CURATED_SYMBOLS, getHydratedAsset } from "@/lib/xstocks";
+import { getHydratedAsset } from "@/lib/xstocks";
+import curatedRegistry from "@/lib/solana-curated-25.json";
+
+const MINT_TO_SYMBOL = new Map(Object.values(curatedRegistry as Record<string, { symbol: string; mint: string }>).map((entry) => [entry.mint, entry.symbol]));
 
 const SOLANA_RPC = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
 type TokenAccount = { account?: { data?: { parsed?: { info?: { tokenAmount?: { uiAmountString?: string; decimals?: number; amount?: string } } } } } };
@@ -106,9 +109,12 @@ async function portfolioResponse(wallet: string, track: boolean) {
     const holdings = [];
     let holdingsTotalUsd = 0;
 
-    for (const symbol of CURATED_SYMBOLS) {
+    // Only load live data for stocks this wallet actually holds, in parallel (loading all 32 in sequence timed out).
+    const heldSymbols = [...userTokenMap.keys()].map((mint) => MINT_TO_SYMBOL.get(mint)).filter((symbol): symbol is string => Boolean(symbol));
+    const heldAssets = await Promise.all(heldSymbols.map((symbol) => getHydratedAsset(symbol).catch(() => null)));
+    for (const asset of heldAssets) {
       try {
-        const asset = await getHydratedAsset(symbol);
+        if (!asset) continue;
         const mint = asset.solanaDeployment?.address;
         if (!mint) continue;
 
