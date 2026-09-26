@@ -8,7 +8,7 @@ import { fetchJupiterPrices } from "@/lib/jupiter-price";
 
 const SOLANA_RPC = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
 const WSOL = "So11111111111111111111111111111111111111112";
-const MAX_TXS = 120;
+const MAX_TXS = 80;
 
 type TokenBalance = { mint: string; owner?: string; uiTokenAmount: { uiAmount: number | null } };
 type RpcTx = {
@@ -28,18 +28,34 @@ export type TokenTrade = { signature: string; time: number; side: "buy" | "sell"
 
 const cache = new Map<string, { at: number; body: unknown }>();
 
-async function rpcBatch<T>(calls: Array<{ method: string; params: unknown[] }>): Promise<Array<T | null>> {
-  const res = await fetch(SOLANA_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: "2.0", id, ...c }))),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const payload = await res.json() as Array<{ id: number; result?: T }> | { error?: unknown };
-  if (!Array.isArray(payload)) throw new Error("Solana RPC rejected the request.");
+async function rpcCall<T>(method: string, params: unknown[]): Promise<T | null> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const res = await fetch(SOLANA_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.status === 429) { await new Promise((r) => setTimeout(r, 400)); continue; }
+      const payload = await res.json() as { result?: T };
+      return payload.result ?? null;
+    } catch { /* retry once */ }
+  }
+  return null;
+}
+
+// Individual calls with limited concurrency: batched JSON-RPC is not available on every RPC plan.
+async function rpcBatch<T>(calls: Array<{ method: string; params: unknown[] }>, concurrency = 8): Promise<Array<T | null>> {
   const out: Array<T | null> = calls.map(() => null);
-  for (const item of payload) out[item.id] = item.result ?? null;
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(concurrency, calls.length) }, async () => {
+    while (next < calls.length) {
+      const i = next++;
+      out[i] = await rpcCall<T>(calls[i].method, calls[i].params);
+    }
+  }));
   return out;
 }
 
