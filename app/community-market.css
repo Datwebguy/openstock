@@ -3229,3 +3229,14 @@ html[data-theme="dark"] .community-action-btn.is-share:hover {
 /* Status cells are buttons now (keyboard + 44px targets) */
 button.bonding-progress-cell,
 button.community-card__bonding { appearance: none; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; width: 100%; min-height: 44px; cursor: pointer; padding: 4px 0; }
+
+/* Token page sits on the light app background: dark text outside the trade card. */
+.token-trade-hero { background: var(--surface, #fff); border-color: rgba(22, 19, 33, 0.08); }
+.token-trade-title, .token-metric-value, .token-pair-stock-symbol { color: var(--ink, #161321); }
+.token-trade-name, .token-trade-paired-wording, .token-curve-desc, .token-pair-stock-name { color: var(--muted, #5b5670); }
+.token-metric-label, .token-metric-sub, .token-pair-details-title, .token-pair-notice { color: #8a85a0; }
+.token-metric-card, .token-curve-card { background: var(--surface, #fff); border-color: rgba(22, 19, 33, 0.08); }
+.token-trade-chip { color: #7c32c5; background: rgba(124, 50, 197, 0.1); }
+.token-trade-hero__actions .share-btn-secondary { color: var(--ink, #161321); background: var(--surface, #fff); border-color: rgba(22, 19, 33, 0.14); }
+.token-trade-hero__actions .share-btn-secondary:hover { border-color: #7c32c5; color: #7c32c5; }
+.page:not(.story) input.token-swap-input { background: transparent; color: #fff; }

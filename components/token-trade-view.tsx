@@ -61,7 +61,7 @@ export function TokenTradeView({ token, mint, initialColor }: TokenTradeViewProp
 
   const stockCompany = getStockCompany(token.pairedStockSymbol);
   const stockX = formatStockTicker(token.pairedStockSymbol);
-  const cleanSymbol = token.symbol.startsWith("$") ? token.symbol.slice(1).toUpperCase() : token.symbol.toUpperCase();
+  const cleanSymbol = token.symbol.startsWith("$") ? token.symbol.slice(1) : token.symbol;
   const isGraduated = isOnAmmPool(token);
   const lookalike = isLookalikeTicker(token.symbol);
 
