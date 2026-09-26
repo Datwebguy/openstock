@@ -478,8 +478,8 @@ export function LaunchClient() {
 
   const cleanTokenSymbol = tokenSymbol.trim()
     ? tokenSymbol.trim().startsWith("$")
-      ? tokenSymbol.trim().slice(1).toUpperCase()
-      : tokenSymbol.trim().toUpperCase()
+      ? tokenSymbol.trim().slice(1)
+      : tokenSymbol.trim()
     : tokenName.trim()
     ? tokenName.trim().slice(0, 6).toUpperCase()
     : "PAIR";
@@ -611,7 +611,7 @@ export function LaunchClient() {
 
       const launchBody = {
         name: tokenName.trim(),
-        symbol: tokenSymbol.trim().toUpperCase(),
+        symbol: tokenSymbol.trim(),
         description: resolvedDescription,
         imageUrl: imageUrl.trim(),
         pumpQuoteMint: selectedPair.mint,
@@ -696,7 +696,7 @@ export function LaunchClient() {
         body: JSON.stringify({
           mode: "prepare",
           name: tokenName.trim(),
-          symbol: tokenSymbol.trim().toUpperCase(),
+          symbol: tokenSymbol.trim(),
           description: resolvedDescription,
           imageUrl: imageUrl.trim(),
           quoteMint: effectiveQuoteMint,
@@ -732,7 +732,7 @@ export function LaunchClient() {
         body: JSON.stringify({
           mode: "confirm",
           name: tokenName.trim(),
-          symbol: tokenSymbol.trim().toUpperCase(),
+          symbol: tokenSymbol.trim(),
           description: resolvedDescription,
           imageUrl: imageUrl.trim(),
           quoteMint: effectiveQuoteMint,
@@ -824,7 +824,7 @@ export function LaunchClient() {
                 value={tokenSymbol}
                 maxLength={10}
                 placeholder="COMPUTE"
-                onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
+                onChange={(e) => setTokenSymbol(e.target.value)}
               />
             </label>
           </div>
@@ -922,7 +922,7 @@ export function LaunchClient() {
                   placeholder="e.g. COMPUTE"
                   value={tokenSymbol}
                   maxLength={10}
-                  onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
+                  onChange={(e) => setTokenSymbol(e.target.value)}
                 />
               </div>
             </div>

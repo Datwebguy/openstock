@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const tokenSupply = supply && Number.isFinite(Number(supply)) && Number(supply) > 0 ? Number(supply) : 1_000_000_000;
     const launchPayload = {
       name: name.trim(),
-      symbol: symbol.trim().toUpperCase(),
+      symbol: symbol.trim(),
       description: description?.trim() || "",
       imageUrl: resolvedImageUrl || "",
       quoteMint,

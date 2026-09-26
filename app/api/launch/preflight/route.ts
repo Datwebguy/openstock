@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const preflight = await requestPreflightQuote({
       name: name.trim(),
-      symbol: symbol.trim().toUpperCase(),
+      symbol: symbol.trim(),
       description: resolveLaunchDescription(description, name, pairedAsset.symbol),
       imageUrl: resolvedImageUrl,
       pumpQuoteMint,
