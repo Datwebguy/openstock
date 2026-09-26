@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { executeCommunitySwap, NoRouteError } from "@/lib/community-swap";
+import { useEffect, useState } from "react";
+import { executeCommunitySwap, NoRouteError, quoteCommunitySwap } from "@/lib/community-swap";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS } from "@/lib/clawpump";
 import type { CommunityToken } from "@/lib/community-tokens";
 import { StockLogo } from "@/components/stock-logo";
@@ -32,6 +32,33 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
   const parsedAmount = parseFloat(amount) || 0;
   const quoteMint = quoteMintFor(token);
   const quoteSymbol = token.pairedStockSymbol;
+  const [estimate, setEstimate] = useState<{ state: "idle" | "loading" | "ok" | "noroute" | "error"; out?: number }>({ state: "idle" });
+
+  // Live Jupiter estimate while the user types (debounced; stale requests aborted).
+  useEffect(() => {
+    if (!quoteMint || parsedAmount <= 0) { setEstimate({ state: "idle" }); return; }
+    const controller = new AbortController();
+    setEstimate({ state: "loading" });
+    const timer = window.setTimeout(() => {
+      quoteCommunitySwap({
+        inputMint: side === "buy" ? quoteMint : token.mint,
+        outputMint: side === "buy" ? token.mint : quoteMint,
+        uiAmount: parsedAmount,
+        slippageBps: Math.round(slippage * 100),
+        signal: controller.signal,
+      })
+        .then((q) => setEstimate({ state: "ok", out: q.expectedOutUi }))
+        .catch((err) => { if (!controller.signal.aborted) setEstimate({ state: err instanceof NoRouteError ? "noroute" : "error" }); });
+    }, 400);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [quoteMint, parsedAmount, side, slippage, token.mint]);
+
+  const estimateText = estimate.state === "ok" && estimate.out !== undefined
+    ? estimate.out.toLocaleString(undefined, { maximumFractionDigits: estimate.out >= 1 ? 2 : 8 })
+    : estimate.state === "loading" ? "Getting quote…"
+    : estimate.state === "noroute" ? "No route yet"
+    : estimate.state === "error" ? "Quote unavailable"
+    : "0";
 
   async function handleExecuteSwap() {
     if (!address || !canSign) {
@@ -249,11 +276,11 @@ export function CommunitySwapModal({ token, onClose, onTradeSuccess }: Community
             <div className="community-swap-field-card community-swap-field-card--receive">
               <div className="community-swap-field-top">
                 <span>You Receive (Estimated)</span>
-                <span>Price: ${token.priceUsd.toFixed(4)}</span>
+                <span>{estimate.state === "ok" && estimate.out && parsedAmount > 0 ? (side === "buy" ? `1 ${quoteSymbol} ≈ ${(estimate.out / parsedAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol}` : `1 ${token.symbol} ≈ ${(estimate.out / parsedAmount).toPrecision(3)} ${quoteSymbol}`) : "Live Jupiter quote"}</span>
               </div>
               <div className="community-swap-input-row">
                 <div className="community-swap-output-val">
-                  Quoted on submit
+                  {estimateText}
                 </div>
                 <div className="community-swap-currency-badge">
                   {side === "buy" ? (

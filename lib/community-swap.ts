@@ -40,6 +40,18 @@ function fromBase64(value: string) {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }
 
+/** Live Jupiter estimate for the amount typed, without building a transaction. */
+export async function quoteCommunitySwap(params: { inputMint: string; outputMint: string; uiAmount: number; slippageBps: number; signal?: AbortSignal }): Promise<{ expectedOutUi: number; minOutUi: number }> {
+  const connection = browserConnection();
+  const [inputDecimals, outputDecimals] = await Promise.all([mintDecimals(connection, params.inputMint), mintDecimals(connection, params.outputMint)]);
+  const raw = Math.floor(params.uiAmount * 10 ** inputDecimals);
+  if (!Number.isSafeInteger(raw) || raw <= 0) throw new Error("Enter a valid amount.");
+  const res = await fetch(`${JUPITER_LITE}/quote?inputMint=${params.inputMint}&outputMint=${params.outputMint}&amount=${raw}&slippageBps=${params.slippageBps}`, { headers: { Accept: "application/json" }, signal: params.signal ?? AbortSignal.timeout(10_000) });
+  const quote = (await res.json().catch(() => ({}))) as JupiterQuote;
+  if (!res.ok || quote.error || !quote.outAmount) throw new NoRouteError(quote.error || "No Jupiter route for this pair yet.");
+  return { expectedOutUi: Number(quote.outAmount) / 10 ** outputDecimals, minOutUi: Number(quote.otherAmountThreshold) / 10 ** outputDecimals };
+}
+
 /**
  * Quote on Jupiter, sign with the connected wallet, broadcast through the OpenStock RPC relay and wait for
  * confirmation. The amount typed by the user is converted with the input mint's real decimals.
