@@ -12,7 +12,7 @@
 
 ---
 
-OpenStock lets anyone browse, analyze and trade [xStocks](https://xstocks.fi) (Backed's tokenized equities, such as `NVDAx`, `AAPLx`, `TSLAx`) on Solana, and launch a new token whose bonding curve is **quoted in a stock instead of SOL or USDC** (`YOUR_TOKEN × NVDAx`) on **Meteora Dynamic Bonding Curve** (default), with Pump.fun as a fallback.
+OpenStock lets anyone browse, analyze and trade [xStocks](https://xstocks.fi) (Backed's tokenized equities, such as `NVDAx`, `AAPLx`, `TSLAx`) on Solana, and launch a new token whose bonding curve is **quoted in a stock instead of SOL or USDC** (`YOUR_TOKEN × NVDAx`) on **Meteora Dynamic Bonding Curve**.
 
 Every number on the desk comes from a live source (the issuer, Jupiter, Meteora, GeckoTerminal, DexScreener, Pyth or Solana itself). When a source is unavailable the UI says so; it never fills in a sample value.
 
@@ -29,11 +29,11 @@ Every number on the desk comes from a live source (the issuer, Jupiter, Meteora,
 ### Stock-paired launches
 - **Meteora DBC, three curve styles per stock**, each its own on-chain PoolConfig:
 
-  | Curve | Shape | Base fee | Creator share | Graduates at (token FDV) |
-  |---|---|---|---|---|
-  | Equity Standard | Even liquidity | 1.5% | 50% of fees | ~$69k |
-  | Equity Momentum | Thin early liquidity — fast early price discovery | 2.0% | 50% of fees | ~$85k |
-  | Equity Deep Book | Deep early liquidity — low slippage for first buyers | 1.0% | 50% of fees | ~$100k |
+  | Curve | Shape | Base fee | Creator share |
+  |---|---|---|---|
+  | Equity Standard | Even liquidity | 1.5% | 50% of fees |
+  | Equity Momentum | Thin early liquidity — fast early price discovery | 2.0% | 50% of fees |
+  | Equity Deep Book | Deep early liquidity — low slippage for first buyers | 1.0% | 50% of fees |
 
   Graduation is denominated in **xStock units** (shares of NVDAx, not a frozen USD cap). The studio shows the live USD equivalent from Jupiter; that number moves with the equity. Pools migrate to **Meteora DAMM v2** (25 bps config `7F6dnUcRuyM2TwR8myT1dYypFXpPSxqwKNSFNkxyNESd` unless `METEORA_DAMM_V2_CONFIG` is set) with migrated partner liquidity permanently locked.
 

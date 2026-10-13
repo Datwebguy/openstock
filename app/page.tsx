@@ -40,7 +40,7 @@ const questions = [
   ],
   [
     "How does token pairing and launching work?",
-    "Use the Launch studio to create a community token quoted in an xStock (YOUR_TOKEN × NVDAx) on Meteora Dynamic Bonding Curve. The curve, fee, and DAMM v2 graduation threshold are the on-chain PoolConfig. Pump.fun is available as a fallback.",
+    "Use the Launch studio to create a community token quoted in an xStock (YOUR_TOKEN × NVDAx) on Meteora Dynamic Bonding Curve. The curve, fee, and DAMM v2 graduation threshold are the on-chain PoolConfig.",
   ],
   [
     "What orders can I automate?",

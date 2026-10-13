@@ -1229,7 +1229,7 @@ export function LaunchClient() {
               <div className="launch-step-pill">03</div>
               <div className="launch-step-title-group">
                 <h2 id="step-3-heading">Venue &amp; Economics</h2>
-                <p>Meteora DBC is the default. Pump.fun remains available as a fallback venue.</p>
+                <p>Meteora DBC is the default. Pump.fun is also available.</p>
               </div>
             </div>
 
@@ -1240,7 +1240,7 @@ export function LaunchClient() {
                   <label className="launch-section-label">
                     Execution Venue {loadingVenues ? "(Verifying...)" : ""}
                   </label>
-                  <span className="launch-section-hint">Meteora DBC first. Pump.fun is the fallback.</span>
+                  <span className="launch-section-hint">Meteora DBC · stock-quoted</span>
                 </div>
 
                 <div className="launch-venue-grid-2col" role="radiogroup" aria-label="Execution Venue">
@@ -1303,14 +1303,14 @@ export function LaunchClient() {
                     <div className="launch-venue-card-header">
                       <div className="launch-venue-card-title-wrap">
                         <span className="launch-venue-card-title">Pump.fun</span>
-                        <span className="launch-venue-card-badge">Fallback</span>
+                        <span className="launch-venue-card-badge">Pump.fun</span>
                       </div>
                       {selectedVenue === "pumpfun" && (
                         <span className="launch-card-check" aria-hidden="true">✓</span>
                       )}
                     </div>
                     <p className="launch-venue-card-desc">
-                      Pump.fun bonding curve quoted in the selected xStock (ClawPump). Use when the stock has no DBC config.
+                      Pump.fun bonding curve quoted in the selected xStock.
                     </p>
                     <div className="launch-venue-card-foot">
                       <span>
