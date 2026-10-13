@@ -36,6 +36,9 @@ export type CommunityToken = {
   venue?: "pumpfun" | "meteora" | "other";
   /** DexScreener dex id of the tracked pool (pumpfun, pumpswap, meteora, raydium, …). */
   dexId?: string;
+  /** On-chain DBC PoolConfig used at launch (OpenStock Meteora launches). */
+  dbcConfigAddress?: string;
+  curve?: "standard" | "momentum" | "deep";
   /** "openstock" = launched through OpenStock; "discovered" = an existing pool found on DexScreener. */
   source?: "openstock" | "discovered";
   isStale?: boolean;

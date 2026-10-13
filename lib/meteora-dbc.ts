@@ -16,6 +16,20 @@ export const DBC_CURVE_LABELS: Record<DbcCurveKey, { name: string; blurb: string
   deep: { name: "Equity Deep Book", blurb: "Deep early liquidity — low slippage for first buyers" },
 };
 
+/** Published mainnet PoolConfigs (OpenStock). Env overrides these. */
+export const MAINNET_DBC_CONFIGS: Record<string, Partial<Record<DbcCurveKey, string>>> = {
+  NVDAx: {
+    standard: "5Fx7AKBiTGbX8LMqUjzf89yiTpK9U6Q2utyyFv7H6XNF",
+    momentum: "GHHmbodZBJdqs6hK2oigKJEfTGrvHhmjTmKB3yeqNbpn",
+    deep: "D2xY6rQZjuJY8jGNStM574CN4cxcjxCVTkvo89FTFjV3",
+  },
+  AAPLx: {
+    standard: "4sMonWH7dd53dr55b71YebbP1HwGHWPLT94q5fgMDMpn",
+    momentum: "6YozhtJTFpCVkzS8mEXUAeQyGPTz9tX8u5MhByAJjEWP",
+    deep: "BFVNHDEWgQGm1ibzt4XLCLXk46PJCQpYJTt2UkicJNgn",
+  },
+};
+
 /**
  * PoolConfigs for one xStock, by curve style. The quote mint is fixed on each config account.
  * Sources, in order:
@@ -53,6 +67,12 @@ export function listDbcConfigs(opts: { quoteMint: string; pairedStockSymbol?: st
     const bySymbol = process.env[`METEORA_DBC_CONFIG_${key}`]?.trim();
     if (bySymbol && isValidPubkey(bySymbol)) return { standard: bySymbol };
   }
+  const published = MAINNET_DBC_CONFIGS[symbol];
+  if (published) {
+    const out: Partial<Record<DbcCurveKey, string>> = {};
+    for (const key of DBC_CURVE_KEYS) if (published[key] && isValidPubkey(published[key]!)) out[key] = published[key];
+    if (Object.keys(out).length > 0) return out;
+  }
   return {};
 }
 
@@ -71,6 +91,30 @@ function isValidPubkey(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Official DAMM v2 configs used by DBC migration (`DAMM_V2_MIGRATION_FEE_ADDRESS`).
+ * https://docs.meteora.ag/developer-guides/dbc
+ * OpenStock PoolConfigs are created with MigrationFeeOption.FixedBps25 (index 0).
+ */
+export const DAMM_V2_MIGRATION_FEE_ADDRESS = [
+  "7F6dnUcRuyM2TwR8myT1dYypFXpPSxqwKNSFNkxyNESd", // 25 bps
+  "2nHK1kju6XjphBLbNxpM5XRGFj7p9U8vvNzyZiha1z6k", // 30 bps
+  "Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp", // 100 bps
+  "2c4cYd4reUYVRAB9kUUkrq55VPyy2FNQ3FDL4o12JXmq", // 200 bps
+  "AkmQWebAwFvWk55wBoCr5D62C6VVDTzi84NJuD9H7cFD", // 400 bps
+  "DbCRBj8McvPYHJG1ukj8RE15h2dCNUdTAESG49XpQ44u", // 600 bps
+  "A8gMrEPJkacWkcb3DGwtJwTe16HktSEfvwtuDh2MCtck", // customizable
+] as const;
+
+export const DAMM_V2_DEFAULT_FEE_BPS = 25;
+
+/** Env override, otherwise Meteora's 25 bps DAMM v2 migration config. */
+export function resolveDammV2MigrationConfig(): string {
+  const env = process.env.METEORA_DAMM_V2_CONFIG?.trim();
+  if (env && isValidPubkey(env)) return env;
+  return DAMM_V2_MIGRATION_FEE_ADDRESS[0];
 }
 
 export type DbcConfigSummary = {
@@ -121,7 +165,7 @@ export async function readDbcConfigSummary(configAddress: string): Promise<DbcCo
   }
 }
 
-/** Public links for a DBC pool / mint. Meteora has no DLMM page for DBC pools, so link the chain explorer. */
+/** Public links for a DBC pool / mint. DBC virtual pools have no DLMM page; DAMM v2 pools do. */
 export function dbcLinks(poolAddress: string, mintAddress: string, txSignature?: string) {
   return {
     poolUrl: `https://solscan.io/account/${poolAddress}`,
@@ -130,12 +174,17 @@ export function dbcLinks(poolAddress: string, mintAddress: string, txSignature?:
   };
 }
 
+export function dammV2PoolUrl(dammPoolAddress: string) {
+  return `https://www.meteora.ag/dammv2/${dammPoolAddress}`;
+}
+
 /** The SDK types the account as `{ poolState }`, older builds decode it flat — accept both. */
 function poolStateOf(account: unknown): { config: PublicKey; creator: PublicKey; baseMint: PublicKey } {
   const raw = account as { poolState?: unknown };
   return (raw.poolState ?? raw) as { config: PublicKey; creator: PublicKey; baseMint: PublicKey };
 }
 
+export { DYNAMIC_BONDING_CURVE_PROGRAM_ID };
 export { SOL_MINT, USDC_MINT } from "./solana";
 
 // In-memory cache for token badge existence check
@@ -327,8 +376,7 @@ export async function prepareMeteoraDammMigrationTx(
   const poolAccount = await client.state.getPool(pool);
   if (!poolAccount) throw new Error(`Meteora DBC pool ${poolAddress} not found on Solana.`);
 
-  const dammConfigKey = targetDammConfig || process.env.METEORA_DAMM_V2_CONFIG;
-  if (!dammConfigKey) throw new Error("Migration is not configured on this deployment (METEORA_DAMM_V2_CONFIG).");
+  const dammConfigKey = targetDammConfig || resolveDammV2MigrationConfig();
   const dammConfig = new PublicKey(dammConfigKey);
 
   const { transaction, firstPositionNftKeypair, secondPositionNftKeypair } = await client.migration.migrateToDammV2({

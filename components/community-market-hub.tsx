@@ -12,12 +12,12 @@ import { ShareToXModal, type ShareTokenData } from "@/components/share-to-x-moda
 import type { CommunityToken } from "@/lib/community-tokens";
 import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isLookalikeTicker, isOnAmmPool } from "@/lib/community-token-utils";
 
-type FilterTab = "all" | "new" | "graduating" | "graduated";
+type FilterTab = "all" | "dbc" | "openstock" | "new" | "graduating" | "graduated";
 
 export function CommunityMarketHub({ initialTokens }: { initialTokens?: CommunityToken[] }) {
   const [tokens, setTokens] = useState<CommunityToken[]>(initialTokens || []);
   const [loading, setLoading] = useState(!initialTokens || initialTokens.length === 0);
-  const [filter, setFilter] = useState<FilterTab>("all");
+  const [filter, setFilter] = useState<FilterTab>("dbc");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
@@ -76,7 +76,11 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
   // Filtered Tokens
   const filteredTokens = tokens.filter((t) => {
-    if (filter === "new") {
+    if (filter === "dbc") {
+      if (t.venue !== "meteora" && t.dexId !== "meteora" && t.dexId !== "meteoradbc") return false;
+    } else if (filter === "openstock") {
+      if (t.source !== "openstock") return false;
+    } else if (filter === "new") {
       const ageHours = (Date.now() - new Date(t.createdAt).getTime()) / 3600000;
       if (ageHours > 24) return false;
     } else if (filter === "graduating") {
@@ -93,9 +97,14 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       t.pairedStockSymbol.toLowerCase().includes(q) ||
       t.pairedStockName.toLowerCase().includes(q)
     );
+  }).sort((a, b) => {
+    const rank = (t: CommunityToken) =>
+      t.source === "openstock" && t.venue === "meteora" ? 3 : t.source === "openstock" ? 2 : t.venue === "meteora" || t.dexId === "meteoradbc" ? 1 : 0;
+    return rank(b) - rank(a);
   });
 
   // KPI Calculations — launched = through OpenStock; discovered = existing DexScreener pools against an xStock
+  const dbcCount = tokens.filter((t) => t.venue === "meteora" || t.dexId === "meteora" || t.dexId === "meteoradbc").length;
   const launchedCount = tokens.filter((t) => t.source === "openstock").length;
   const discoveredCount = tokens.length - launchedCount;
   const totalVolumeFormatted = formatTokenVolume(tokens.reduce((acc, t) => acc + t.volume24hUsd, 0));
@@ -103,7 +112,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
   const newCount = tokens.filter((t) => Date.now() - new Date(t.createdAt).getTime() <= 24 * 3600_000).length;
 
   return (
-    <section className="community-market-section" aria-label="Community Meme & Stock Pairs Market">
+    <section className="community-market-section" aria-label="Stock-quoted launches">
       {/* KPI Highlight Strip */}
       <div className="community-kpi-ribbon" role="region" aria-label="Key launch metrics">
         <div className="community-kpi-card">
@@ -184,9 +193,11 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
         <div className="discovery-filters" role="tablist" aria-label="Filter community launches">
           {[
+            { id: "dbc", label: `Meteora DBC (${dbcCount})` },
+            { id: "openstock", label: `Launched here (${launchedCount})` },
             { id: "all", label: `All (${tokens.length})` },
             { id: "new", label: `New (${newCount})` },
-            { id: "graduating", label: "Near graduation (>70%)" },
+            { id: "graduating", label: "Near DAMM v2" },
             { id: "graduated", label: `On AMM pool (${ammPoolCount})` },
           ].map((tab) => (
             <button

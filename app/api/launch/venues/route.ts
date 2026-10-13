@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VERIFIED_SOLANA_XSTOCKS_PAIRS, getClawPumpPairs } from "@/lib/clawpump";
+import { fetchJupiterPrices } from "@/lib/jupiter-price";
 import { checkMeteoraDbcBadgeSupport, DBC_CURVE_KEYS, DBC_CURVE_LABELS, listDbcConfigs, readDbcConfigSummary, type DbcConfigSummary, type DbcCurveKey } from "@/lib/meteora-dbc";
 
 export async function GET(req: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const pumpSupported = pumpPairs.source === "clawpump" && pumpPairs.assets.some((a) => a.mint === pair.mint);
 
     const configured = listDbcConfigs({ quoteMint: pair.mint, pairedStockSymbol: pair.symbol });
-    const [meteoraBadged, summaries] = await Promise.all([
+    const [meteoraBadged, summaries, priceMap] = await Promise.all([
       checkMeteoraDbcBadgeSupport(pair.mint),
       Promise.all(
         DBC_CURVE_KEYS.map(async (key) => {
@@ -28,21 +29,29 @@ export async function GET(req: NextRequest) {
           return summary && summary.quoteMint === pair.mint ? ([key, summary] as const) : null;
         })
       ),
+      fetchJupiterPrices([pair.mint], 8_000).catch(() => ({})),
     ]);
-    const dbcConfigs = Object.fromEntries(summaries.filter(Boolean).map((entry) => [entry![0], { ...entry![1], ...DBC_CURVE_LABELS[entry![0]] }])) as Partial<
-      Record<DbcCurveKey, DbcConfigSummary & { name: string; blurb: string }>
-    >;
+    const quotePriceUsdRaw = Number((priceMap as Record<string, { usdPrice?: number }>)[pair.mint]?.usdPrice);
+    const quotePriceUsd = Number.isFinite(quotePriceUsdRaw) && quotePriceUsdRaw > 0 ? quotePriceUsdRaw : null;
+    const dbcConfigs = Object.fromEntries(
+      summaries.filter(Boolean).map((entry) => {
+        const [key, summary] = entry!;
+        const graduationUsd = quotePriceUsd !== null ? summary.migrationThresholdUi * quotePriceUsd : null;
+        return [key, { ...summary, ...DBC_CURVE_LABELS[key], quotePriceUsd, graduationUsd }];
+      })
+    ) as Partial<Record<DbcCurveKey, DbcConfigSummary & { name: string; blurb: string; quotePriceUsd: number | null; graduationUsd: number | null }>>;
     const dbcConfig = dbcConfigs.standard ?? Object.values(dbcConfigs)[0] ?? null;
     const meteoraLaunchReady = meteoraBadged && Boolean(dbcConfig);
 
     return NextResponse.json({
       symbol: pair.symbol,
       quoteMint: pair.mint,
+      quotePriceUsd,
       isBadged: meteoraBadged,
       dbcConfigReady: Boolean(dbcConfig),
       dbcConfig,
       dbcConfigs,
-      workingLaunchPath: pumpSupported ? "pumpfun" : meteoraLaunchReady ? "meteora" : null,
+      workingLaunchPath: meteoraLaunchReady ? "meteora" : pumpSupported ? "pumpfun" : null,
       venues: {
         pumpfun: {
           id: "pumpfun",

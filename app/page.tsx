@@ -40,7 +40,7 @@ const questions = [
   ],
   [
     "How does token pairing and launching work?",
-    "Use our Launch studio to create a community token paired directly against any xStock (e.g. YOUR_TOKEN × AAPLx) on Solana via ClawPump.",
+    "Use the Launch studio to create a community token quoted in an xStock (YOUR_TOKEN × NVDAx) on Meteora Dynamic Bonding Curve. The curve, fee, and DAMM v2 graduation threshold are the on-chain PoolConfig. Pump.fun is available as a fallback.",
   ],
   [
     "What orders can I automate?",
@@ -110,7 +110,7 @@ export default async function HomePage() {
               </span>
             </h1>
             <p style={{ "--i": 3 } as React.CSSProperties}>
-              Trade tokenized stocks on Solana through Jupiter, compare issuer and on-chain prices, and launch tokens quoted in a stock.
+              Trade tokenized stocks on Solana through Jupiter, compare issuer and on-chain prices, and launch tokens quoted in a stock on Meteora DBC.
             </p>
             <div className="os-hero-actions" style={{ "--i": 4 } as React.CSSProperties}>
               <Link className="os-button os-button-blue" href="/app">
@@ -347,20 +347,20 @@ export default async function HomePage() {
               </div>
             </article>
 
-            {/* Card 3: ClawPump Pairing with Tesla and Coinbase real logos */}
+            {/* Card 3: Meteora DBC stock-quoted launches */}
             <article className="os-arch-card">
               <div className="os-arch-card__top">
                 <div className="os-arch-card__logos">
-                  <StockLogo symbol="TSLAx" size={32} />
-                  <StockLogo symbol="COINx" size={32} />
+                  <StockLogo symbol="NVDAx" size={32} />
+                  <StockLogo symbol="AAPLx" size={32} />
                 </div>
-                <span className="os-arch-card__badge os-badge-blue">ClawPump</span>
+                <span className="os-arch-card__badge os-badge-blue">Meteora DBC</span>
               </div>
               <h3>Stock Pair Launches</h3>
-              <p>Launch community tokens paired directly against xStocks.</p>
+              <p>Launch community tokens quoted in an xStock on Meteora DBC, then graduate to DAMM v2.</p>
               <div className="os-arch-card__meta">
                 <span>Pairing</span>
-                <strong>YOUR_TOKEN × TSLAx</strong>
+                <strong>YOUR_TOKEN × NVDAx</strong>
               </div>
             </article>
 

@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://joinopenstock.xyz"),
   title: "OpenStock — Tokenized Stock Market Context & Launchpad",
   description: "Trade tokenized stocks on Solana and launch community token pairs with automated creator royalties.",
-  keywords: ["OpenStock", "joinopenstock.xyz", "Solana", "xStocks", "Tokenized Stocks", "ClawPump", "Meteora DBC", "DeFi"],
+  keywords: ["OpenStock", "joinopenstock.xyz", "Solana", "xStocks", "Tokenized Stocks", "Meteora DBC", "DAMM v2", "DeFi"],
   authors: [{ name: "OpenStock Team", url: "https://joinopenstock.xyz" }],
   creator: "OpenStock",
   publisher: "OpenStock",

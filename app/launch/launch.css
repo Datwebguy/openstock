@@ -2796,3 +2796,68 @@ html[data-theme="dark"] .launch-devbuy-summary-row strong {
     grid-template-columns: 1fr;
   }
 }
+
+.dbc-preset-desk {
+  padding-bottom: 80px;
+}
+
+.dbc-preset-table-wrap {
+  overflow-x: auto;
+}
+
+.dbc-preset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dbc-preset-table th,
+.dbc-preset-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(153, 69, 255, 0.12);
+  vertical-align: top;
+}
+
+.dbc-preset-table th {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--os-muted, #6b6680);
+}
+
+.dbc-preset-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dbc-preset-muted {
+  display: block;
+  color: var(--os-muted, #6b6680);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dbc-copy-btn {
+  display: inline-block;
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: #9945ff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dbc-builder-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.dbc-builder-list code {
+  font-size: 12px;
+}

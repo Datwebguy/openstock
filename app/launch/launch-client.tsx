@@ -23,13 +23,22 @@ type CurveKey = "standard" | "momentum" | "deep";
 type DbcConfigSummary = {
   name?: string;
   blurb?: string;
+  configAddress?: string;
   quoteDecimals: number;
   migrationThresholdUi: number;
   baseFeeBps: number;
   dynamicFee: boolean;
   creatorTradingFeePercent: number;
   migrationTarget: string;
+  quotePriceUsd?: number | null;
+  graduationUsd?: number | null;
 };
+
+function formatUsdApprox(value: number | null | undefined): string | null {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  if (value >= 1000) return `~$${Math.round(value).toLocaleString("en-US")}`;
+  return `~$${value.toFixed(2)}`;
+}
 
 /** A Pump.fun payment that landed but whose launch step has not completed — retried without paying again. */
 type PendingPumpLaunch = {
@@ -111,7 +120,7 @@ export function LaunchClient() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Venue Selection: Pump.fun (ClawPump) vs Meteora DBC
-  const [selectedVenue, setSelectedVenue] = useState<"pumpfun" | "meteora">("pumpfun");
+  const [selectedVenue, setSelectedVenue] = useState<"pumpfun" | "meteora">("meteora");
   const [venueSupport, setVenueSupport] = useState<{
     pumpfun: boolean;
     meteora: boolean;
@@ -283,14 +292,12 @@ export function LaunchClient() {
     }
   }, [initialSymbol, pairs]);
 
-  // If Meteora venue is active and selected pair does not support Meteora, fall back to pumpfun
+  // Prefer Meteora DBC whenever the selected stock has a live PoolConfig.
   useEffect(() => {
-    if (selectedVenue === "meteora" && pairs.length > 0 && selectedPair) {
-      if (!isMeteoraCompatibleStock(selectedPair.symbol)) {
-        setSelectedVenue("pumpfun");
-      }
-    }
-  }, [selectedPair, pairs, selectedVenue]);
+    if (loadingVenues) return;
+    if (venueSupport.meteora) setSelectedVenue("meteora");
+    else if (venueSupport.pumpfun) setSelectedVenue("pumpfun");
+  }, [selectedPair?.mint, venueSupport.meteora, venueSupport.pumpfun, loadingVenues]);
 
   // Check venue availability whenever selectedPair changes
   // RULE: Hide a venue if that stock is not a supported quote
@@ -779,8 +786,11 @@ export function LaunchClient() {
               <span className="launch-pulse-dot" /> Solana
             </span>
             <span className="launch-protocol-pill">
-              {quickMode ? "One-tap stock pair" : "Stock-Paired Token Studio"}
+              {quickMode ? "One-tap stock pair" : "Meteora DBC · stock-quoted"}
             </span>
+            <Link href="/launch/presets" className="launch-protocol-pill">
+              Live PoolConfigs
+            </Link>
           </div>
         </div>
 
@@ -793,8 +803,8 @@ export function LaunchClient() {
           </h1>
           <p className="launch-intro-desc">
             {quickMode
-              ? `Name it, confirm, and launch against ${selectedPair?.symbol || initialSymbol}. Quote is the stock — not SOL or USDC.`
-              : `Deploy an on-chain token paired directly against ${selectedPair?.name?.replace(/ xStock$/, "") || "Apple"} tokenized equity liquidity.`}
+              ? `Name it, confirm, and launch against ${selectedPair?.symbol || initialSymbol} on Meteora DBC. Quote is the stock — not SOL or USDC.`
+              : `Launch on Meteora Dynamic Bonding Curve, quoted in ${selectedPair?.symbol || "an xStock"}. Fees, curve shape, and DAMM v2 graduation are read from the on-chain PoolConfig.`}
           </p>
         </div>
       </section>
@@ -1040,7 +1050,7 @@ export function LaunchClient() {
                     </span>
                   </div>
                   <p className="launch-badge-note">
-                    Meteora DBC currently supports NVDA and Apple. Switch to Pump to pair against {selectedPair.symbol}, or select NVDA / Apple below.
+                    {selectedPair.symbol} is {venueSupport.meteoraBadged ? "DBC-badged" : "not DBC-badged"} on Meteora, but this deployment has no PoolConfig for it yet. Pick {[...meteoraReadySymbols].join(" or ") || "NVDAx or AAPLx"} for DBC, or switch to Pump.
                   </p>
                   <button
                     type="button"
@@ -1136,7 +1146,7 @@ export function LaunchClient() {
                   </div>
                   <span className="launch-pair-count-pill">
                     {selectedVenue === "meteora"
-                      ? `${visiblePairs.length} Meteora stocks (NVDA & Apple)`
+                      ? `${visiblePairs.length} DBC-ready stocks (${[...meteoraReadySymbols].join(", ") || "none"})`
                       : `${visiblePairs.length} / ${pairs.length} pairs`}
                   </span>
                 </div>
@@ -1215,7 +1225,7 @@ export function LaunchClient() {
               <div className="launch-step-pill">03</div>
               <div className="launch-step-title-group">
                 <h2 id="step-3-heading">Venue &amp; Economics</h2>
-                <p>Select your execution venue and configure supply &amp; creator fee.</p>
+                <p>Meteora DBC is the default. Pump.fun remains available as a fallback venue.</p>
               </div>
             </div>
 
@@ -1226,47 +1236,10 @@ export function LaunchClient() {
                   <label className="launch-section-label">
                     Execution Venue {loadingVenues ? "(Verifying...)" : ""}
                   </label>
-                  <span className="launch-section-hint">Choose where your token bonding curve launches</span>
+                  <span className="launch-section-hint">Meteora DBC first. Pump.fun is the fallback.</span>
                 </div>
 
                 <div className="launch-venue-grid-2col" role="radiogroup" aria-label="Execution Venue">
-                  {/* Pump Venue Option */}
-                  <button
-                    type="button"
-                    className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""} ${!venueSupport.pumpfun ? "is-disabled" : ""}`}
-                    disabled={!venueSupport.pumpfun}
-                    aria-disabled={!venueSupport.pumpfun}
-                    onClick={() => {
-                      if (!venueSupport.pumpfun) return;
-                      setSelectedVenue("pumpfun");
-                      setSelectedCategory("all");
-                    }}
-                    role="radio"
-                    aria-checked={selectedVenue === "pumpfun"}
-                  >
-                    <div className="launch-venue-card-header">
-                      <div className="launch-venue-card-title-wrap">
-                        <span className="launch-venue-card-title">Pump</span>
-                        <span className="launch-venue-card-badge">Instant</span>
-                      </div>
-                      {selectedVenue === "pumpfun" && (
-                        <span className="launch-card-check" aria-hidden="true">✓</span>
-                      )}
-                    </div>
-                    <p className="launch-venue-card-desc">
-                      Pump.fun bonding curve quoted in the selected xStock, via ClawPump.
-                    </p>
-                    <div className="launch-venue-card-foot">
-                      <span>
-                        {!pumpAvailable
-                          ? "ClawPump is unreachable right now"
-                          : venueSupport.pumpfun
-                          ? `Creator fee ${(pumpFeeRange.min / 100).toFixed(1)}%–${(pumpFeeRange.max / 100).toFixed(1)}%`
-                          : `ClawPump does not list ${selectedPair?.symbol ?? "this stock"}`}
-                      </span>
-                    </div>
-                  </button>
-
                   {/* Meteora Curve Venue Option */}
                   <button
                     type="button"
@@ -1284,28 +1257,65 @@ export function LaunchClient() {
                   >
                     <div className="launch-venue-card-header">
                       <div className="launch-venue-card-title-wrap">
-                        <span className="launch-venue-card-title">Meteora curve</span>
-                        <span className="launch-venue-card-badge">Dynamic Curve</span>
+                        <span className="launch-venue-card-title">Meteora DBC</span>
+                        <span className="launch-venue-card-badge">DBC → DAMM v2</span>
                       </div>
                       {selectedVenue === "meteora" && (
                         <span className="launch-card-check" aria-hidden="true">✓</span>
                       )}
                     </div>
                     <p className="launch-venue-card-desc">
-                      Meteora Dynamic Bonding Curve quoted in the selected xStock; migrates to a Meteora pool when filled.
+                      Dynamic bonding curve quoted in the selected xStock. Graduates to a locked Meteora DAMM v2 pool.
                     </p>
                     <div className="launch-venue-card-foot">
                       {isMeteoraAvailable ? (
                         <span>
                           {dbcConfig
-                            ? `Migrates after ${dbcConfig.migrationThresholdUi.toFixed(2)} ${selectedPair?.symbol} raised`
+                            ? `Migrates after ${dbcConfig.migrationThresholdUi.toFixed(2)} ${selectedPair?.symbol}${formatUsdApprox(dbcConfig.graduationUsd) ? ` (${formatUsdApprox(dbcConfig.graduationUsd)})` : ""}`
                             : "Reading on-chain config…"}
                         </span>
                       ) : (
                         <span className="launch-venue-card-note">
-                          Available for {[...meteoraReadySymbols].join(", ") || "no stocks yet"} on this deployment.
+                          Live PoolConfigs: {[...meteoraReadySymbols].join(", ") || "none yet"}.
                         </span>
                       )}
+                    </div>
+                  </button>
+
+                  {/* Pump Venue Option */}
+                  <button
+                    type="button"
+                    className={`launch-venue-card ${selectedVenue === "pumpfun" ? "is-selected" : ""} ${!venueSupport.pumpfun ? "is-disabled" : ""}`}
+                    disabled={!venueSupport.pumpfun}
+                    aria-disabled={!venueSupport.pumpfun}
+                    onClick={() => {
+                      if (!venueSupport.pumpfun) return;
+                      setSelectedVenue("pumpfun");
+                      setSelectedCategory("all");
+                    }}
+                    role="radio"
+                    aria-checked={selectedVenue === "pumpfun"}
+                  >
+                    <div className="launch-venue-card-header">
+                      <div className="launch-venue-card-title-wrap">
+                        <span className="launch-venue-card-title">Pump.fun</span>
+                        <span className="launch-venue-card-badge">Fallback</span>
+                      </div>
+                      {selectedVenue === "pumpfun" && (
+                        <span className="launch-card-check" aria-hidden="true">✓</span>
+                      )}
+                    </div>
+                    <p className="launch-venue-card-desc">
+                      Pump.fun bonding curve quoted in the selected xStock (ClawPump). Use when the stock has no DBC config.
+                    </p>
+                    <div className="launch-venue-card-foot">
+                      <span>
+                        {!pumpAvailable
+                          ? "ClawPump is unreachable right now"
+                          : venueSupport.pumpfun
+                          ? `Creator fee ${(pumpFeeRange.min / 100).toFixed(1)}%–${(pumpFeeRange.max / 100).toFixed(1)}%`
+                          : `ClawPump does not list ${selectedPair?.symbol ?? "this stock"}`}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -1337,7 +1347,7 @@ export function LaunchClient() {
                             <div className="launch-curve-row-values">
                               <span className="launch-curve-row-stat">Fee <strong>{(cfg.baseFeeBps / 100).toFixed(2)}%</strong></span>
                               <span className="launch-curve-row-stat-sep">·</span>
-                              <span className="launch-curve-row-stat">Migrates after <strong>{cfg.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong></span>
+                              <span className="launch-curve-row-stat">Migrates after <strong>{cfg.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong>{formatUsdApprox(cfg.graduationUsd) ? ` (${formatUsdApprox(cfg.graduationUsd)})` : ""}</span>
                             </div>
                           </div>
                           <div className="launch-curve-row-check">
@@ -1353,7 +1363,7 @@ export function LaunchClient() {
                       <span className="launch-fee-live-sep">·</span>
                       <span>Creator share: <strong>{dbcConfig.creatorTradingFeePercent}% of fees</strong></span>
                       <span className="launch-fee-live-sep">·</span>
-                      <span>Migrates to {dbcConfig.migrationTarget} after <strong>{dbcConfig.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong> is raised</span>
+                      <span>Migrates to {dbcConfig.migrationTarget} after <strong>{dbcConfig.migrationThresholdUi.toFixed(2)} {selectedPair?.symbol}</strong>{formatUsdApprox(dbcConfig.graduationUsd) ? ` (${formatUsdApprox(dbcConfig.graduationUsd)} at the live stock price)` : ""} is raised. Threshold is in shares of the stock, so USD FDV moves with the equity.</span>
                     </div>
                   ) : (
                     <div className="launch-fee-live-banner">Reading the pool config from Solana…</div>

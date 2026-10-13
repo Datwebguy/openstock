@@ -12,7 +12,7 @@
 
 ---
 
-OpenStock lets anyone browse, analyze and trade [xStocks](https://xstocks.fi) (Backed's tokenized equities, such as `NVDAx`, `AAPLx`, `TSLAx`) on Solana, and launch a new token whose bonding curve is **quoted in a stock instead of SOL or USDC** (`YOUR_TOKEN × NVDAx`) on Meteora Dynamic Bonding Curve or Pump.fun.
+OpenStock lets anyone browse, analyze and trade [xStocks](https://xstocks.fi) (Backed's tokenized equities, such as `NVDAx`, `AAPLx`, `TSLAx`) on Solana, and launch a new token whose bonding curve is **quoted in a stock instead of SOL or USDC** (`YOUR_TOKEN × NVDAx`) on **Meteora Dynamic Bonding Curve** (default), with Pump.fun as a fallback.
 
 Every number on the desk comes from a live source (the issuer, Jupiter, Meteora, GeckoTerminal, DexScreener, Pyth or Solana itself). When a source is unavailable the UI says so; it never fills in a sample value.
 
@@ -35,7 +35,9 @@ Every number on the desk comes from a live source (the issuer, Jupiter, Meteora,
   | Equity Momentum | Thin early liquidity — fast early price discovery | 2.0% | 50% of fees | ~$85k |
   | Equity Deep Book | Deep early liquidity — low slippage for first buyers | 1.0% | 50% of fees | ~$100k |
 
-  The launch studio reads each config's fee and migration threshold from chain, so what you see is what the program enforces. Pools migrate to **Meteora DAMM v2** with the migrated liquidity permanently locked.
+  Graduation is denominated in **xStock units** (shares of NVDAx, not a frozen USD cap). The studio shows the live USD equivalent from Jupiter; that number moves with the equity. Pools migrate to **Meteora DAMM v2** (25 bps config `7F6dnUcRuyM2TwR8myT1dYypFXpPSxqwKNSFNkxyNESd` unless `METEORA_DAMM_V2_CONFIG` is set) with migrated partner liquidity permanently locked.
+
+  Live catalog: [joinopenstock.xyz/launch/presets](https://joinopenstock.xyz/launch/presets) · JSON: `/api/launch/dbc-presets` · pool progress: `/api/launch/dbc-pools`.
 - **Pump.fun** launches quoted in an xStock via ClawPump. A paid launch that fails at the final step can be finished later without paying again.
 - **Launches are verified on-chain** before they appear on the desk: the transaction signature, the derived pool address and the pool creator are all checked.
 - **Community market**: OpenStock launches plus existing pools found on DexScreener that trade directly against an xStock, with real holders from Solana and look-alike ticker warnings.
@@ -63,7 +65,7 @@ Next.js 15 (App Router, React 19) — deployed on Vercel
 │  ├─ api/rpc               Same-origin Solana JSON-RPC relay (method allowlist, rate limit)
 │  ├─ api/candles           USD OHLCV from GeckoTerminal
 │  ├─ api/evidence          Issuer price, reserves, oracle, Meteora pools per stock
-│  ├─ api/launch/*          Venues, pairs, Pump.fun preflight/confirm, Meteora prepare/confirm, uploads
+│  ├─ api/launch/*          Venues, pairs, DBC presets/pools, Pump.fun preflight/confirm, Meteora prepare/confirm, uploads
 │  ├─ api/trade/*           Jupiter order prepare / execute
 │  ├─ api/token-holders     Largest holders from Solana
 │  └─ api/token-metadata    Metaplex JSON for DBC launches

@@ -6,8 +6,8 @@ import { getCommunityTokens } from "@/lib/community-tokens";
 import curatedSymbols from "@/lib/curated-symbols.json";
 
 export const metadata: Metadata = {
-  title: "Community Stock Pairs & Memes — OpenStock × ClawPump",
-  description: "Tokens launched on OpenStock and existing pools quoted directly in tokenized stocks (xStocks) on Solana.",
+  title: "Community Stock Pairs — OpenStock × Meteora DBC",
+  description: "OpenStock Meteora DBC launches plus existing Solana pools quoted directly in tokenized stocks.",
 };
 
 export default async function CommunityMarketPage() {
@@ -24,14 +24,17 @@ export default async function CommunityMarketPage() {
               <span className="live-dot" aria-hidden="true" />
               <span>Solana mainnet · pools quoted in xStocks</span>
             </div>
-            <h1>Community Stock Pairs &amp; Memes</h1>
+            <h1>Stock-quoted launches</h1>
             <p>
-              Tokens launched on OpenStock, plus existing pools found on DexScreener that trade directly against a tokenized stock. Prices and volume come from DexScreener; holders come from Solana.
+              OpenStock Meteora DBC launches first, then existing DexScreener pools that trade directly against an xStock. Curve progress is read from Solana; prices and volume come from DexScreener.
             </p>
           </div>
           <div className="workspace-heading__actions">
             <Link className="button button--gradient" href="/launch">
-              Launch Token Pair ↗
+              Launch on Meteora DBC ↗
+            </Link>
+            <Link className="workspace-pill-link workspace-pill-link--secondary" href="/launch/presets">
+              DBC presets ↗
             </Link>
             <Link className="workspace-pill-link workspace-pill-link--secondary" href="/app">
               {curatedSymbols.length} tokenized stocks ↗

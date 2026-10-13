@@ -306,7 +306,7 @@ export function AnalyticsWorkspace({ symbols }: { symbols: SymbolOption[] }) {
             <div className="analytics-clawpump-box">
               <div className="analytics-clawpump-info">
                 <h4>Launch a token quoted in {selected}</h4>
-                <p>Pump.fun (via ClawPump) or Meteora DBC where configured. The pool&apos;s quote asset is the stock, not SOL or USDC.</p>
+                <p>Meteora DBC where configured, with Pump.fun as a fallback. The pool&apos;s quote asset is the stock, not SOL or USDC.</p>
                 <div className="analytics-pair-pill">
                   <span>YOUR_TOKEN</span>
                   <strong>×</strong>

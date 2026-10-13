@@ -34,7 +34,7 @@ export function GraduationRadar({ tokens, onInspectMigration, onOpenSwap }: Grad
               <span className="graduation-radar-chip">Meteora DBC</span>
             </div>
             <p className="graduation-radar-subtitle">
-              Progress is read from each pool on Solana. When a curve fills, anyone can migrate it to a Meteora pool.
+              Progress is read from each pool on Solana. When a curve fills, anyone can migrate it to a locked Meteora DAMM v2 pool.
             </p>
           </div>
         </div>

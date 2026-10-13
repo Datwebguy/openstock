@@ -149,6 +149,8 @@ export async function POST(req: NextRequest) {
         poolAddress: launchResult.poolAddress,
         venue: "meteora",
         dexId: "meteora",
+        dbcConfigAddress: configAddress ?? undefined,
+        curve,
         createdAt: new Date().toISOString(),
       });
     } catch (storeErr) {

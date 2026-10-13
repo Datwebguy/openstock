@@ -61,7 +61,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
 
     setIsMigrating(true);
     setMigrationError("");
-    setMigrationStep("Preparing move to full pool...");
+    setMigrationStep("Preparing DBC → DAMM v2 migration...");
 
     if (!canSign) {
       setMigrationError("Connect a Solana wallet that can sign to continue.");
@@ -122,7 +122,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
       setIsGraduated(true);
       setMeteoraPoolUrl(confirmData.meteoraUrl || `https://solscan.io/account/${prepData.dammPoolAddress}`);
       setMigrationTxHash(txSignature);
-      setMigrationStep("Move to full pool complete!");
+      setMigrationStep("Migrated to Meteora DAMM v2.");
     } catch (err: unknown) {
       console.error("Migration error:", err);
       const msg = translateWalletError(err);
@@ -218,7 +218,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
 
           {/* 3-Step Automated Migration Pipeline */}
           <div className="migration-steps-box">
-            <h3 className="migration-steps-title">Path to Full Trading Pool</h3>
+            <h3 className="migration-steps-title">DBC → DAMM v2</h3>
             <div className="migration-steps-grid">
               {/* Step 1 */}
               <div className={`migration-step-card ${progress > 0 ? "is-active" : ""}`}>
@@ -239,9 +239,9 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
               <div className={`migration-step-card ${isGraduated ? "is-active" : ""}`}>
                 <div className="migration-step-badge">02</div>
                 <div className="migration-step-content">
-                  <h4>Full Pool Activation</h4>
+                  <h4>DAMM v2 migration</h4>
                   <p>
-                    When the curve fills, anyone can send the migration transaction that seeds an AMM pool
+                    When the curve fills, anyone can send the Meteora migration that seeds a DAMM v2 pool
                     with the raised {token.pairedStockSymbol}.
                   </p>
                   <span className="migration-step-stat">
@@ -254,9 +254,9 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
               <div className={`migration-step-card ${isGraduated ? "is-active" : ""}`}>
                 <div className="migration-step-badge">03</div>
                 <div className="migration-step-content">
-                  <h4>Liquidity terms</h4>
+                  <h4>Locked DAMM v2 liquidity</h4>
                   <p>
-                    How much migrated liquidity is locked is set by each venue&apos;s pool config — check the pool on Solscan.
+                    OpenStock configs lock 100% of migrated partner liquidity on DAMM v2. The pool keeps earning; the LP cannot be pulled.
                   </p>
                   <span className="migration-step-stat">
                     {isGraduated ? "✓ Pool live" : "After migration"}
@@ -334,7 +334,7 @@ export function MigrationModal({ token, onClose, onOpenSwap }: MigrationModalPro
                 onClick={handleExecuteMigration}
                 style={{ background: "linear-gradient(135deg, #03e1ff 0%, #14f195 100%)", color: "#000" }}
               >
-                {isMigrating ? "Moving to full pool..." : "Move to full pool 🚀"}
+                {isMigrating ? "Migrating to DAMM v2..." : "Migrate to DAMM v2"}
               </button>
             ) : !isGraduated && onOpenSwap ? (
               <button

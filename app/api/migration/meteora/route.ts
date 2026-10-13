@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateCommunityTokenStatus } from "@/lib/community-tokens";
 import {
+  dammV2PoolUrl,
   prepareMeteoraDammMigrationTx,
   queryOnChainDbcProgress,
 } from "@/lib/meteora-dbc";
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
       }
 
       const targetDammPool = dammPoolAddress;
-      const meteoraUrl = `https://solscan.io/account/${targetDammPool}`;
+      const meteoraUrl = dammV2PoolUrl(targetDammPool);
       const explorerUrl = `https://solscan.io/tx/${txSignature}`;
       let registryUpdated = false;
       if (mint) {
