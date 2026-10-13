@@ -10,14 +10,14 @@ import { GraduationRadar } from "@/components/graduation-radar";
 import { MigrationModal } from "@/components/migration-modal";
 import { ShareToXModal, type ShareTokenData } from "@/components/share-to-x-modal";
 import type { CommunityToken } from "@/lib/community-tokens";
-import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isLookalikeTicker, isOnAmmPool } from "@/lib/community-token-utils";
+import { curveStatusLabel, dexLabel, formatMarketCap, formatTokenPrice, formatTokenVolume, isActiveMarket, isLookalikeTicker, isOnAmmPool, marketActivityScore } from "@/lib/community-token-utils";
 
-type FilterTab = "all" | "dbc" | "openstock" | "new" | "graduating" | "graduated";
+type FilterTab = "live" | "all" | "dbc" | "openstock" | "new" | "graduating" | "graduated";
 
 export function CommunityMarketHub({ initialTokens }: { initialTokens?: CommunityToken[] }) {
   const [tokens, setTokens] = useState<CommunityToken[]>(initialTokens || []);
   const [loading, setLoading] = useState(!initialTokens || initialTokens.length === 0);
-  const [filter, setFilter] = useState<FilterTab>("dbc");
+  const [filter, setFilter] = useState<FilterTab>("live");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
@@ -76,7 +76,9 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
   // Filtered Tokens
   const filteredTokens = tokens.filter((t) => {
-    if (filter === "dbc") {
+    if (filter === "live") {
+      if (!isActiveMarket(t) || t.volume24hUsd < 50) return false;
+    } else if (filter === "dbc") {
       if (t.venue !== "meteora" && t.dexId !== "meteora" && t.dexId !== "meteoradbc") return false;
     } else if (filter === "openstock") {
       if (t.source !== "openstock") return false;
@@ -98,12 +100,16 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       t.pairedStockName.toLowerCase().includes(q)
     );
   }).sort((a, b) => {
-    const rank = (t: CommunityToken) =>
-      t.source === "openstock" && t.venue === "meteora" ? 3 : t.source === "openstock" ? 2 : t.venue === "meteora" || t.dexId === "meteoradbc" ? 1 : 0;
-    return rank(b) - rank(a);
+    const lookA = isLookalikeTicker(a.symbol) ? 1 : 0;
+    const lookB = isLookalikeTicker(b.symbol) ? 1 : 0;
+    if (lookA !== lookB) return lookA - lookB;
+    const vol = b.volume24hUsd - a.volume24hUsd;
+    if (vol !== 0) return vol;
+    return marketActivityScore(b) - marketActivityScore(a);
   });
 
   // KPI Calculations — launched = through OpenStock; discovered = existing DexScreener pools against an xStock
+  const liveCount = tokens.filter((t) => isActiveMarket(t) && t.volume24hUsd >= 50).length;
   const dbcCount = tokens.filter((t) => t.venue === "meteora" || t.dexId === "meteora" || t.dexId === "meteoradbc").length;
   const launchedCount = tokens.filter((t) => t.source === "openstock").length;
   const discoveredCount = tokens.length - launchedCount;
@@ -193,6 +199,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
 
         <div className="discovery-filters" role="tablist" aria-label="Filter community launches">
           {[
+            { id: "live", label: `Live (${liveCount})` },
             { id: "dbc", label: `Meteora DBC (${dbcCount})` },
             { id: "openstock", label: `Launched here (${launchedCount})` },
             { id: "all", label: `All (${tokens.length})` },
@@ -224,7 +231,7 @@ export function CommunityMarketHub({ initialTokens }: { initialTokens?: Communit
       {/* Empty State */}
       {filteredTokens.length === 0 && !loading && (
         <div className="community-empty-card">
-          <p>No tokens matched your filter.</p>
+          <p>{filter === "live" ? "No stock-paired pools with 24h volume yet." : "No tokens matched your filter."}</p>
           <Link href="/launch" className="button button--gradient" style={{ display: "inline-flex", marginTop: 12 }}>
             Launch First Token Pair ↗
           </Link>

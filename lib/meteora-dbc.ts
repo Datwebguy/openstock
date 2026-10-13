@@ -11,9 +11,9 @@ const DEFAULT_RPC = process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA
 export type DbcCurveKey = "standard" | "momentum" | "deep";
 export const DBC_CURVE_KEYS: DbcCurveKey[] = ["standard", "momentum", "deep"];
 export const DBC_CURVE_LABELS: Record<DbcCurveKey, { name: string; blurb: string }> = {
-  standard: { name: "Equity Standard", blurb: "Even liquidity across the curve" },
-  momentum: { name: "Equity Momentum", blurb: "Thin early liquidity — price moves fast at the start" },
-  deep: { name: "Equity Deep Book", blurb: "Deep early liquidity — low slippage for first buyers" },
+  standard: { name: "Equity Standard", blurb: "Even book" },
+  momentum: { name: "Equity Momentum", blurb: "Fast discovery" },
+  deep: { name: "Equity Deep Book", blurb: "Low early slip" },
 };
 
 /** Published mainnet PoolConfigs (OpenStock). Env overrides these. */

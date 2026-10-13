@@ -1200,9 +1200,10 @@ html[data-theme="dark"] .launch-venue-card.is-selected .launch-venue-card-foot {
 }
 
 .launch-curve-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   padding: 14px 16px;
   border-radius: 14px;
   border: 1.5px solid var(--os-line, rgba(22, 19, 33, 0.12));
@@ -1258,13 +1259,6 @@ html[data-theme="dark"] .launch-curve-row-icon {
   min-width: 0;
 }
 
-.launch-curve-row-title-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .launch-curve-row-name {
   font-size: 15px;
   font-weight: 700;
@@ -1285,12 +1279,20 @@ html[data-theme="dark"] .launch-curve-row-sub {
 }
 
 .launch-curve-row-values {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  display: grid;
+  grid-template-columns: 4.25rem 8.25rem 4.25rem;
+  align-items: baseline;
+  justify-items: end;
+  gap: 12px;
+  font-size: 13px;
   color: var(--os-muted, #6e6782);
-  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.launch-curve-row-usd {
+  color: var(--os-ink, #161321);
+  font-weight: 600;
 }
 
 html[data-theme="dark"] .launch-curve-row-values {
@@ -1416,30 +1418,41 @@ html[data-theme="dark"] .launch-supply-input-formatted {
 
 /* Creator Fee Banner */
 .launch-fee-live-banner {
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(153, 69, 255, 0.06);
-  border: 1px solid rgba(153, 69, 255, 0.15);
-  font-size: 14px;
-  color: var(--os-ink, #161321);
+  padding: 8px 4px 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--os-muted, #6e6782);
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 html[data-theme="dark"] .launch-fee-live-banner {
-  background: rgba(153, 69, 255, 0.12);
-  border-color: rgba(153, 69, 255, 0.25);
-  color: #f5f2fc;
+  background: transparent;
+  color: #a8a1c0;
 }
 
 .launch-fee-live-banner strong {
-  color: #9945ff;
+  color: inherit;
+  font-weight: 600;
 }
 
 html[data-theme="dark"] .launch-fee-live-banner strong {
-  color: #d8b4fe;
+  color: inherit;
+}
+
+@media (max-width: 720px) {
+  .launch-curve-row {
+    grid-template-columns: minmax(0, 1fr) 20px;
+    gap: 10px;
+  }
+
+  .launch-curve-row-values {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-items: start;
+  }
 }
 
 .launch-fee-live-sep {

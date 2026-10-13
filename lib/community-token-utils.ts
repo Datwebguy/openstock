@@ -91,6 +91,18 @@ export function isLookalikeTicker(symbol: string): boolean {
   return LOOKALIKE_TICKERS.has(upper) || STOCK_TICKERS.has(upper);
 }
 
+/** Real 24h market: a quoted price and volume. Dead / unlisted rows fail this. */
+export function isActiveMarket(token: { volume24hUsd: number; priceUsd: number; marketStatus?: string }): boolean {
+  return token.volume24hUsd > 0 && token.priceUsd > 0 && token.marketStatus !== "unlisted";
+}
+
+/** Higher is hotter. Lookalikes sort after real names when volume is equal. */
+export function marketActivityScore(token: { volume24hUsd: number; marketCapUsd: number; symbol: string }): number {
+  const volume = Number.isFinite(token.volume24hUsd) ? token.volume24hUsd : 0;
+  const mcap = Number.isFinite(token.marketCapUsd) ? token.marketCapUsd : 0;
+  return volume * 1_000 + mcap;
+}
+
 /** Image source for a community token: DexScreener's logo, else its on-chain metadata image. */
 export function tokenImageSrc(token: { imageUrl?: string; mint: string }) {
   return token.imageUrl || `/api/token-image/${token.mint}`;
